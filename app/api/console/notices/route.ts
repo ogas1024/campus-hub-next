@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requirePerm } from "@/lib/auth/permissions";
 import { badRequest } from "@/lib/http/errors";
+import { parseBooleanParam, parseIntParam } from "@/lib/http/query";
 import { jsonError } from "@/lib/http/route";
 import { createNoticeBodySchema } from "@/lib/modules/notices/notices.schemas";
 import { createNotice, listConsoleNotices } from "@/lib/modules/notices/notices.service";
@@ -11,16 +12,16 @@ export async function GET(request: Request) {
     const user = await requirePerm("campus:notice:list");
     const { searchParams } = new URL(request.url);
 
-    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-    const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize") ?? 20)));
+    const page = parseIntParam(searchParams.get("page"), { defaultValue: 1, min: 1 });
+    const pageSize = parseIntParam(searchParams.get("pageSize"), { defaultValue: 20, min: 1, max: 50 });
     const q = searchParams.get("q") ?? undefined;
-    const includeExpired = searchParams.get("includeExpired") !== "false";
+    const includeExpired = parseBooleanParam(searchParams.get("includeExpired"), { defaultValue: true });
 
     const status = searchParams.get("status") ?? undefined;
     const statusValue =
       status === "draft" || status === "published" || status === "retracted" ? status : undefined;
 
-    const mine = searchParams.get("mine") === "true";
+    const mine = parseBooleanParam(searchParams.get("mine"), { defaultValue: false });
 
     const data = await listConsoleNotices({
       userId: user.id,

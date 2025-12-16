@@ -50,7 +50,8 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
   const status = pickString(sp.status);
   const statusValue = status === "draft" || status === "published" || status === "retracted" ? status : undefined;
 
-  const [canUpdate, canDelete, canPin, canPublish, canManageAll] = await Promise.all([
+  const [canCreate, canUpdate, canDelete, canPin, canPublish, canManageAll] = await Promise.all([
+    hasPerm(user.id, "campus:notice:create"),
     hasPerm(user.id, "campus:notice:update"),
     hasPerm(user.id, "campus:notice:delete"),
     hasPerm(user.id, "campus:notice:pin"),
@@ -75,9 +76,11 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
           <h1 className="text-xl font-semibold">公告管理</h1>
           <p className="text-sm text-zinc-600">草稿/撤回 → 发布；已发布可撤回；置顶仅对“已发布且未过期”生效。</p>
         </div>
-        <Link href="/console/notices/new" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800">
-          新建公告
-        </Link>
+        {canCreate ? (
+          <Link href="/console/notices/new" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800">
+            新建公告
+          </Link>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

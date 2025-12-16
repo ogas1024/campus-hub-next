@@ -84,11 +84,11 @@
 - `created_at/updated_at/deleted_at` timestamptz
 
 ### 4.2 notice_scopes（可见范围条目）
-- `id` uuid PK
+- 主键：`(notice_id, scope_type, ref_id)`（复合主键）
 - `notice_id` uuid
 - `scope_type` text（role|department|position）
 - `ref_id` uuid（对应 roles/departments/positions 的 id）
-- 唯一约束：`(notice_id, scope_type, ref_id)`
+- `created_at` timestamptz
 
 ### 4.3 notice_attachments（附件）
 - `id` uuid PK
@@ -100,11 +100,10 @@
 - `sort` int（默认 0）
 
 ### 4.4 notice_reads（阅读回执）
-- `id` uuid PK
+- 主键：`(notice_id, user_id)`（复合主键）
 - `notice_id` uuid
 - `user_id` uuid（Supabase Auth 用户 ID，即 `auth.users.id`）
 - `read_at` timestamptz
-- 唯一约束：`(notice_id, user_id)`
 
 ## 5. 可见性判定规则（访问控制）
 - 若 `visible_all=true`：对所有已登录用户可见（前提：公告已发布，或用户有管理权限/为创建者）。
@@ -156,3 +155,6 @@
 - user 进入详情会生成且仅生成 1 条阅读回执，列表正确显示已读/未读与阅读数。
 - 置顶公告在列表最前（置顶时间倒序），撤回后自动取消置顶且前台不可见。
 - 过期公告默认不出现在列表，`includeExpired=true` 时可见；详情可访问并提示“已过期”。
+
+## 10. 已知限制与后续优化
+- 可见性查询：当前实现为“先查命中 scope 的 notice_id 列表，再用 `IN (...)` 过滤”；数据量增大后需要改为 `exists/join`（或物化视图/预计算表）以避免 `IN` 过大带来的性能问题。

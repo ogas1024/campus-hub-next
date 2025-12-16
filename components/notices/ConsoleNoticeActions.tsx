@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type NoticeStatus = "draft" | "published" | "retracted";
+import { ApiResponseError } from "@/lib/api/http";
+import { deleteConsoleNotice, publishConsoleNotice, retractConsoleNotice, setConsoleNoticePinned } from "@/lib/api/notices";
+import type { NoticeStatus } from "@/lib/api/notices";
 
 type Props = {
   noticeId: string;
@@ -25,36 +27,18 @@ export function ConsoleNoticeActions(props: Props) {
 
   const canOperate = props.isMine || props.canManageAll;
 
-  async function post(path: string, body?: unknown) {
-    setLoading(true);
-    try {
-      const res = await fetch(path, {
-        method: "POST",
-        headers: body ? { "content-type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        window.alert(json?.error?.message ?? "操作失败");
-        return;
-      }
-      router.refresh();
-    } finally {
-      setLoading(false);
-    }
+  function getErrorMessage(err: unknown, fallback: string) {
+    if (err instanceof ApiResponseError) return err.message || fallback;
+    return fallback;
   }
 
-  async function del(path: string) {
-    if (!confirm("确认删除该公告（软删）？")) return;
+  async function run(action: () => Promise<unknown>, fallbackMessage: string) {
     setLoading(true);
     try {
-      const res = await fetch(path, { method: "DELETE" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        window.alert(json?.error?.message ?? "删除失败");
-        return;
-      }
+      await action();
       router.refresh();
+    } catch (err) {
+      window.alert(getErrorMessage(err, fallbackMessage));
     } finally {
       setLoading(false);
     }
@@ -77,7 +61,7 @@ export function ConsoleNoticeActions(props: Props) {
             type="button"
             className="rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
             disabled={loading}
-            onClick={() => void post(`/api/console/notices/${props.noticeId}/publish`)}
+            onClick={() => void run(() => publishConsoleNotice(props.noticeId), "发布失败")}
           >
             发布
           </button>
@@ -91,7 +75,7 @@ export function ConsoleNoticeActions(props: Props) {
               type="button"
               className="rounded-md border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50 disabled:opacity-60"
               disabled={loading || props.isExpired}
-              onClick={() => void post(`/api/console/notices/${props.noticeId}/pin`, { pinned: !props.pinned })}
+              onClick={() => void run(() => setConsoleNoticePinned(props.noticeId, !props.pinned), "置顶操作失败")}
               title={props.isExpired ? "已过期公告不允许置顶" : undefined}
             >
               {props.pinned ? "取消置顶" : "置顶"}
@@ -103,7 +87,7 @@ export function ConsoleNoticeActions(props: Props) {
               type="button"
               className="rounded-md border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50 disabled:opacity-60"
               disabled={loading}
-              onClick={() => void post(`/api/console/notices/${props.noticeId}/retract`)}
+              onClick={() => void run(() => retractConsoleNotice(props.noticeId), "撤回失败")}
             >
               撤回
             </button>
@@ -116,7 +100,10 @@ export function ConsoleNoticeActions(props: Props) {
           type="button"
           className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
           disabled={loading}
-          onClick={() => void del(`/api/console/notices/${props.noticeId}`)}
+          onClick={() => {
+            if (!confirm("确认删除该公告（软删）？")) return;
+            void run(() => deleteConsoleNotice(props.noticeId), "删除失败");
+          }}
         >
           删除
         </button>

@@ -5,15 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
+import { ApiResponseError } from "@/lib/api/http";
+import { createConsoleNotice, fetchNoticeScopeOptions } from "@/lib/api/notices";
+import type { NoticeScopeInput, NoticeScopeOptionsResponse, ScopeType } from "@/lib/api/notices";
 
-type ScopeType = "role" | "department" | "position";
-type ScopeOption = { id: string; name: string; parentId?: string | null; code?: string };
-
-type ScopeOptions = {
-  roles: ScopeOption[];
-  departments: ScopeOption[];
-  positions: ScopeOption[];
-};
+type ScopeOptions = NoticeScopeOptionsResponse;
 
 function toIsoOrUndefined(value: string) {
   if (!value) return undefined;
@@ -40,14 +36,15 @@ export default function NewNoticePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const res = await fetch("/api/console/notices/scope-options");
-      const json = await res.json();
       if (cancelled) return;
-      if (!res.ok) {
-        setError(json?.error?.message ?? "加载可见范围选项失败");
-        return;
+      try {
+        const data = await fetchNoticeScopeOptions();
+        if (cancelled) return;
+        setOptions(data);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof ApiResponseError ? err.message : "加载可见范围选项失败");
       }
-      setOptions(json);
     })();
     return () => {
       cancelled = true;
@@ -55,7 +52,7 @@ export default function NewNoticePage() {
   }, []);
 
   const scopes = useMemo(() => {
-    const items: { scopeType: ScopeType; refId: string }[] = [];
+    const items: NoticeScopeInput[] = [];
     for (const refId of selected.role) items.push({ scopeType: "role", refId });
     for (const refId of selected.department) items.push({ scopeType: "department", refId });
     for (const refId of selected.position) items.push({ scopeType: "position", refId });
@@ -215,28 +212,21 @@ export default function NewNoticePage() {
                 setError(null);
                 setLoading(true);
 
-                const res = await fetch("/api/console/notices", {
-                  method: "POST",
-                  headers: { "content-type": "application/json" },
-                  body: JSON.stringify({
+                try {
+                  const created = await createConsoleNotice({
                     title,
                     contentMd,
                     expireAt: toIsoOrUndefined(expireAtLocal),
                     visibleAll,
                     scopes,
                     attachments: [],
-                  }),
-                });
-
-                const json = await res.json();
-                setLoading(false);
-
-                if (!res.ok) {
-                  setError(json?.error?.message ?? "创建失败");
-                  return;
+                  });
+                  router.push(`/console/notices/${created.id}/edit`);
+                } catch (err) {
+                  setError(err instanceof ApiResponseError ? err.message : "创建失败");
+                } finally {
+                  setLoading(false);
                 }
-
-                router.push(`/console/notices/${json.id}/edit`);
               }}
             >
               {loading ? "创建中..." : "创建并进入编辑"}
@@ -247,4 +237,3 @@ export default function NewNoticePage() {
     </div>
   );
 }
-

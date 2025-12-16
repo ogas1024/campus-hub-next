@@ -2,17 +2,22 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
-import { requirePerm } from "@/lib/auth/permissions";
-import { HttpError } from "@/lib/http/errors";
+import { hasPerm } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 
 export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {
-  let user: Awaited<ReturnType<typeof requirePerm>>;
+  let user: Awaited<ReturnType<typeof requireUser>>;
   try {
-    user = await requirePerm("campus:notice:list");
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 401) redirect("/login");
-    redirect("/notices");
+    user = await requireUser();
+  } catch {
+    redirect("/login");
   }
+
+  const navItems: { href: string; label: string }[] = [];
+  const canNoticeList = await hasPerm(user.id, "campus:notice:list");
+  if (canNoticeList) navItems.push({ href: "/console/notices", label: "公告管理" });
+
+  if (navItems.length === 0) redirect("/notices");
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -20,7 +25,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <span className="rounded-md bg-white/10 px-2 py-1 text-xs font-semibold tracking-wide">Console</span>
-            <span className="text-sm text-zinc-200">通知公告</span>
+            <span className="text-sm text-zinc-200">管理后台</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -36,11 +41,16 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       <div className="mx-auto flex w-full max-w-7xl gap-4 px-4 py-6">
         <aside className="hidden w-56 shrink-0 md:block">
           <nav className="sticky top-6 rounded-xl border border-zinc-200 bg-white p-2">
-            <Link className="block rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white" href="/console/notices">
-              公告管理
-            </Link>
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+                href={item.href}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
-          <div className="mt-3 text-xs text-zinc-500">提示：审批与发布在后台完成，前台仅展示已发布公告。</div>
         </aside>
 
         <main className="min-w-0 flex-1">{children}</main>

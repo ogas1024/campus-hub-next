@@ -5,36 +5,27 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
+import { ApiResponseError } from "@/lib/api/http";
+import {
+  deleteConsoleNotice,
+  fetchConsoleNoticeDetail,
+  fetchNoticeScopeOptions,
+  publishConsoleNotice,
+  retractConsoleNotice,
+  setConsoleNoticePinned,
+  updateConsoleNotice,
+  uploadConsoleNoticeAttachment,
+} from "@/lib/api/notices";
+import type {
+  ConsoleNoticeDetail,
+  NoticeAttachmentInput,
+  NoticeScopeInput,
+  NoticeScopeOptionsResponse,
+  NoticeStatus,
+  ScopeType,
+} from "@/lib/api/notices";
 
-type ScopeType = "role" | "department" | "position";
-type ScopeOption = { id: string; name: string; parentId?: string | null; code?: string };
-
-type ScopeOptions = {
-  roles: ScopeOption[];
-  departments: ScopeOption[];
-  positions: ScopeOption[];
-};
-
-type Attachment = {
-  fileKey: string;
-  fileName: string;
-  contentType: string;
-  size: number;
-  sort: number;
-};
-
-type NoticeDetailResponse = {
-  title: string;
-  contentMd: string;
-  status: string;
-  pinned: boolean;
-  visibleAll: boolean;
-  expireAt: string | null;
-  isExpired: boolean;
-  createdBy: string;
-  scopes: { scopeType: ScopeType; refId: string }[];
-  attachments: { fileKey: string; fileName: string; contentType: string; size: number; sort?: number }[];
-};
+type ScopeOptions = NoticeScopeOptionsResponse;
 
 type Props = {
   noticeId: string;
@@ -75,7 +66,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
   const [contentMd, setContentMd] = useState("");
   const [expireAtLocal, setExpireAtLocal] = useState("");
   const [visibleAll, setVisibleAll] = useState(true);
-  const [status, setStatus] = useState<string>("draft");
+  const [status, setStatus] = useState<NoticeStatus>("draft");
   const [pinned, setPinned] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
   const [createdBy, setCreatedBy] = useState<string>("");
@@ -85,7 +76,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
     department: new Set(),
     position: new Set(),
   });
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachments, setAttachments] = useState<NoticeAttachmentInput[]>([]);
   const [options, setOptions] = useState<ScopeOptions | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,21 +86,19 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [detailRes, optionsRes] = await Promise.all([
-        fetch(`/api/console/notices/${noticeId}`),
-        fetch("/api/console/notices/scope-options"),
+      const [detailResult, optionsResult] = await Promise.allSettled([
+        fetchConsoleNoticeDetail(noticeId),
+        fetchNoticeScopeOptions(),
       ]);
-
-      const detailJson = await detailRes.json();
-      const optionsJson = await optionsRes.json();
       if (cancelled) return;
 
-      if (!detailRes.ok) {
-        setError(detailJson?.error?.message ?? "加载失败");
+      if (detailResult.status !== "fulfilled") {
+        const message = detailResult.reason instanceof ApiResponseError ? detailResult.reason.message : "加载失败";
+        setError(message);
         return;
       }
 
-      const detail = detailJson as NoticeDetailResponse;
+      const detail: ConsoleNoticeDetail = detailResult.value;
 
       setTitle(detail.title);
       setContentMd(detail.contentMd);
@@ -141,7 +130,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
       }
       setSelected(nextSelected);
 
-      if (optionsRes.ok) setOptions(optionsJson as ScopeOptions);
+      if (optionsResult.status === "fulfilled") setOptions(optionsResult.value);
     })();
 
     return () => {
@@ -150,7 +139,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
   }, [noticeId]);
 
   const scopes = useMemo(() => {
-    const items: { scopeType: ScopeType; refId: string }[] = [];
+    const items: NoticeScopeInput[] = [];
     for (const refId of selected.role) items.push({ scopeType: "role", refId });
     for (const refId of selected.department) items.push({ scopeType: "department", refId });
     for (const refId of selected.position) items.push({ scopeType: "position", refId });
@@ -160,52 +149,41 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
   async function save() {
     setError(null);
     setLoading(true);
-
-    const res = await fetch(`/api/console/notices/${noticeId}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const updated = await updateConsoleNotice(noticeId, {
         title,
         contentMd,
         expireAt: toIsoOrUndefined(expireAtLocal),
         visibleAll,
         scopes,
         attachments,
-      }),
-    });
+      });
 
-    const json = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(json?.error?.message ?? "保存失败");
-      return;
+      setStatus(updated.status);
+      setPinned(!!updated.pinned);
+      setIsExpired(!!updated.isExpired);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiResponseError ? err.message : "保存失败");
+    } finally {
+      setLoading(false);
     }
-
-    setStatus(json.status);
-    setPinned(!!json.pinned);
-    setIsExpired(!!json.isExpired);
-    router.refresh();
   }
 
-  async function callAction(path: string, body?: unknown) {
+  async function runAction(action: () => Promise<ConsoleNoticeDetail>, fallbackMessage: string) {
     setError(null);
     setLoading(true);
-
-    const res = await fetch(path, {
-      method: "POST",
-      headers: body ? { "content-type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const json = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(json?.error?.message ?? "操作失败");
-      return;
+    try {
+      const updated = await action();
+      setStatus(updated.status);
+      setPinned(!!updated.pinned);
+      setIsExpired(!!updated.isExpired);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiResponseError ? err.message : fallbackMessage);
+    } finally {
+      setLoading(false);
     }
-    setStatus(json.status);
-    setPinned(!!json.pinned);
-    setIsExpired(!!json.isExpired);
-    router.refresh();
   }
 
   return (
@@ -370,29 +348,24 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
 
                 setError(null);
                 setLoading(true);
-                const formData = new FormData();
-                formData.append("file", file);
-
-                const res = await fetch(`/api/console/notices/${noticeId}/attachments`, { method: "POST", body: formData });
-                const json = await res.json();
-                setLoading(false);
-
-                if (!res.ok) {
-                  setError(json?.error?.message ?? "上传失败");
-                  return;
+                try {
+                  const uploaded = await uploadConsoleNoticeAttachment(noticeId, file);
+                  setAttachments((prev) => [
+                    ...prev,
+                    {
+                      fileKey: uploaded.fileKey,
+                      fileName: uploaded.fileName,
+                      contentType: uploaded.contentType,
+                      size: uploaded.size,
+                      sort: prev.length,
+                    },
+                  ]);
+                  e.target.value = "";
+                } catch (err) {
+                  setError(err instanceof ApiResponseError ? err.message : "上传失败");
+                } finally {
+                  setLoading(false);
                 }
-
-                setAttachments((prev) => [
-                  ...prev,
-                  {
-                    fileKey: json.fileKey,
-                    fileName: json.fileName,
-                    contentType: json.contentType,
-                    size: json.size,
-                    sort: prev.length,
-                  },
-                ]);
-                e.target.value = "";
               }}
             />
 
@@ -428,7 +401,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
                 type="button"
                 className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
                 disabled={loading || isExpired}
-                onClick={() => void callAction(`/api/console/notices/${noticeId}/pin`, { pinned: !pinned })}
+                onClick={() => void runAction(() => setConsoleNoticePinned(noticeId, !pinned), "置顶操作失败")}
               >
                 {pinned ? "取消置顶" : "置顶"}
               </button>
@@ -439,7 +412,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
                 type="button"
                 className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
                 disabled={loading}
-                onClick={() => void callAction(`/api/console/notices/${noticeId}/retract`)}
+                onClick={() => void runAction(() => retractConsoleNotice(noticeId), "撤回失败")}
               >
                 撤回
               </button>
@@ -450,7 +423,7 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
                 type="button"
                 className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
                 disabled={loading}
-                onClick={() => void callAction(`/api/console/notices/${noticeId}/publish`)}
+                onClick={() => void runAction(() => publishConsoleNotice(noticeId), "发布失败")}
               >
                 发布
               </button>
@@ -475,13 +448,13 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
                   setError(null);
                   setLoading(true);
 
-                  const res = await fetch(`/api/console/notices/${noticeId}`, { method: "DELETE" });
-                  const json = await res.json();
-                  setLoading(false);
-
-                  if (!res.ok) {
-                    setError(json?.error?.message ?? "删除失败");
+                  try {
+                    await deleteConsoleNotice(noticeId);
+                  } catch (err) {
+                    setError(err instanceof ApiResponseError ? err.message : "删除失败");
                     return;
+                  } finally {
+                    setLoading(false);
                   }
 
                   router.push("/console/notices");

@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/lib/db";
+import { hasPerm } from "@/lib/auth/permissions";
 import { badRequest, conflict, forbidden, notFound } from "@/lib/http/errors";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
@@ -8,10 +9,8 @@ import {
   noticeReads,
   noticeScopes,
   notices,
-  permissions,
   positions,
   profiles,
-  rolePermissions,
   roles,
   userPositions,
   userRoles,
@@ -109,17 +108,6 @@ function buildVisibilityCondition(visibleNoticeIds: string[]) {
   return or(eq(notices.visibleAll, true), inArray(notices.id, visibleNoticeIds));
 }
 
-async function hasPermission(userId: string, permCode: string) {
-  const rows = await db
-    .select({ ok: userRoles.userId })
-    .from(userRoles)
-    .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
-    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(and(eq(userRoles.userId, userId), eq(permissions.code, permCode)))
-    .limit(1);
-  return rows.length > 0;
-}
-
 export async function listPortalNotices(params: {
   userId: string;
   page: number;
@@ -133,7 +121,7 @@ export async function listPortalNotices(params: {
   const now = new Date();
   const ctx = await getAudienceContext(params.userId);
   const visibleIds = await getVisibleNoticeIdsForUser(ctx);
-  const manageAll = await hasPermission(params.userId, "campus:notice:manage");
+  const manageAll = await hasPerm(params.userId, "campus:notice:manage");
 
   const baseWhere = [isNull(notices.deletedAt), eq(notices.status, "published")];
   if (!manageAll) {
@@ -227,7 +215,7 @@ export async function getPortalNoticeDetail(params: { userId: string; noticeId: 
   const now = new Date();
   const ctx = await getAudienceContext(params.userId);
   const visibleIds = await getVisibleNoticeIdsForUser(ctx);
-  const manageAll = await hasPermission(params.userId, "campus:notice:manage");
+  const manageAll = await hasPerm(params.userId, "campus:notice:manage");
   const visibility = buildVisibilityCondition(visibleIds);
 
   const joinOn = and(eq(noticeReads.noticeId, notices.id), eq(noticeReads.userId, params.userId));
@@ -331,7 +319,7 @@ export async function markNoticeRead(params: { userId: string; noticeId: string 
   const ctx = await getAudienceContext(params.userId);
   const visibleIds = await getVisibleNoticeIdsForUser(ctx);
   const visibility = buildVisibilityCondition(visibleIds);
-  const manageAll = await hasPermission(params.userId, "campus:notice:manage");
+  const manageAll = await hasPerm(params.userId, "campus:notice:manage");
 
   const exists = await db
     .select({ id: notices.id })
@@ -366,7 +354,7 @@ export async function markNoticeRead(params: { userId: string; noticeId: string 
 }
 
 async function canManageAllNotices(userId: string) {
-  return hasPermission(userId, "campus:notice:manage");
+  return hasPerm(userId, "campus:notice:manage");
 }
 
 async function assertCanOperateNotice(userId: string, noticeId: string) {
@@ -553,37 +541,37 @@ export async function createNotice(params: {
     throw badRequest("visibleAll=false 时必须至少配置 1 条 scope");
   }
 
-  const now = new Date();
+  const noticeId = await db.transaction(async (tx) => {
+    const now = new Date();
 
-  const inserted = await db
-    .insert(notices)
-    .values({
-      title: params.title,
-      contentMd: params.contentMd,
-      expireAt: params.expireAt,
-      visibleAll: params.visibleAll,
-      status: "draft",
-      pinned: false,
-      pinnedAt: null,
-      publishAt: null,
-      createdBy: params.userId,
-      updatedBy: null,
-      editCount: 0,
-      readCount: 0,
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-    })
-    .returning({ id: notices.id });
+    const inserted = await tx
+      .insert(notices)
+      .values({
+        title: params.title,
+        contentMd: params.contentMd,
+        expireAt: params.expireAt,
+        visibleAll: params.visibleAll,
+        status: "draft",
+        pinned: false,
+        pinnedAt: null,
+        publishAt: null,
+        createdBy: params.userId,
+        updatedBy: null,
+        editCount: 0,
+        readCount: 0,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      })
+      .returning({ id: notices.id });
 
-  const noticeId = inserted[0]?.id;
-  if (!noticeId) throw badRequest("创建公告失败");
+    const createdId = inserted[0]?.id;
+    if (!createdId) throw badRequest("创建公告失败");
 
-  await db.transaction(async (tx) => {
     if (!params.visibleAll) {
       await tx.insert(noticeScopes).values(
         params.scopes.map((s) => ({
-          noticeId,
+          noticeId: createdId,
           scopeType: s.scopeType,
           refId: s.refId,
         })),
@@ -592,16 +580,18 @@ export async function createNotice(params: {
 
     if (params.attachments.length > 0) {
       await tx.insert(noticeAttachments).values(
-        params.attachments.map((a) => ({
-          noticeId,
+        params.attachments.map((a, index) => ({
+          noticeId: createdId,
           fileKey: a.fileKey,
           fileName: a.fileName,
           contentType: a.contentType,
           size: a.size,
-          sort: a.sort,
+          sort: index,
         })),
       );
     }
+
+    return createdId;
   });
 
   return getConsoleNoticeDetail({ userId: params.userId, noticeId });
@@ -624,25 +614,25 @@ export async function updateNotice(params: {
     throw badRequest("visibleAll=false 时必须至少配置 1 条 scope");
   }
 
-  const now = new Date();
-
-  const updated = await db
-    .update(notices)
-    .set({
-      title: params.title,
-      contentMd: params.contentMd,
-      expireAt: params.expireAt,
-      visibleAll: params.visibleAll,
-      updatedBy: params.userId,
-      updatedAt: now,
-      editCount: sql`${notices.editCount} + 1`,
-    })
-    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)))
-    .returning({ id: notices.id });
-
-  if (updated.length === 0) throw notFound();
-
   await db.transaction(async (tx) => {
+    const now = new Date();
+
+    const updated = await tx
+      .update(notices)
+      .set({
+        title: params.title,
+        contentMd: params.contentMd,
+        expireAt: params.expireAt,
+        visibleAll: params.visibleAll,
+        updatedBy: params.userId,
+        updatedAt: now,
+        editCount: sql`${notices.editCount} + 1`,
+      })
+      .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)))
+      .returning({ id: notices.id });
+
+    if (updated.length === 0) throw notFound();
+
     await tx.delete(noticeScopes).where(eq(noticeScopes.noticeId, params.noticeId));
     await tx.delete(noticeAttachments).where(eq(noticeAttachments.noticeId, params.noticeId));
 
@@ -658,13 +648,13 @@ export async function updateNotice(params: {
 
     if (params.attachments.length > 0) {
       await tx.insert(noticeAttachments).values(
-        params.attachments.map((a) => ({
+        params.attachments.map((a, index) => ({
           noticeId: params.noticeId,
           fileKey: a.fileKey,
           fileName: a.fileName,
           contentType: a.contentType,
           size: a.size,
-          sort: a.sort,
+          sort: index,
         })),
       );
     }
