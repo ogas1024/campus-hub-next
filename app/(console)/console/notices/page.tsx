@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
 import { ConsoleNoticeActions } from "@/components/notices/ConsoleNoticeActions";
+import { Pagination } from "@/components/ui/Pagination";
+import { parseIntParam } from "@/lib/http/query";
 import { listConsoleNotices } from "@/lib/modules/notices/notices.service";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -29,12 +32,16 @@ function buildConsoleNoticesHref(params: {
   q?: string;
   includeExpired?: boolean;
   mine?: boolean;
+  page?: number;
+  pageSize?: number;
 }) {
   const sp = new URLSearchParams();
   if (params.status) sp.set("status", params.status);
   if (params.q && params.q.trim()) sp.set("q", params.q.trim());
   if (params.includeExpired === false) sp.set("includeExpired", "false");
   if (params.mine) sp.set("mine", "true");
+  if (params.page && params.page > 1) sp.set("page", String(params.page));
+  if (params.pageSize && params.pageSize !== 20) sp.set("pageSize", String(params.pageSize));
   const query = sp.toString();
   return query ? `/console/notices?${query}` : "/console/notices";
 }
@@ -59,15 +66,33 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
     hasPerm(user.id, "campus:notice:manage"),
   ]);
 
+  const page = parseIntParam(pickString(sp.page) ?? null, { defaultValue: 1, min: 1 });
+  const pageSize = parseIntParam(pickString(sp.pageSize) ?? null, { defaultValue: 20, min: 1, max: 50 });
+
   const data = await listConsoleNotices({
     userId: user.id,
-    page: 1,
-    pageSize: 20,
+    page,
+    pageSize,
     q: q.trim() ? q.trim() : undefined,
     includeExpired,
     status: statusValue,
     mine,
   });
+
+  const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  const displayPage = Math.min(page, totalPages);
+  if (data.total > 0 && page > totalPages) {
+    redirect(
+      buildConsoleNoticesHref({
+        status: statusValue,
+        q,
+        includeExpired,
+        mine,
+        page: totalPages,
+        pageSize,
+      }),
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -75,6 +100,9 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
         <div className="space-y-1">
           <h1 className="text-xl font-semibold">公告管理</h1>
           <p className="text-sm text-zinc-600">草稿/撤回 → 发布；已发布可撤回；置顶仅对“已发布且未过期”生效。</p>
+          <div className="text-sm text-zinc-500">
+            共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
+          </div>
         </div>
         {canCreate ? (
           <Link href="/console/notices/new" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800">
@@ -94,7 +122,7 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
           return (
             <Link
               key={t.label}
-              href={buildConsoleNoticesHref({ status: t.value, q, includeExpired, mine })}
+              href={buildConsoleNoticesHref({ status: t.value, q, includeExpired, mine, page: 1, pageSize })}
               className={[
                 "rounded-full px-3 py-1 text-xs font-medium",
                 active ? "bg-zinc-900 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50",
@@ -110,6 +138,7 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
 
         <form className="flex flex-wrap items-center gap-2" action="/console/notices" method="GET">
           {statusValue ? <input type="hidden" name="status" value={statusValue} /> : null}
+          <input type="hidden" name="page" value="1" />
           <input
             name="q"
             className="h-9 w-56 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400"
@@ -124,6 +153,18 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
           >
             <option value="true">包含已过期</option>
             <option value="false">排除已过期</option>
+          </select>
+
+          <select
+            name="pageSize"
+            defaultValue={String(pageSize)}
+            className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400"
+          >
+            {[10, 20, 50].map((n) => (
+              <option key={n} value={String(n)}>
+                {n}/页
+              </option>
+            ))}
           </select>
 
           <label className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm">
@@ -203,6 +244,21 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        page={displayPage}
+        totalPages={totalPages}
+        hrefForPage={(nextPage) =>
+          buildConsoleNoticesHref({
+            status: statusValue,
+            q,
+            includeExpired,
+            mine,
+            page: nextPage,
+            pageSize,
+          })
+        }
+      />
     </div>
   );
 }
