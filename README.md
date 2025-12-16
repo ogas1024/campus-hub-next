@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# campus-hub-next
 
-## Getting Started
+全新实现的校园服务平台（学习项目），旧仓库 `campus-hub-ruoyi` 仅作为业务参考。
 
-First, run the development server:
+## 当前进度
+
+- ✅ 通知公告（MVP）：后端 API + Portal/Console 基础页面
+- 🟠 其他模块：按优先级逐步推进（课程资源分享 → 功能房预约 → 问卷 → 投票 → 数字图书馆 → 失物招领）
+
+文档入口：`docs/README.md`
+
+## 本地启动（最小步骤）
+
+1) 安装依赖
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2) 配置环境变量
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 复制 `.env.example` → `.env.local`
+- 按 Supabase 项目填入：
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `DATABASE_URL`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3) 初始化数据库（Supabase SQL Editor）
 
-## Learn More
+执行：`packages/db/migrations/0001_baseline.sql`
 
-To learn more about Next.js, take a look at the following resources:
+4) 初始化 Storage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+在 Supabase Storage 创建 **私有** bucket：`notice-attachments`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5) 启动
 
-## Deploy on Vercel
+```bash
+pnpm dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+打开 `http://localhost:3000`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 权限与测试账号（通知公告）
+
+默认注册用户会被触发器写入：
+
+- `profiles`（主键 = `auth.users.id`）
+- `user_roles`（默认角色 `user`）
+
+要进入后台 `/console/notices`，需要给用户分配 `staff`（或 `admin/super_admin`）角色。示例 SQL：
+
+```sql
+insert into public.user_roles (user_id, role_id)
+select '<auth_user_id>', r.id
+from public.roles r
+where r.code = 'staff'
+on conflict do nothing;
+```

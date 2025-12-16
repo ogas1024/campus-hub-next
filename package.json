@@ -9,15 +9,26 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@campus-hub/db": "workspace:*",
+    "@supabase/ssr": "*",
+    "@supabase/supabase-js": "*",
+    "@toast-ui/editor": "^3.2.2",
+    "drizzle-orm": "*",
     "next": "16.0.10",
+    "postgres": "*",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "*",
+    "drizzle-kit": "*",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",

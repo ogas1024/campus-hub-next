@@ -1,0 +1,64 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
+type Props = {
+  value: string;
+  onChange: (nextValue: string) => void;
+  height?: string;
+};
+
+export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<import("@toast-ui/editor").default | null>(null);
+  const valueRef = useRef(value);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function init() {
+      if (!containerRef.current) return;
+      if (editorRef.current) return;
+
+      const Editor = (await import("@toast-ui/editor")).default;
+      if (disposed) return;
+
+      const editor = new Editor({
+        el: containerRef.current,
+        height,
+        initialEditType: "wysiwyg",
+        previewStyle: "vertical",
+        usageStatistics: false,
+        initialValue: valueRef.current || "",
+      });
+
+      editor.on("change", () => {
+        onChange(editor.getMarkdown());
+      });
+
+      editorRef.current = editor;
+    }
+
+    void init();
+
+    return () => {
+      disposed = true;
+      editorRef.current?.destroy();
+      editorRef.current = null;
+    };
+  }, [height, onChange]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (editor.getMarkdown() === value) return;
+    editor.setMarkdown(value || "", false);
+  }, [value]);
+
+  return <div ref={containerRef} />;
+}
+
