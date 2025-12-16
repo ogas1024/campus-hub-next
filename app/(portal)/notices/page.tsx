@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam, parseTriStateBooleanParam } from "@/lib/http/query";
 import { listPortalNotices } from "@/lib/modules/notices/notices.service";
+import { formatZhDateTime } from "@/lib/ui/datetime";
+import { cn } from "@/lib/utils";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -33,6 +39,9 @@ function buildPortalNoticesHref(params: {
   const query = sp.toString();
   return query ? `/notices?${query}` : "/notices";
 }
+
+const selectClassName =
+  "flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40";
 
 export default async function NoticesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await getCurrentUser();
@@ -83,148 +92,135 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">通知公告</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">通知公告</h1>
           <p className="text-sm text-zinc-600">置顶优先；支持搜索、筛选与分页。</p>
         </div>
-        <div className="text-sm text-zinc-600">
-          共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">共 {data.total} 条</Badge>
+          <Badge variant="secondary">
+            第 {displayPage} / {totalPages} 页
+          </Badge>
+          {read === false ? <Badge>只看未读</Badge> : null}
+          {read === true ? <Badge variant="outline">只看已读</Badge> : null}
+          {includeExpired ? <Badge variant="outline">包含已过期</Badge> : null}
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <form className="flex flex-wrap items-end gap-3" action="/notices" method="GET">
-          <input type="hidden" name="page" value="1" />
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">筛选与排序</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-3 md:grid-cols-12" action="/notices" method="GET">
+            <input type="hidden" name="page" value="1" />
 
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-zinc-600">搜索</div>
-            <input
-              name="q"
-              className="h-9 w-60 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400"
-              placeholder="按标题搜索…"
-              defaultValue={q}
-            />
-          </div>
+            <div className="md:col-span-4">
+              <Input name="q" placeholder="按标题搜索…" defaultValue={q} />
+            </div>
 
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-zinc-600">已读</div>
-            <select
-              name="read"
-              defaultValue={read === true ? "true" : read === false ? "false" : ""}
-              className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400"
-            >
-              <option value="">全部</option>
-              <option value="false">未读</option>
-              <option value="true">已读</option>
-            </select>
-          </div>
+            <div className="md:col-span-2">
+              <select
+                name="read"
+                defaultValue={read === true ? "true" : read === false ? "false" : ""}
+                className={selectClassName}
+              >
+                <option value="">全部已读</option>
+                <option value="false">未读</option>
+                <option value="true">已读</option>
+              </select>
+            </div>
 
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-zinc-600">过期</div>
-            <select
-              name="includeExpired"
-              defaultValue={includeExpired ? "true" : "false"}
-              className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400"
-            >
-              <option value="false">排除已过期</option>
-              <option value="true">包含已过期</option>
-            </select>
-          </div>
+            <div className="md:col-span-2">
+              <select
+                name="includeExpired"
+                defaultValue={includeExpired ? "true" : "false"}
+                className={selectClassName}
+              >
+                <option value="false">排除过期</option>
+                <option value="true">包含过期</option>
+              </select>
+            </div>
 
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-zinc-600">排序</div>
-            <div className="flex items-center gap-2">
+            <div className="md:col-span-2">
               <select
                 name="sortBy"
                 defaultValue={sortBy}
-                className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400"
+                className={selectClassName}
               >
                 <option value="publishAt">发布时间</option>
                 <option value="updatedAt">更新时间</option>
                 <option value="expireAt">有效期</option>
               </select>
+            </div>
+
+            <div className="md:col-span-2">
               <select
                 name="sortOrder"
                 defaultValue={sortOrder}
-                className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400"
+                className={selectClassName}
               >
                 <option value="desc">降序</option>
                 <option value="asc">升序</option>
               </select>
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-zinc-600">每页</div>
-            <select
-              name="pageSize"
-              defaultValue={String(pageSize)}
-              className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400"
-            >
-              {[10, 20, 50].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="md:col-span-2">
+              <select
+                name="pageSize"
+                defaultValue={String(pageSize)}
+                className={selectClassName}
+              >
+                {[10, 20, 50].map((n) => (
+                  <option key={n} value={String(n)}>
+                    每页 {n}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <Link className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm leading-9 hover:bg-zinc-50" href="/notices">
-              清空
-            </Link>
-            <button className="h-9 rounded-lg bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-800" type="submit">
-              应用
-            </button>
-          </div>
-        </form>
-      </div>
+            <div className="flex flex-wrap gap-2 md:col-span-12">
+              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/notices">
+                清空
+              </Link>
+              <button className={buttonVariants({ size: "sm" })} type="submit">
+                应用
+              </button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-zinc-200 bg-white p-8 text-center text-sm text-zinc-600">
-            暂无公告
-          </div>
+          <Card>
+            <CardContent className="p-10 text-center text-sm text-zinc-600">暂无公告</CardContent>
+          </Card>
         ) : null}
 
         {data.items.map((item) => (
-          <Link
-            key={item.id}
-            href={`/notices/${item.id}`}
-            className="block rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
+          <Link key={item.id} href={`/notices/${item.id}`} className="block">
+            <Card className={cn("hover:bg-zinc-50", item.read ? null : "border-zinc-900")}>
+              <CardContent className="space-y-2 p-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  {item.pinned ? (
-                    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      置顶
-                    </span>
-                  ) : null}
-                  {item.isExpired ? (
-                    <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
-                      已过期
-                    </span>
-                  ) : null}
-                  {item.read ? (
-                    <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                      已读
-                    </span>
-                  ) : (
-                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                      未读
-                    </span>
-                  )}
+                  {item.pinned ? <Badge variant="outline">置顶</Badge> : null}
+                  {item.isExpired ? <Badge variant="outline" className="text-zinc-500">已过期</Badge> : null}
+                  {item.read ? <Badge variant="secondary">已读</Badge> : <Badge>未读</Badge>}
                 </div>
 
-                <div className="text-base font-semibold text-zinc-900">{item.title}</div>
-                <div className="text-xs text-zinc-600">
-                  发布：{item.publishAt ? new Date(item.publishAt).toLocaleString() : "—"} · 阅读数：{item.readCount}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="truncate text-base font-semibold text-zinc-900">{item.title}</div>
+                    <div className="mt-1 text-xs text-zinc-600">
+                      发布：{formatZhDateTime(item.publishAt)} · 阅读数：{item.readCount}
+                      {item.expireAt ? ` · 有效至：${formatZhDateTime(item.expireAt)}` : ""}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm text-zinc-400">查看 →</span>
                 </div>
-              </div>
-              <span className="mt-1 text-xs text-zinc-400">查看</span>
-            </div>
+              </CardContent>
+            </Card>
           </Link>
         ))}
       </div>

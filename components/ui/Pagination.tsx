@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 type Props = {
   page: number;
   totalPages: number;
@@ -37,9 +40,11 @@ export function Pagination({ page, totalPages, hrefForPage }: Props) {
 
       <div className="flex flex-wrap items-center gap-2">
         {prevDisabled ? (
-          <span className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-400">上一页</span>
+          <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pointer-events-none opacity-50")}>
+            上一页
+          </span>
         ) : (
-          <Link className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50" href={hrefForPage(clampedPage - 1)}>
+          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={hrefForPage(clampedPage - 1)}>
             上一页
           </Link>
         )}
@@ -54,12 +59,11 @@ export function Pagination({ page, totalPages, hrefForPage }: Props) {
               <Link
                 key={item}
                 href={hrefForPage(item)}
-                className={[
-                  "min-w-9 rounded-lg border px-3 py-1.5 text-center text-sm",
-                  item === clampedPage
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
-                ].join(" ")}
+                aria-current={item === clampedPage ? "page" : undefined}
+                className={cn(
+                  buttonVariants({ variant: item === clampedPage ? "default" : "outline", size: "sm" }),
+                  "min-w-9 px-3",
+                )}
               >
                 {item}
               </Link>
@@ -68,9 +72,11 @@ export function Pagination({ page, totalPages, hrefForPage }: Props) {
         </div>
 
         {nextDisabled ? (
-          <span className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-400">下一页</span>
+          <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pointer-events-none opacity-50")}>
+            下一页
+          </span>
         ) : (
-          <Link className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50" href={hrefForPage(clampedPage + 1)}>
+          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={hrefForPage(clampedPage + 1)}>
             下一页
           </Link>
         )}
@@ -78,4 +84,3 @@ export function Pagination({ page, totalPages, hrefForPage }: Props) {
     </nav>
   );
 }
-

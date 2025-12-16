@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { hasPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { consoleModules } from "@/lib/navigation/modules";
 
 export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {
   let user: Awaited<ReturnType<typeof requireUser>>;
@@ -13,9 +14,10 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
     redirect("/login");
   }
 
-  const navItems: { href: string; label: string }[] = [];
-  const canNoticeList = await hasPerm(user.id, "campus:notice:list");
-  if (canNoticeList) navItems.push({ href: "/console/notices", label: "公告管理" });
+  const allowedModules = await Promise.all(
+    consoleModules.map(async (m) => ((await hasPerm(user.id, m.permCode)) ? m : null)),
+  );
+  const navItems = allowedModules.filter((m): m is NonNullable<typeof m> => m !== null);
 
   if (navItems.length === 0) redirect("/notices");
 
@@ -29,7 +31,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
           </div>
 
           <div className="flex items-center gap-3">
-            <Link className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15" href="/notices">
+            <Link className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15" href="/">
               返回前台
             </Link>
             <span className="hidden text-sm text-zinc-300 sm:inline">{user.email ?? user.id}</span>
