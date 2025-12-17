@@ -1,7 +1,7 @@
 # 通知公告模块需求说明（MVP 冻结版）
 **状态**：✅ 已批准  
 **版本**：v1.0（MVP）  
-**最近更新**：2025-12-12
+**最近更新**：2025-12-17
 
 ## 1. 目标与定位
 - 面向校内用户的通知/公告发布与阅读，支持 Markdown 内容、附件、置顶、有效期与阅读回执。
@@ -109,7 +109,7 @@
 - 若 `visible_all=true`：对所有已登录用户可见（前提：公告已发布，或用户有管理权限/为创建者）。
 - 若 `visible_all=false`：用户满足以下任一条件即可见：
   - 用户任一角色命中 `notice_scopes(scope_type=role)`
-  - 用户任一部门命中 `notice_scopes(scope_type=department)`
+  - 用户任一部门**属于 scope 部门及其子部门**（通过组织闭包表判定）
   - 用户任一岗位命中 `notice_scopes(scope_type=position)`
 
 ## 6. 状态与流转
