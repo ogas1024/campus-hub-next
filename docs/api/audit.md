@@ -1,6 +1,6 @@
 # 审计日志（Audit）API 契约（MVP）
 
-**状态**：🟠 待实现  
+**状态**：✅ 已实现（MVP）  
 **版本**：v1.0（MVP）  
 **最近更新**：2025-12-17
 
@@ -44,4 +44,3 @@
 
 ### 1.2 详情：GET `/api/console/audit-logs/:id`
 **权限**：`campus:audit:list`
-

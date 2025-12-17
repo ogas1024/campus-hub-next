@@ -6,14 +6,14 @@ export type ButtonVariant = "default" | "secondary" | "outline" | "ghost" | "des
 export type ButtonSize = "default" | "sm";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
-  default: "bg-zinc-900 text-white hover:bg-zinc-800",
-  secondary: "bg-zinc-100 text-zinc-900 hover:bg-zinc-200",
-  outline: "border border-zinc-200 bg-white hover:bg-zinc-50",
-  ghost: "hover:bg-zinc-100",
-  destructive: "bg-red-600 text-white hover:bg-red-500",
+  default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+  secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+  outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+  ghost: "hover:bg-accent hover:text-accent-foreground",
+  destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
 };
 
 const sizes: Record<ButtonSize, string> = {

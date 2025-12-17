@@ -31,7 +31,7 @@ export default async function NoticeDetailPage({ params }: Params) {
         <div className="flex flex-wrap items-center gap-2">
           {notice.pinned ? <Badge variant="outline">置顶</Badge> : null}
           {notice.isExpired ? (
-            <Badge variant="outline" className="text-zinc-500">
+            <Badge variant="outline" className="text-muted-foreground">
               已过期
             </Badge>
           ) : null}
@@ -42,7 +42,7 @@ export default async function NoticeDetailPage({ params }: Params) {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">{notice.title}</CardTitle>
-          <div className="text-sm text-zinc-600">
+          <div className="text-sm text-muted-foreground">
             发布：{formatZhDateTime(notice.publishAt)} · 阅读数：{notice.readCount}
             {notice.expireAt ? ` · 有效至：${formatZhDateTime(notice.expireAt)}` : ""}
           </div>
@@ -57,7 +57,7 @@ export default async function NoticeDetailPage({ params }: Params) {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="text-base">附件</CardTitle>
-              <div className="text-sm text-zinc-500">{notice.attachments.length} 个</div>
+              <div className="text-sm text-muted-foreground">{notice.attachments.length} 个</div>
             </div>
           </CardHeader>
           <CardContent>
@@ -65,11 +65,11 @@ export default async function NoticeDetailPage({ params }: Params) {
               {notice.attachments.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm text-zinc-900">{a.fileName}</div>
-                    <div className="text-xs text-zinc-500">{Math.ceil(a.size / 1024)} KB</div>
+                    <div className="truncate text-sm">{a.fileName}</div>
+                    <div className="text-xs text-muted-foreground">{Math.ceil(a.size / 1024)} KB</div>
                   </div>
                   {a.downloadUrl ? (
                     <a
@@ -81,7 +81,7 @@ export default async function NoticeDetailPage({ params }: Params) {
                       下载
                     </a>
                   ) : (
-                    <span className="shrink-0 text-xs text-zinc-500">不可用</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">不可用</span>
                   )}
                 </div>
               ))}

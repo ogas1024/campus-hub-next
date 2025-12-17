@@ -2,13 +2,17 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, type, ...props }, ref) => (
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  uiSize?: "default" | "sm";
+};
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, uiSize = "default", ...props }, ref) => (
     <input
       ref={ref}
       type={type}
       className={cn(
-        "flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-zinc-400/40 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        uiSize === "sm" ? "h-9" : "h-10",
         className,
       )}
       {...props}

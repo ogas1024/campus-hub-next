@@ -1,6 +1,6 @@
 # 身份与访问控制（IAM）API 契约（MVP）
 
-**状态**：🟠 待实现  
+**状态**：✅ 已实现（MVP）  
 **版本**：v1.0（MVP）  
 **最近更新**：2025-12-17
 
@@ -142,7 +142,15 @@
 { "reason": "string (可选)" }
 ```
 
-### 2.6 停用/启用：POST `/api/console/users/:id/disable`、POST `/api/console/users/:id/enable`
+### 2.6 审核驳回：POST `/api/console/users/:id/reject`
+
+**权限**：`campus:user:approve`  
+**请求体**
+```json
+{ "reason": "string (可选)" }
+```
+
+### 2.7 停用/启用：POST `/api/console/users/:id/disable`、POST `/api/console/users/:id/enable`
 
 **权限**：`campus:user:disable`  
 **请求体**
@@ -150,21 +158,24 @@
 { "reason": "string (可选)" }
 ```
 
-### 2.7 封禁/解封（Auth）：POST `/api/console/users/:id/ban`、POST `/api/console/users/:id/unban`
+### 2.8 封禁/解封（Auth）：POST `/api/console/users/:id/ban`、POST `/api/console/users/:id/unban`
 
 **权限**：`campus:user:ban`  
 **请求体（ban）**
 ```json
-{ "duration": "2h45m | none(不允许) | 也可不传表示永久", "reason": "string (可选)" }
+{
+  "duration": "string（必填，Supabase ban_duration；示例：10m/2h/1h30m/24h/100y；不允许 none）",
+  "reason": "string (可选)"
+}
 ```
 
-### 2.8 删除（Auth）：DELETE `/api/console/users/:id`
+### 2.9 删除（Auth）：DELETE `/api/console/users/:id`
 
 **权限**：`campus:user:delete`  
 **查询参数**
 - `soft`：boolean，默认 `true`（MVP：只允许 soft delete）
 
-### 2.9 分配：PUT `/api/console/users/:id/roles`、PUT `/api/console/users/:id/departments`、PUT `/api/console/users/:id/positions`
+### 2.10 分配：PUT `/api/console/users/:id/roles`、PUT `/api/console/users/:id/departments`、PUT `/api/console/users/:id/positions`
 
 **权限**
 - 角色：`campus:user:assign_role`
@@ -197,7 +208,13 @@
 { "permissionCodes": ["campus:notice:*", "campus:library:*"] }
 ```
 
+### 3.4.1 查询角色权限：GET `/api/console/roles/:id/permissions`
+**权限**：`campus:role:*`  
+**响应（200）**
+```json
+{ "roleId": "uuid", "permissionCodes": ["campus:notice:*"] }
+```
+
 ### 3.5 权限字典：GET `/api/console/permissions`
 **权限**：`campus:permission:*`  
 **说明**：MVP 建议只读（权限码由迁移/代码声明式注册）。
-

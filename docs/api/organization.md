@@ -1,6 +1,6 @@
 # 组织与岗位（Organization）API 契约（MVP）
 
-**状态**：🟠 待实现  
+**状态**：✅ 已实现（MVP）  
 **版本**：v1.0（MVP）  
 **最近更新**：2025-12-17
 
@@ -63,4 +63,3 @@
 
 ### 3.2 用户岗位：PUT `/api/console/users/:id/positions`
 **权限**：`campus:user:assign_org`
-

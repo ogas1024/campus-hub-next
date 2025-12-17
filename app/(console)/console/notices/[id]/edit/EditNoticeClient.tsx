@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
+import { DepartmentTreeSelector } from "@/components/organization/DepartmentTreeSelector";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiResponseError } from "@/lib/api/http";
 import {
   deleteConsoleNotice,
@@ -146,6 +153,16 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
     return items;
   }, [selected]);
 
+  const departmentItems = useMemo(() => {
+    if (!options) return [];
+    return options.departments.map((d) => ({
+      id: d.id,
+      name: d.name,
+      parentId: d.parentId ?? null,
+      sort: 0,
+    }));
+  }, [options]);
+
   async function save() {
     setError(null);
     setLoading(true);
@@ -191,21 +208,20 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold">公告详情</h1>
-          <p className="text-sm text-zinc-600">
-            状态：<span className="font-medium text-zinc-900">{statusLabel(status)}</span> · 置顶：{pinned ? "是" : "否"}
+          <p className="text-sm text-muted-foreground">
+            状态：<span className="font-medium text-foreground">{statusLabel(status)}</span> · 置顶：{pinned ? "是" : "否"}
           </p>
         </div>
-        <Link className="text-sm text-zinc-600 hover:text-zinc-900" href="/console/notices">
+        <Link className="text-sm text-muted-foreground hover:text-foreground" href="/console/notices">
           ← 返回
         </Link>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-5">
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">标题</label>
-            <input
-              className="h-10 w-full rounded-lg border border-zinc-200 px-3 outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-500"
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid gap-1.5">
+            <Label>标题</Label>
+            <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
@@ -214,10 +230,9 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium">有效期（可选）</label>
-            <input
-              className="h-10 w-full rounded-lg border border-zinc-200 px-3 outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-500"
+          <div className="grid gap-1.5">
+            <Label>有效期（可选）</Label>
+            <Input
               type="datetime-local"
               value={expireAtLocal}
               onChange={(e) => setExpireAtLocal(e.target.value)}
@@ -226,104 +241,94 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
           </div>
 
           <div className="flex items-center gap-3">
-            <input
+            <Checkbox
               id="visibleAll"
-              type="checkbox"
               checked={visibleAll}
-              onChange={(e) => setVisibleAll(e.target.checked)}
               disabled={!perms.canUpdate || !canOperate}
+              onCheckedChange={(v) => setVisibleAll(v === true)}
             />
-            <label htmlFor="visibleAll" className="text-sm">
+            <Label htmlFor="visibleAll" className="text-sm font-normal">
               全员可见
-            </label>
-            {!visibleAll ? <span className="text-xs text-zinc-600">（role/department/position 任一命中即可见）</span> : null}
+            </Label>
+            {!visibleAll ? <span className="text-xs text-muted-foreground">（role/department/position 任一命中即可见）</span> : null}
           </div>
 
           {!visibleAll ? (
-            <div className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
               <div className="text-sm font-medium">可见范围</div>
               {!options ? (
-                <div className="text-sm text-zinc-600">加载中...</div>
+                <div className="text-sm text-muted-foreground">加载中...</div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
-                    <div className="text-xs font-semibold text-zinc-600">角色</div>
-                    <div className="space-y-1">
-                      {options.roles.map((r) => (
-                        <label key={r.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={selected.role.has(r.id)}
-                            disabled={!perms.canUpdate || !canOperate}
-                            onChange={(e) => {
-                              setSelected((prev) => {
-                                const next = { ...prev, role: new Set(prev.role) };
-                                if (e.target.checked) next.role.add(r.id);
-                                else next.role.delete(r.id);
-                                return next;
-                              });
-                            }}
-                          />
-                          <span className="truncate">{r.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-zinc-600">部门</div>
-                    <div className="space-y-1">
-                      {options.departments.length === 0 ? (
-                        <div className="text-sm text-zinc-600">暂无部门</div>
-                      ) : (
-                        options.departments.map((d) => (
-                          <label key={d.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={selected.department.has(d.id)}
-                            disabled={!perms.canUpdate || !canOperate}
-                            onChange={(e) => {
-                              setSelected((prev) => {
-                                const next = { ...prev, department: new Set(prev.department) };
-                                if (e.target.checked) next.department.add(d.id);
-                                  else next.department.delete(d.id);
+                    <div className="text-xs font-semibold text-muted-foreground">角色</div>
+                    <ScrollArea className="h-56 rounded-md border border-border bg-background">
+                      <div className="space-y-1 p-2">
+                        {options.roles.map((r) => (
+                          <label key={r.id} className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={selected.role.has(r.id)}
+                              disabled={!perms.canUpdate || !canOperate}
+                              onCheckedChange={(v) => {
+                                setSelected((prev) => {
+                                  const next = { ...prev, role: new Set(prev.role) };
+                                  if (v === true) next.role.add(r.id);
+                                  else next.role.delete(r.id);
                                   return next;
                                 });
                               }}
                             />
-                            <span className="truncate">{d.name}</span>
+                            <span className="truncate">{r.name}</span>
                           </label>
-                        ))
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs font-semibold text-zinc-600">岗位</div>
-                    <div className="space-y-1">
-                      {options.positions.length === 0 ? (
-                        <div className="text-sm text-zinc-600">暂无岗位</div>
-                      ) : (
-                        options.positions.map((p) => (
-                          <label key={p.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={selected.position.has(p.id)}
-                            disabled={!perms.canUpdate || !canOperate}
-                            onChange={(e) => {
-                              setSelected((prev) => {
-                                const next = { ...prev, position: new Set(prev.position) };
-                                if (e.target.checked) next.position.add(p.id);
-                                  else next.position.delete(p.id);
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span className="truncate">{p.name}</span>
-                          </label>
-                        ))
-                      )}
-                    </div>
+                    <div className="text-xs font-semibold text-muted-foreground">部门</div>
+                    {departmentItems.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">暂无部门</div>
+                    ) : (
+                      <DepartmentTreeSelector
+                        departments={departmentItems}
+                        value={[...selected.department]}
+                        disabled={!perms.canUpdate || !canOperate}
+                        onChange={(nextIds) => {
+                          setSelected((prev) => ({ ...prev, department: new Set(nextIds) }));
+                        }}
+                        maxHeight={224}
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground">岗位</div>
+                    {options.positions.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">暂无岗位</div>
+                    ) : (
+                      <ScrollArea className="h-56 rounded-md border border-border bg-background">
+                        <div className="space-y-1 p-2">
+                          {options.positions.map((p) => (
+                            <label key={p.id} className="flex items-center gap-2 text-sm">
+                              <Checkbox
+                                checked={selected.position.has(p.id)}
+                                disabled={!perms.canUpdate || !canOperate}
+                                onCheckedChange={(v) => {
+                                  setSelected((prev) => {
+                                    const next = { ...prev, position: new Set(prev.position) };
+                                    if (v === true) next.position.add(p.id);
+                                    else next.position.delete(p.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              <span className="truncate">{p.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
                   </div>
                 </div>
               )}
@@ -331,15 +336,15 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
           ) : null}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">正文</label>
-            <div className="rounded-lg border border-zinc-200">
+            <Label>正文</Label>
+            <div className="rounded-lg border border-input">
               <NoticeEditor value={contentMd} onChange={setContentMd} />
             </div>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+          <div className="space-y-2 rounded-lg border border-border bg-muted p-4">
             <div className="text-sm font-medium">附件</div>
-            <input
+            <Input
               type="file"
               disabled={!perms.canUpdate || !canOperate}
               onChange={async (e) => {
@@ -372,76 +377,78 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
             {attachments.length > 0 ? (
               <div className="space-y-2">
                 {attachments.map((a, idx) => (
-                  <div key={`${a.fileKey}-${idx}`} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2">
+                  <div
+                    key={`${a.fileKey}-${idx}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2"
+                  >
                     <div className="min-w-0">
                       <div className="truncate text-sm">{a.fileName}</div>
-                      <div className="text-xs text-zinc-500">{Math.ceil(a.size / 1024)} KB</div>
+                      <div className="text-xs text-muted-foreground">{Math.ceil(a.size / 1024)} KB</div>
                     </div>
-                    <button
-                      type="button"
-                      className="shrink-0 rounded-md border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50 disabled:opacity-60"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       disabled={!perms.canUpdate || !canOperate}
                       onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                     >
                       移除
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-zinc-600">暂无附件（上传后记得点击“保存”以写入数据库记录）</div>
+              <div className="text-sm text-muted-foreground">暂无附件（上传后记得点击“保存”以写入数据库记录）</div>
             )}
           </div>
 
-          {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+          {error ? <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
 
           <div className="flex flex-wrap items-center justify-end gap-3">
             {status === "published" && perms.canPin && canOperate ? (
-              <button
-                type="button"
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={loading || isExpired}
                 onClick={() => void runAction(() => setConsoleNoticePinned(noticeId, !pinned), "置顶操作失败")}
               >
                 {pinned ? "取消置顶" : "置顶"}
-              </button>
+              </Button>
             ) : null}
 
             {status === "published" && perms.canPublish && canOperate ? (
-              <button
-                type="button"
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={loading}
                 onClick={() => void runAction(() => retractConsoleNotice(noticeId), "撤回失败")}
               >
                 撤回
-              </button>
+              </Button>
             ) : null}
 
             {status !== "published" && perms.canPublish && canOperate ? (
-              <button
-                type="button"
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={loading}
                 onClick={() => void runAction(() => publishConsoleNotice(noticeId), "发布失败")}
               >
                 发布
-              </button>
+              </Button>
             ) : null}
 
-            <button
-              type="button"
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+            <Button
+              size="sm"
               disabled={loading || !perms.canUpdate || !canOperate}
               onClick={() => void save()}
             >
               {loading ? "处理中..." : "保存"}
-            </button>
+            </Button>
 
             {perms.canDelete && canOperate ? (
-              <button
-                type="button"
-                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+              <Button
+                variant="destructive"
+                size="sm"
                 disabled={loading}
                 onClick={async () => {
                   if (!confirm("确认删除该公告（软删）？")) return;
@@ -462,11 +469,11 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
                 }}
               >
                 删除
-              </button>
+              </Button>
             ) : null}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

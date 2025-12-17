@@ -1,6 +1,6 @@
 # 平台配置（Config）API 契约（MVP）
 
-**状态**：🟠 待实现  
+**状态**：✅ 已实现（MVP）  
 **版本**：v1.0（MVP）  
 **最近更新**：2025-12-17
 
@@ -19,4 +19,3 @@
 ```json
 { "requiresApproval": true, "reason": "string (可选)" }
 ```
-

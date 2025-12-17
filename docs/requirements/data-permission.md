@@ -28,6 +28,7 @@
 
 ### 2.1 module 命名规范（冻结）
 - `module` 来自权限码 `campus:<module>:<op>` 的 `module` 段，必须**全局唯一、稳定**。
+- `module` 与 Console 资源命名必须一一对应：建议 `/api/console/<resource>` 与 `/console/<resource>` 采用 `module` 的**复数**形式（例如 `module=user` ↔ `resource=users`），避免出现同一业务域多套命名造成长期维护成本。
 - 允许字符建议：`^[a-z][a-z0-9_]*$`（小写字母/数字/下划线），避免 `-`，以降低跨系统对接成本。
 - `module` 既用于 RBAC 权限码，也用于 RoleDataScope 的配置键；禁止同一业务域出现多种 `module` 命名。
 

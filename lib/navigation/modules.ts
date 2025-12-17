@@ -74,8 +74,32 @@ export type ConsoleModule = {
   permCode: string;
 };
 
-export const consoleModules = [
-  { id: "notices", label: "公告管理", href: "/console/notices", permCode: "campus:notice:list" },
-] as const satisfies ConsoleModule[];
+export type ConsoleNavGroup = {
+  id: string;
+  label: string;
+  items: ConsoleModule[];
+};
 
+export const consoleNavGroups: ConsoleNavGroup[] = [
+  {
+    id: "infra",
+    label: "基础设施",
+    items: [
+      { id: "users", label: "用户", href: "/console/users", permCode: "campus:user:list" },
+      { id: "roles", label: "角色", href: "/console/roles", permCode: "campus:role:*" },
+      { id: "departments", label: "部门", href: "/console/departments", permCode: "campus:department:*" },
+      { id: "positions", label: "岗位", href: "/console/positions", permCode: "campus:position:*" },
+      { id: "permissions", label: "权限字典", href: "/console/permissions", permCode: "campus:permission:*" },
+      { id: "audit", label: "审计", href: "/console/audit", permCode: "campus:audit:list" },
+      { id: "config", label: "配置", href: "/console/config", permCode: "campus:config:update" },
+    ],
+  },
+  {
+    id: "business",
+    label: "业务模块",
+    items: [{ id: "notices", label: "公告管理", href: "/console/notices", permCode: "campus:notice:list" }],
+  },
+] satisfies ConsoleNavGroup[];
+
+export const consoleModules: ConsoleModule[] = consoleNavGroups.flatMap((g) => g.items);
 export const consoleEntryPermCodes = consoleModules.map((m) => m.permCode);
