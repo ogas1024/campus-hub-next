@@ -4,21 +4,22 @@ import { hasPerm } from "@/lib/auth/permissions";
 import { badRequest, conflict, forbidden, notFound } from "@/lib/http/errors";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
+  departmentClosure,
   departments,
   noticeAttachments,
   noticeReads,
   noticeScopes,
   notices,
   positions,
-  profiles,
   roles,
+  userDepartments,
   userPositions,
   userRoles,
 } from "@campus-hub/db";
 
 type AudienceContext = {
   roleIds: string[];
-  departmentId: string | null;
+  departmentIds: string[];
   positionIds: string[];
 };
 
@@ -51,11 +52,10 @@ async function getAudienceContext(userId: string): Promise<AudienceContext> {
     .from(userRoles)
     .where(eq(userRoles.userId, userId));
 
-  const profileRow = await db
-    .select({ departmentId: profiles.departmentId })
-    .from(profiles)
-    .where(eq(profiles.id, userId))
-    .limit(1);
+  const deptRows = await db
+    .select({ departmentId: userDepartments.departmentId })
+    .from(userDepartments)
+    .where(eq(userDepartments.userId, userId));
 
   const positionRows = await db
     .select({ positionId: userPositions.positionId })
@@ -64,7 +64,7 @@ async function getAudienceContext(userId: string): Promise<AudienceContext> {
 
   return {
     roleIds: roleRows.map((r) => r.roleId),
-    departmentId: profileRow[0]?.departmentId ?? null,
+    departmentIds: deptRows.map((d) => d.departmentId),
     positionIds: positionRows.map((p) => p.positionId),
   };
 }
@@ -80,11 +80,18 @@ async function getVisibleNoticeIdsForUser(ctx: AudienceContext): Promise<string[
     for (const r of rows) noticeIdSet.add(r.noticeId);
   }
 
-  if (ctx.departmentId) {
+  if (ctx.departmentIds.length > 0) {
     const rows = await db
       .select({ noticeId: noticeScopes.noticeId })
       .from(noticeScopes)
-      .where(and(eq(noticeScopes.scopeType, "department"), eq(noticeScopes.refId, ctx.departmentId)));
+      .innerJoin(
+        departmentClosure,
+        and(
+          eq(departmentClosure.ancestorId, noticeScopes.refId),
+          inArray(departmentClosure.descendantId, ctx.departmentIds),
+        ),
+      )
+      .where(eq(noticeScopes.scopeType, "department"));
     for (const r of rows) noticeIdSet.add(r.noticeId);
   }
 

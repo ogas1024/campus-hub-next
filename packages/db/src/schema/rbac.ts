@@ -25,8 +25,7 @@ export const profiles = pgTable(
     username: text("username"),
     studentId: text("student_id").notNull(),
     avatarUrl: text("avatar_url"),
-    status: profileStatusEnum("status").notNull().default("pending_approval"),
-    departmentId: uuid("department_id"),
+    status: profileStatusEnum("status").notNull().default("pending_email_verification"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -35,7 +34,6 @@ export const profiles = pgTable(
     usernameUq: uniqueIndex("profiles_username_uq").on(t.username),
     studentIdUq: uniqueIndex("profiles_student_id_uq").on(t.studentId),
     statusIdx: index("profiles_status_idx").on(t.status),
-    departmentIdIdx: index("profiles_department_id_idx").on(t.departmentId),
   }),
 );
 
