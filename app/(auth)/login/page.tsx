@@ -149,10 +149,15 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="text-sm text-muted-foreground">
-        还没有账号？{" "}
-        <Link className="font-medium underline underline-offset-2" href="/register">
-          去注册
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div>
+          还没有账号？{" "}
+          <Link className="font-medium underline underline-offset-2" href="/register">
+            去注册
+          </Link>
+        </div>
+        <Link className="font-medium underline underline-offset-2" href="/forgot-password">
+          忘记密码
         </Link>
       </div>
     </div>

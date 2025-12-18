@@ -41,6 +41,9 @@ export function PortalShell({ user, canEnterConsole, navItems, children }: Props
 
             {user ? (
               <>
+                <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/profile">
+                  个人资料
+                </Link>
                 <span className="hidden text-sm text-muted-foreground sm:inline">{user.email ?? user.id}</span>
                 <LogoutButton className={buttonVariants({ variant: "ghost", size: "sm" })} />
               </>

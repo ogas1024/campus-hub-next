@@ -20,6 +20,9 @@
   - `SUPABASE_SERVICE_ROLE_KEY`（仅服务端使用）
   - `DATABASE_URL`
 
+### 0.3 Supabase Storage 配置
+- 创建 bucket：`avatars`，并设为 **public**（用于用户头像上传）。
+
 ## 1. 初始化步骤（按推荐顺序）
 
 ### 1.1 获取超级管理员权限（仅首次）
@@ -128,4 +131,3 @@ join public.departments d2 on d2.id = dc.descendant_id
 where d1.id = '部门ID'
 order by dc.depth, d2.sort, d2.name;
 ```
-
