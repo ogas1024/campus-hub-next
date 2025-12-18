@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { useTheme } from "next-themes";
+
 type Props = {
   value: string;
   onChange: (nextValue: string) => void;
@@ -9,6 +11,7 @@ type Props = {
 };
 
 export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
+  const { resolvedTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<import("@toast-ui/editor").default | null>(null);
   const valueRef = useRef(value);
@@ -21,6 +24,7 @@ export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
     let disposed = false;
 
     async function init() {
+      if (!resolvedTheme) return;
       if (!containerRef.current) return;
       if (editorRef.current) return;
 
@@ -32,6 +36,7 @@ export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
         height,
         initialEditType: "wysiwyg",
         previewStyle: "vertical",
+        theme: resolvedTheme === "dark" ? "dark" : "light",
         usageStatistics: false,
         initialValue: valueRef.current || "",
       });
@@ -50,7 +55,7 @@ export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
       editorRef.current?.destroy();
       editorRef.current = null;
     };
-  }, [height, onChange]);
+  }, [height, onChange, resolvedTheme]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -61,4 +66,3 @@ export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
 
   return <div ref={containerRef} />;
 }
-

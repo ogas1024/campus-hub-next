@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { PortalNav } from "@/components/layout/PortalNav";
-import type { AppUser } from "@/lib/auth/types";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
+import type { AppUser } from "@/lib/auth/types";
 
 type NavItem = {
   id: string;
@@ -33,6 +34,7 @@ export function PortalShell({ user, canEnterConsole, navItems, children }: Props
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
+            <ThemeToggle />
             {user && canEnterConsole ? (
               <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console">
                 管理后台

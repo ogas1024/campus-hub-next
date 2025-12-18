@@ -30,6 +30,7 @@
     "drizzle-orm": "*",
     "lucide-react": "*",
     "next": "16.0.10",
+    "next-themes": "^0.4.6",
     "postgres": "*",
     "react": "19.2.1",
     "react-dom": "19.2.1",

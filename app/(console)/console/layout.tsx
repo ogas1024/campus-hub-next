@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ConsoleSidebar } from "@/components/console/ConsoleSidebar";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
 import { hasPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
@@ -38,6 +39,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/">
               返回前台
             </Link>
