@@ -14,6 +14,7 @@
 - `module` 必须与模块/资源命名一致：
   - `module=user` ↔ `/console/users` ↔ `/api/console/users`
   - `module=notice` ↔ `/console/notices` ↔ `/api/console/notices`
+  - `module=resource` ↔ `/console/resources` ↔ `/api/console/resources`
   - 详见：`docs/requirements/data-permission.md`
 
 ### 1.2 通配符
@@ -57,6 +58,30 @@
 - 审计（module=audit）：`campus:audit:list`
 - 配置（module=config）：`campus:config:update`
 
+### 2.3 课程资源分享（module=resource）（待落地）
+
+> 说明：本节为“课程资源分享 MVP”规划权限码；将在对应 DB 迁移中补齐权限字典与默认授权。
+
+- 专业（admin/super_admin）
+  - `campus:resource:major_list`
+  - `campus:resource:major_create`
+  - `campus:resource:major_update`
+  - `campus:resource:major_delete`
+  - `campus:resource:major_lead_update`
+- 课程（admin 全量；major_lead 仅本专业范围）
+  - `campus:resource:course_list`
+  - `campus:resource:course_create`
+  - `campus:resource:course_update`
+  - `campus:resource:course_delete`
+- 资源审核与管理（admin 全量；major_lead 仅本专业范围）
+  - `campus:resource:list`
+  - `campus:resource:read`
+  - `campus:resource:review`
+  - `campus:resource:offline`
+  - `campus:resource:best`
+  - `campus:resource:stats`
+  - `campus:resource:delete`（硬删除；仅 admin/super_admin）
+
 ## 3. 默认角色集合（建议保留）
 
 > 建议保留内置：`user/staff/admin/super_admin`，并按业务追加角色（如 `librarian/major_lead/...`）。
@@ -72,13 +97,23 @@
 - 备注：
   - “是否允许操作他人公告”建议走应用层的资源级授权策略（例如仅允许管理自己创建的公告），避免把业务策略写死在权限码层。
 
-### 3.3 `admin`（管理员）
+### 3.3 `major_lead`（专业负责人）
+- 定位：负责某些专业的课程资源运营与审核
+- 权限建议（MVP）：
+  - 课程（仅本专业范围）：`campus:resource:course_list/create/update/delete`
+  - 资源（仅本专业范围）：`campus:resource:list/read/review/offline/best/stats`
+- 备注：
+  - “仅本专业范围”由后端强制过滤（依赖专业负责人映射表），不是纯前端隐藏。
+  - 不授予 `campus:resource:delete`（硬删除仅 admin/super_admin）。
+
+### 3.4 `admin`（管理员）
 - 定位：系统管理员（管理端全量配置与大部分模块管理）
 - 权限建议（MVP）：
   - 基础设施全量：`campus:user:*`、`campus:role:*`、`campus:permission:*`、`campus:department:*`、`campus:position:*`、`campus:audit:list`、`campus:config:update`
   - 通知公告全量：`campus:notice:manage`（或 `campus:notice:*`）
+  - 课程资源全量：`campus:resource:*`（或按 2.3 细分授权）
 
-### 3.4 `super_admin`（超级管理员）
+### 3.5 `super_admin`（超级管理员）
 - 定位：最高权限（仅少量账号）
 - 权限建议（MVP）：
   - 与 `admin` 一致（当前已内置）
@@ -91,7 +126,8 @@
 | --- | --- | --- |
 | `user` | （空） | 仅 Portal；Console 入口由权限控制 |
 | `staff` | `campus:notice:list/create/update/delete/publish/pin` | 内容发布人员（资源级授权在应用层） |
-| `admin` | `campus:user:*`、`campus:role:*`、`campus:permission:*`、`campus:department:*`、`campus:position:*`、`campus:audit:list`、`campus:config:update`、`campus:notice:*` | 业务管理者/系统管理员 |
+| `major_lead` | `campus:resource:course_list/create/update/delete`、`campus:resource:list/read/review/offline/best/stats` | 仅本专业范围（后端强制过滤） |
+| `admin` | `campus:user:*`、`campus:role:*`、`campus:permission:*`、`campus:department:*`、`campus:position:*`、`campus:audit:list`、`campus:config:update`、`campus:notice:*`、`campus:resource:*` | 业务管理者/系统管理员（资源跨专业全量） |
 | `super_admin` | 与 `admin` 相同（可选增加 `campus:*:*`） | 超管最小集（避免日常滥用） |
 
 ## 5. 数据范围（RoleDataScope）建议
@@ -102,4 +138,3 @@
 - 若某角色需要访问 `/console/users`：必须同时具备
   - RBAC：`campus:user:list`
   - DataScope：`module=user` 的范围配置（或默认策略）
-

@@ -13,6 +13,8 @@
 - `migrations/0001_baseline.sql`
 - `migrations/0002_infra.sql`
 - `migrations/0003_department_parent_fk.sql`
+- `migrations/0004_course_resources.sql`
+- `migrations/0005_course_resources_constraints.sql`
 
 > 注意：`0002_infra.sql` 依赖 `0001_baseline.sql` 中的 `public.set_updated_at()` 等基础函数与基线表结构。
 
@@ -34,6 +36,28 @@
 
 ### 0003_department_parent_fk.sql 变更概览
 - 为 `public.departments.parent_id` 增加自引用外键（`ON DELETE RESTRICT`），从 DB 层禁止删除存在子部门的部门。
+
+### 0004_course_resources.sql 变更概览
+- 新增课程资源分享相关枚举：
+  - `public.course_resource_type`（`file|link`）
+  - `public.course_resource_status`（`draft|pending|published|rejected|unpublished`）
+  - `public.course_resource_score_event_type`（`approve|best`）
+- 新增业务表：
+  - `public.majors`（专业）/ `public.major_leads`（专业负责人映射）
+  - `public.courses`（课程）
+  - `public.course_resources`（课程资源，含状态机/软删/去重索引）
+  - `public.course_resource_bests`（最佳推荐）
+  - `public.course_resource_download_events`（下载事件事实表）
+  - `public.course_resource_score_events`（积分事件事实表，唯一约束保证“首次语义”）
+- 种子数据：
+  - `public.app_config`：`courseResources.score.approveDelta` / `courseResources.score.bestDelta`
+  - `public.roles`：新增 `major_lead`
+  - `public.permissions`：新增 `campus:resource:*` 及细分权限；为 `major_lead/admin/super_admin` 授权
+- RLS：对新增表 `enable row level security`（默认不下发策略；避免客户端直连）
+
+### 0005_course_resources_constraints.sql 变更概览
+- 调整 `public.course_resources` 的 `course_resources_file_or_link_chk`：
+  - 允许 `draft` 阶段暂不绑定 file/link 细节（支撑“先草稿 → 签名直传/填写外链 → 提交审核”流程）
 
 ## 本地/远端初始化（推荐流程）
 
