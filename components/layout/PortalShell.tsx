@@ -21,12 +21,12 @@ type Props = {
 
 export function PortalShell({ user, canEnterConsole, navItems, children }: Props) {
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-background">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex min-w-0 items-center gap-4">
             <Link className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight" href="/">
-              <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-zinc-900" />
+              <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-primary" />
               Campus Hub
             </Link>
             <PortalNav items={navItems} />
@@ -41,7 +41,10 @@ export function PortalShell({ user, canEnterConsole, navItems, children }: Props
 
             {user ? (
               <>
-                <span className="hidden text-sm text-zinc-600 sm:inline">{user.email ?? user.id}</span>
+                <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/profile">
+                  个人资料
+                </Link>
+                <span className="hidden text-sm text-muted-foreground sm:inline">{user.email ?? user.id}</span>
                 <LogoutButton className={buttonVariants({ variant: "ghost", size: "sm" })} />
               </>
             ) : (

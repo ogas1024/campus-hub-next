@@ -46,7 +46,7 @@ export default async function Home() {
                   </Link>
                 </div>
               ) : (
-                <div className="text-sm text-zinc-600">欢迎回来，{user.email ?? user.id}。</div>
+                <div className="text-sm text-muted-foreground">欢迎回来，{user.email ?? user.id}。</div>
               )}
             </div>
           </CardContent>
@@ -54,27 +54,27 @@ export default async function Home() {
 
         <section className="space-y-3">
           <div className="flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-900">已上线</h2>
-            <div className="text-sm text-zinc-500">可直接使用</div>
+            <h2 className="text-lg font-semibold tracking-tight">已上线</h2>
+            <div className="text-sm text-muted-foreground">可直接使用</div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             {availableModules.map((m) => (
-              <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50")}>
+              <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-border bg-card hover:bg-accent")}>
                 <div className="flex items-start justify-between gap-4 p-5">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="mt-0.5 text-zinc-700">
+                    <div className="mt-0.5 text-muted-foreground">
                       <ModuleIcon moduleId={m.id} className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-base font-semibold text-zinc-900">{m.label}</div>
+                        <div className="text-base font-semibold">{m.label}</div>
                         <Badge>可用</Badge>
                       </div>
-                      <div className="text-sm text-zinc-600">{m.description}</div>
+                      <div className="text-sm text-muted-foreground">{m.description}</div>
                     </div>
                   </div>
-                  <div className="shrink-0 text-sm text-zinc-400">进入 →</div>
+                  <div className="shrink-0 text-sm text-muted-foreground">进入 →</div>
                 </div>
               </Link>
             ))}
@@ -83,27 +83,27 @@ export default async function Home() {
 
         <section className="space-y-3">
           <div className="flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-900">建设中</h2>
-            <div className="text-sm text-zinc-500">按优先级逐步落地</div>
+            <h2 className="text-lg font-semibold tracking-tight">建设中</h2>
+            <div className="text-sm text-muted-foreground">按优先级逐步落地</div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             {comingSoonModules.map((m) => (
-              <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-dashed border-zinc-200 bg-white hover:bg-zinc-50")}>
+              <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-dashed border-border bg-card hover:bg-accent")}>
                 <div className="flex items-start justify-between gap-4 p-5">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="mt-0.5 text-zinc-700">
+                    <div className="mt-0.5 text-muted-foreground">
                       <ModuleIcon moduleId={m.id} className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-base font-semibold text-zinc-900">{m.label}</div>
+                        <div className="text-base font-semibold">{m.label}</div>
                         <Badge variant="secondary">建设中</Badge>
                       </div>
-                      <div className="text-sm text-zinc-600">{m.description}</div>
+                      <div className="text-sm text-muted-foreground">{m.description}</div>
                     </div>
                   </div>
-                  <div className="shrink-0 text-sm text-zinc-400">查看规划 →</div>
+                  <div className="shrink-0 text-sm text-muted-foreground">查看规划 →</div>
                 </div>
               </Link>
             ))}

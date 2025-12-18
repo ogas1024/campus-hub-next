@@ -2,9 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { ConsoleSidebar } from "@/components/console/ConsoleSidebar";
+import { buttonVariants } from "@/components/ui/button";
 import { hasPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { consoleModules } from "@/lib/navigation/modules";
+import { consoleNavGroups } from "@/lib/navigation/modules";
 
 export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {
   let user: Awaited<ReturnType<typeof requireUser>>;
@@ -14,44 +16,41 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
     redirect("/login");
   }
 
-  const allowedModules = await Promise.all(
-    consoleModules.map(async (m) => ((await hasPerm(user.id, m.permCode)) ? m : null)),
+  const allowedGroups = await Promise.all(
+    consoleNavGroups.map(async (g) => {
+      const allowedItems = await Promise.all(g.items.map(async (m) => ((await hasPerm(user.id, m.permCode)) ? m : null)));
+      const items = allowedItems.filter((m): m is NonNullable<typeof m> => m !== null).map(({ id, label, href }) => ({ id, label, href }));
+      if (items.length === 0) return null;
+      return { id: g.id, label: g.label, items };
+    }),
   );
-  const navItems = allowedModules.filter((m): m is NonNullable<typeof m> => m !== null);
+  const navGroups = allowedGroups.filter((g): g is NonNullable<typeof g> => g !== null);
 
-  if (navItems.length === 0) redirect("/notices");
+  if (navGroups.length === 0) redirect("/notices");
 
   return (
-    <div className="min-h-screen bg-zinc-100">
-      <header className="border-b border-zinc-800 bg-zinc-950 text-white">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="rounded-md bg-white/10 px-2 py-1 text-xs font-semibold tracking-wide">Console</span>
-            <span className="text-sm text-zinc-200">管理后台</span>
+            <span className="rounded-md bg-primary px-2 py-1 text-xs font-semibold tracking-wide text-primary-foreground">Console</span>
+            <span className="text-sm text-muted-foreground">管理后台</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15" href="/">
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/">
               返回前台
             </Link>
-            <span className="hidden text-sm text-zinc-300 sm:inline">{user.email ?? user.id}</span>
-            <LogoutButton className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15" />
+            <span className="hidden text-sm text-muted-foreground sm:inline">{user.email ?? user.id}</span>
+            <LogoutButton className={buttonVariants({ variant: "ghost", size: "sm" })} />
           </div>
         </div>
       </header>
 
       <div className="mx-auto flex w-full max-w-7xl gap-4 px-4 py-6">
         <aside className="hidden w-56 shrink-0 md:block">
-          <nav className="sticky top-6 rounded-xl border border-zinc-200 bg-white p-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
-                href={item.href}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <nav className="sticky top-6 rounded-xl border border-border bg-card p-2">
+            <ConsoleSidebar groups={navGroups} />
           </nav>
         </aside>
 

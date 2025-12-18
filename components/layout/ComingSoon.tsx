@@ -22,7 +22,7 @@ export function ComingSoon({ title, description, docPath, moduleId }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               {moduleId ? (
-                <span className="mt-0.5 text-zinc-700">
+                <span className="mt-0.5 text-muted-foreground">
                   <ModuleIcon moduleId={moduleId} />
                 </span>
               ) : null}
@@ -48,9 +48,9 @@ export function ComingSoon({ title, description, docPath, moduleId }: Props) {
 
         {docPath ? (
           <CardContent>
-            <div className="text-sm text-zinc-600">参考需求文档</div>
+            <div className="text-sm text-muted-foreground">参考需求文档</div>
             <div className="mt-2">
-              <code className={cn("rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm text-zinc-900")}>
+              <code className={cn("rounded-md border border-border bg-muted px-2 py-1 text-sm text-foreground")}>
                 {docPath}
               </code>
             </div>

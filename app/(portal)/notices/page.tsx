@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
+import { Select } from "@/components/ui/select";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam, parseTriStateBooleanParam } from "@/lib/http/query";
 import { listPortalNotices } from "@/lib/modules/notices/notices.service";
@@ -39,9 +40,6 @@ function buildPortalNoticesHref(params: {
   const query = sp.toString();
   return query ? `/notices?${query}` : "/notices";
 }
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40";
 
 export default async function NoticesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await getCurrentUser();
@@ -94,8 +92,8 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
     <div className="space-y-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">通知公告</h1>
-          <p className="text-sm text-zinc-600">置顶优先；支持搜索、筛选与分页。</p>
+          <h1 className="text-xl font-semibold tracking-tight">通知公告</h1>
+          <p className="text-sm text-muted-foreground">置顶优先；支持搜索、筛选与分页。</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">共 {data.total} 条</Badge>
@@ -121,63 +119,58 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
             </div>
 
             <div className="md:col-span-2">
-              <select
+              <Select
                 name="read"
                 defaultValue={read === true ? "true" : read === false ? "false" : ""}
-                className={selectClassName}
               >
                 <option value="">全部已读</option>
                 <option value="false">未读</option>
                 <option value="true">已读</option>
-              </select>
+              </Select>
             </div>
 
             <div className="md:col-span-2">
-              <select
+              <Select
                 name="includeExpired"
                 defaultValue={includeExpired ? "true" : "false"}
-                className={selectClassName}
               >
                 <option value="false">排除过期</option>
                 <option value="true">包含过期</option>
-              </select>
+              </Select>
             </div>
 
             <div className="md:col-span-2">
-              <select
+              <Select
                 name="sortBy"
                 defaultValue={sortBy}
-                className={selectClassName}
               >
                 <option value="publishAt">发布时间</option>
                 <option value="updatedAt">更新时间</option>
                 <option value="expireAt">有效期</option>
-              </select>
+              </Select>
             </div>
 
             <div className="md:col-span-2">
-              <select
+              <Select
                 name="sortOrder"
                 defaultValue={sortOrder}
-                className={selectClassName}
               >
                 <option value="desc">降序</option>
                 <option value="asc">升序</option>
-              </select>
+              </Select>
             </div>
 
             <div className="md:col-span-2">
-              <select
+              <Select
                 name="pageSize"
                 defaultValue={String(pageSize)}
-                className={selectClassName}
               >
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
                     每页 {n}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="flex flex-wrap gap-2 md:col-span-12">
@@ -195,29 +188,29 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
       <div className="space-y-3">
         {data.items.length === 0 ? (
           <Card>
-            <CardContent className="p-10 text-center text-sm text-zinc-600">暂无公告</CardContent>
+            <CardContent className="p-10 text-center text-sm text-muted-foreground">暂无公告</CardContent>
           </Card>
         ) : null}
 
         {data.items.map((item) => (
           <Link key={item.id} href={`/notices/${item.id}`} className="block">
-            <Card className={cn("hover:bg-zinc-50", item.read ? null : "border-zinc-900")}>
+            <Card className={cn("hover:bg-accent", item.read ? null : "border-primary")}>
               <CardContent className="space-y-2 p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   {item.pinned ? <Badge variant="outline">置顶</Badge> : null}
-                  {item.isExpired ? <Badge variant="outline" className="text-zinc-500">已过期</Badge> : null}
+                  {item.isExpired ? <Badge variant="outline" className="text-muted-foreground">已过期</Badge> : null}
                   {item.read ? <Badge variant="secondary">已读</Badge> : <Badge>未读</Badge>}
                 </div>
 
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="truncate text-base font-semibold text-zinc-900">{item.title}</div>
-                    <div className="mt-1 text-xs text-zinc-600">
+                    <div className="truncate text-base font-semibold">{item.title}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
                       发布：{formatZhDateTime(item.publishAt)} · 阅读数：{item.readCount}
                       {item.expireAt ? ` · 有效至：${formatZhDateTime(item.expireAt)}` : ""}
                     </div>
                   </div>
-                  <span className="shrink-0 text-sm text-zinc-400">查看 →</span>
+                  <span className="shrink-0 text-sm text-muted-foreground">查看 →</span>
                 </div>
               </CardContent>
             </Card>

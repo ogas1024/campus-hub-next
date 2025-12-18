@@ -34,7 +34,7 @@ export function Pagination({ page, totalPages, hrefForPage }: Props) {
 
   return (
     <nav className="flex flex-wrap items-center justify-between gap-3" aria-label="分页">
-      <div className="text-sm text-zinc-600">
+      <div className="text-sm text-muted-foreground">
         第 {clampedPage} / {totalPages} 页
       </div>
 
@@ -52,7 +52,7 @@ export function Pagination({ page, totalPages, hrefForPage }: Props) {
         <div className="flex items-center gap-1">
           {items.map((item, idx) =>
             item === "ellipsis" ? (
-              <span key={`ellipsis-${idx}`} className="px-2 text-sm text-zinc-400">
+              <span key={`ellipsis-${idx}`} className="px-2 text-sm text-muted-foreground">
                 …
               </span>
             ) : (

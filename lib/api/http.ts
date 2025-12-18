@@ -17,6 +17,12 @@ export class ApiResponseError extends Error {
   }
 }
 
+export function getApiErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof ApiResponseError) return err.message || fallback;
+  if (err instanceof Error) return err.message || fallback;
+  return fallback;
+}
+
 async function readJsonSafe(response: Response): Promise<unknown> {
   try {
     return await response.json();
@@ -66,6 +72,14 @@ export function apiPutJson<T>(input: string, body: unknown) {
   });
 }
 
+export function apiPatchJson<T>(input: string, body: unknown) {
+  return apiFetchJson<T>(input, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function apiDeleteJson<T>(input: string) {
   return apiFetchJson<T>(input, { method: "DELETE" });
 }
@@ -73,4 +87,3 @@ export function apiDeleteJson<T>(input: string) {
 export function apiPostForm<T>(input: string, formData: FormData) {
   return apiFetchJson<T>(input, { method: "POST", body: formData });
 }
-

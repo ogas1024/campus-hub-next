@@ -1,24 +1,31 @@
+import "server-only";
+
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/lib/db";
 import { hasPerm } from "@/lib/auth/permissions";
-import { badRequest, conflict, forbidden, notFound } from "@/lib/http/errors";
+import type { RequestContext } from "@/lib/http/route";
+import { HttpError, badRequest, conflict, forbidden, notFound } from "@/lib/http/errors";
+import type { AuditActor } from "@/lib/modules/audit/audit.service";
+import { writeAuditLog } from "@/lib/modules/audit/audit.service";
+import { buildUserIdDataScopeCondition } from "@/lib/modules/data-permission/dataPermission.where";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
+  departmentClosure,
   departments,
   noticeAttachments,
   noticeReads,
   noticeScopes,
   notices,
   positions,
-  profiles,
   roles,
+  userDepartments,
   userPositions,
   userRoles,
 } from "@campus-hub/db";
 
 type AudienceContext = {
   roleIds: string[];
-  departmentId: string | null;
+  departmentIds: string[];
   positionIds: string[];
 };
 
@@ -33,6 +40,82 @@ type NoticeAttachmentInput = {
 
 const NOTICE_ATTACHMENTS_BUCKET = "notice-attachments";
 const SIGNED_URL_EXPIRES_IN = 60;
+
+type NoticeAuditSnapshot = {
+  id: string;
+  title: string;
+  status: "draft" | "published" | "retracted";
+  visibleAll: boolean;
+  pinned: boolean;
+  pinnedAt: Date | null;
+  publishAt: Date | null;
+  expireAt: Date | null;
+  createdBy: string;
+  updatedBy: string | null;
+  updatedAt: Date;
+  editCount: number;
+  readCount: number;
+  deletedAt: Date | null;
+  contentLength: number;
+  scopes: Array<{ scopeType: "role" | "department" | "position"; refId: string }>;
+  attachments: Array<{
+    id: string;
+    fileKey: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    sort: number;
+  }>;
+};
+
+function toErrorCode(err: unknown) {
+  return err instanceof HttpError ? err.code : "INTERNAL_ERROR";
+}
+
+async function getNoticeAuditSnapshot(noticeId: string): Promise<NoticeAuditSnapshot | null> {
+  const rows = await db
+    .select({
+      id: notices.id,
+      title: notices.title,
+      status: notices.status,
+      visibleAll: notices.visibleAll,
+      pinned: notices.pinned,
+      pinnedAt: notices.pinnedAt,
+      publishAt: notices.publishAt,
+      expireAt: notices.expireAt,
+      createdBy: notices.createdBy,
+      updatedBy: notices.updatedBy,
+      updatedAt: notices.updatedAt,
+      editCount: notices.editCount,
+      readCount: notices.readCount,
+      deletedAt: notices.deletedAt,
+      contentLength: sql<number>`length(${notices.contentMd})`,
+    })
+    .from(notices)
+    .where(eq(notices.id, noticeId))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const [scopes, attachments] = await Promise.all([
+    db.select({ scopeType: noticeScopes.scopeType, refId: noticeScopes.refId }).from(noticeScopes).where(eq(noticeScopes.noticeId, noticeId)),
+    db
+      .select({
+        id: noticeAttachments.id,
+        fileKey: noticeAttachments.fileKey,
+        fileName: noticeAttachments.fileName,
+        contentType: noticeAttachments.contentType,
+        size: noticeAttachments.size,
+        sort: noticeAttachments.sort,
+      })
+      .from(noticeAttachments)
+      .where(eq(noticeAttachments.noticeId, noticeId))
+      .orderBy(asc(noticeAttachments.sort), asc(noticeAttachments.createdAt)),
+  ]);
+
+  return { ...row, scopes, attachments };
+}
 
 function assertNoInlineHtml(contentMd: string) {
   const stripped = contentMd
@@ -51,11 +134,10 @@ async function getAudienceContext(userId: string): Promise<AudienceContext> {
     .from(userRoles)
     .where(eq(userRoles.userId, userId));
 
-  const profileRow = await db
-    .select({ departmentId: profiles.departmentId })
-    .from(profiles)
-    .where(eq(profiles.id, userId))
-    .limit(1);
+  const deptRows = await db
+    .select({ departmentId: userDepartments.departmentId })
+    .from(userDepartments)
+    .where(eq(userDepartments.userId, userId));
 
   const positionRows = await db
     .select({ positionId: userPositions.positionId })
@@ -64,7 +146,7 @@ async function getAudienceContext(userId: string): Promise<AudienceContext> {
 
   return {
     roleIds: roleRows.map((r) => r.roleId),
-    departmentId: profileRow[0]?.departmentId ?? null,
+    departmentIds: deptRows.map((d) => d.departmentId),
     positionIds: positionRows.map((p) => p.positionId),
   };
 }
@@ -80,11 +162,18 @@ async function getVisibleNoticeIdsForUser(ctx: AudienceContext): Promise<string[
     for (const r of rows) noticeIdSet.add(r.noticeId);
   }
 
-  if (ctx.departmentId) {
+  if (ctx.departmentIds.length > 0) {
     const rows = await db
       .select({ noticeId: noticeScopes.noticeId })
       .from(noticeScopes)
-      .where(and(eq(noticeScopes.scopeType, "department"), eq(noticeScopes.refId, ctx.departmentId)));
+      .innerJoin(
+        departmentClosure,
+        and(
+          eq(departmentClosure.ancestorId, noticeScopes.refId),
+          inArray(departmentClosure.descendantId, ctx.departmentIds),
+        ),
+      )
+      .where(eq(noticeScopes.scopeType, "department"));
     for (const r of rows) noticeIdSet.add(r.noticeId);
   }
 
@@ -358,15 +447,24 @@ async function canManageAllNotices(userId: string) {
 }
 
 async function assertCanOperateNotice(userId: string, noticeId: string) {
-  if (await canManageAllNotices(userId)) return;
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: userId,
+    module: "notice",
+    targetUserIdColumn: notices.createdBy,
+  });
 
   const row = await db
-    .select({ id: notices.id })
+    .select({ createdBy: notices.createdBy })
     .from(notices)
-    .where(and(eq(notices.id, noticeId), eq(notices.createdBy, userId), isNull(notices.deletedAt)))
+    .where(and(eq(notices.id, noticeId), isNull(notices.deletedAt), visibilityCondition ?? sql`true`))
     .limit(1);
 
-  if (!row[0]) throw forbidden("只能操作自己创建的公告");
+  const notice = row[0];
+  if (!notice) throw notFound();
+  if (notice.createdBy === userId) return;
+  if (await canManageAllNotices(userId)) return;
+
+  throw forbidden("只能操作自己创建的公告");
 }
 
 export async function listConsoleNotices(params: {
@@ -379,12 +477,16 @@ export async function listConsoleNotices(params: {
   mine: boolean;
 }) {
   const now = new Date();
-  const manageAll = await canManageAllNotices(params.userId);
-  const mustMine = params.mine || !manageAll;
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.userId,
+    module: "notice",
+    targetUserIdColumn: notices.createdBy,
+  });
 
   const baseWhere = [isNull(notices.deletedAt)];
+  if (visibilityCondition) baseWhere.push(visibilityCondition);
 
-  if (mustMine) baseWhere.push(eq(notices.createdBy, params.userId));
+  if (params.mine) baseWhere.push(eq(notices.createdBy, params.userId));
   if (params.status) baseWhere.push(eq(notices.status, params.status));
 
   if (!params.includeExpired) {
@@ -450,7 +552,11 @@ export async function listConsoleNotices(params: {
 }
 
 export async function getConsoleNoticeDetail(params: { userId: string; noticeId: string }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.userId,
+    module: "notice",
+    targetUserIdColumn: notices.createdBy,
+  });
 
   const now = new Date();
   const row = await db
@@ -472,7 +578,7 @@ export async function getConsoleNoticeDetail(params: { userId: string; noticeId:
       readCount: notices.readCount,
     })
     .from(notices)
-    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)))
+    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt), visibilityCondition ?? sql`true`))
     .limit(1);
 
   const notice = row[0];
@@ -527,13 +633,15 @@ export async function getConsoleNoticeDetail(params: { userId: string; noticeId:
 }
 
 export async function createNotice(params: {
-  userId: string;
   title: string;
   contentMd: string;
   expireAt?: Date;
   visibleAll: boolean;
   scopes: NoticeScopeInput[];
   attachments: NoticeAttachmentInput[];
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
 }) {
   assertNoInlineHtml(params.contentMd);
 
@@ -541,64 +649,99 @@ export async function createNotice(params: {
     throw badRequest("visibleAll=false 时必须至少配置 1 条 scope");
   }
 
-  const noticeId = await db.transaction(async (tx) => {
-    const now = new Date();
+  let noticeId: string | null = null;
 
-    const inserted = await tx
-      .insert(notices)
-      .values({
+  try {
+    noticeId = await db.transaction(async (tx) => {
+      const now = new Date();
+
+      const inserted = await tx
+        .insert(notices)
+        .values({
+          title: params.title,
+          contentMd: params.contentMd,
+          expireAt: params.expireAt,
+          visibleAll: params.visibleAll,
+          status: "draft",
+          pinned: false,
+          pinnedAt: null,
+          publishAt: null,
+          createdBy: params.actor.userId,
+          updatedBy: null,
+          editCount: 0,
+          readCount: 0,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        })
+        .returning({ id: notices.id });
+
+      const createdId = inserted[0]?.id;
+      if (!createdId) throw badRequest("创建公告失败");
+
+      if (!params.visibleAll) {
+        await tx.insert(noticeScopes).values(
+          params.scopes.map((s) => ({
+            noticeId: createdId,
+            scopeType: s.scopeType,
+            refId: s.refId,
+          })),
+        );
+      }
+
+      if (params.attachments.length > 0) {
+        await tx.insert(noticeAttachments).values(
+          params.attachments.map((a, index) => ({
+            noticeId: createdId,
+            fileKey: a.fileKey,
+            fileName: a.fileName,
+            contentType: a.contentType,
+            size: a.size,
+            sort: index,
+          })),
+        );
+      }
+
+      return createdId;
+    });
+
+    const after = await getNoticeAuditSnapshot(noticeId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.create",
+      targetType: "notice",
+      targetId: noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { after, contentLengthInput: params.contentMd.length },
+      request: params.request,
+    });
+
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId });
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.create",
+      targetType: "notice",
+      targetId: noticeId ?? "new",
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: {
         title: params.title,
-        contentMd: params.contentMd,
-        expireAt: params.expireAt,
         visibleAll: params.visibleAll,
-        status: "draft",
-        pinned: false,
-        pinnedAt: null,
-        publishAt: null,
-        createdBy: params.userId,
-        updatedBy: null,
-        editCount: 0,
-        readCount: 0,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      })
-      .returning({ id: notices.id });
-
-    const createdId = inserted[0]?.id;
-    if (!createdId) throw badRequest("创建公告失败");
-
-    if (!params.visibleAll) {
-      await tx.insert(noticeScopes).values(
-        params.scopes.map((s) => ({
-          noticeId: createdId,
-          scopeType: s.scopeType,
-          refId: s.refId,
-        })),
-      );
-    }
-
-    if (params.attachments.length > 0) {
-      await tx.insert(noticeAttachments).values(
-        params.attachments.map((a, index) => ({
-          noticeId: createdId,
-          fileKey: a.fileKey,
-          fileName: a.fileName,
-          contentType: a.contentType,
-          size: a.size,
-          sort: index,
-        })),
-      );
-    }
-
-    return createdId;
-  });
-
-  return getConsoleNoticeDetail({ userId: params.userId, noticeId });
+        expireAt: params.expireAt ?? null,
+        scopes: params.scopes,
+        attachments: params.attachments.map((a) => ({ fileKey: a.fileKey, fileName: a.fileName, size: a.size })),
+        contentLengthInput: params.contentMd.length,
+      },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
 }
 
 export async function updateNotice(params: {
-  userId: string;
   noticeId: string;
   title: string;
   contentMd: string;
@@ -606,79 +749,163 @@ export async function updateNotice(params: {
   visibleAll: boolean;
   scopes: NoticeScopeInput[];
   attachments: NoticeAttachmentInput[];
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
 }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+  await assertCanOperateNotice(params.actor.userId, params.noticeId);
   assertNoInlineHtml(params.contentMd);
 
   if (!params.visibleAll && params.scopes.length === 0) {
     throw badRequest("visibleAll=false 时必须至少配置 1 条 scope");
   }
 
-  await db.transaction(async (tx) => {
-    const now = new Date();
+  const before = await getNoticeAuditSnapshot(params.noticeId);
 
-    const updated = await tx
+  try {
+    await db.transaction(async (tx) => {
+      const now = new Date();
+
+      const updated = await tx
+        .update(notices)
+        .set({
+          title: params.title,
+          contentMd: params.contentMd,
+          expireAt: params.expireAt,
+          visibleAll: params.visibleAll,
+          updatedBy: params.actor.userId,
+          updatedAt: now,
+          editCount: sql`${notices.editCount} + 1`,
+        })
+        .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)))
+        .returning({ id: notices.id });
+
+      if (updated.length === 0) throw notFound();
+
+      await tx.delete(noticeScopes).where(eq(noticeScopes.noticeId, params.noticeId));
+      await tx.delete(noticeAttachments).where(eq(noticeAttachments.noticeId, params.noticeId));
+
+      if (!params.visibleAll) {
+        await tx.insert(noticeScopes).values(
+          params.scopes.map((s) => ({
+            noticeId: params.noticeId,
+            scopeType: s.scopeType,
+            refId: s.refId,
+          })),
+        );
+      }
+
+      if (params.attachments.length > 0) {
+        await tx.insert(noticeAttachments).values(
+          params.attachments.map((a, index) => ({
+            noticeId: params.noticeId,
+            fileKey: a.fileKey,
+            fileName: a.fileName,
+            contentType: a.contentType,
+            size: a.size,
+            sort: index,
+          })),
+        );
+      }
+    });
+
+    const after = await getNoticeAuditSnapshot(params.noticeId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.update",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after, contentLengthInput: params.contentMd.length },
+      request: params.request,
+    });
+
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.update",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: {
+        before,
+        patch: {
+          title: params.title,
+          visibleAll: params.visibleAll,
+          expireAt: params.expireAt ?? null,
+          scopes: params.scopes,
+          attachments: params.attachments.map((a) => ({ fileKey: a.fileKey, fileName: a.fileName, size: a.size })),
+          contentLengthInput: params.contentMd.length,
+        },
+      },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
+}
+
+export async function deleteNotice(params: {
+  noticeId: string;
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
+}) {
+  await assertCanOperateNotice(params.actor.userId, params.noticeId);
+
+  const before = await getNoticeAuditSnapshot(params.noticeId);
+
+  try {
+    const now = new Date();
+    const updated = await db
       .update(notices)
-      .set({
-        title: params.title,
-        contentMd: params.contentMd,
-        expireAt: params.expireAt,
-        visibleAll: params.visibleAll,
-        updatedBy: params.userId,
-        updatedAt: now,
-        editCount: sql`${notices.editCount} + 1`,
-      })
+      .set({ deletedAt: now, updatedBy: params.actor.userId, updatedAt: now })
       .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)))
       .returning({ id: notices.id });
 
     if (updated.length === 0) throw notFound();
 
-    await tx.delete(noticeScopes).where(eq(noticeScopes.noticeId, params.noticeId));
-    await tx.delete(noticeAttachments).where(eq(noticeAttachments.noticeId, params.noticeId));
+    const after = await getNoticeAuditSnapshot(params.noticeId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.delete",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after },
+      request: params.request,
+    });
 
-    if (!params.visibleAll) {
-      await tx.insert(noticeScopes).values(
-        params.scopes.map((s) => ({
-          noticeId: params.noticeId,
-          scopeType: s.scopeType,
-          refId: s.refId,
-        })),
-      );
-    }
-
-    if (params.attachments.length > 0) {
-      await tx.insert(noticeAttachments).values(
-        params.attachments.map((a, index) => ({
-          noticeId: params.noticeId,
-          fileKey: a.fileKey,
-          fileName: a.fileName,
-          contentType: a.contentType,
-          size: a.size,
-          sort: index,
-        })),
-      );
-    }
-  });
-
-  return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    return { ok: true };
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.delete",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: { before },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
 }
 
-export async function deleteNotice(params: { userId: string; noticeId: string }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+export async function publishNotice(params: {
+  noticeId: string;
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
+}) {
+  await assertCanOperateNotice(params.actor.userId, params.noticeId);
 
-  const now = new Date();
-  const updated = await db
-    .update(notices)
-    .set({ deletedAt: now, updatedBy: params.userId, updatedAt: now })
-    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)))
-    .returning({ id: notices.id });
-
-  if (updated.length === 0) throw notFound();
-  return { ok: true };
-}
-
-export async function publishNotice(params: { userId: string; noticeId: string }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+  const before = await getNoticeAuditSnapshot(params.noticeId);
 
   const now = new Date();
 
@@ -695,30 +922,74 @@ export async function publishNotice(params: { userId: string; noticeId: string }
   if (!current) throw notFound();
 
   if (current.status === "published") {
-    return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.publish",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, noop: true },
+      request: params.request,
+    });
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
   }
 
   if (current.expireAt && current.expireAt.getTime() <= now.getTime()) {
     throw badRequest("expireAt 必须大于 publishAt（当前时间）");
   }
 
-  await db
-    .update(notices)
-    .set({
-      status: "published",
-      publishAt: now,
-      pinned: false,
-      pinnedAt: null,
-      updatedBy: params.userId,
-      updatedAt: now,
-    })
-    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)));
+  try {
+    await db
+      .update(notices)
+      .set({
+        status: "published",
+        publishAt: now,
+        pinned: false,
+        pinnedAt: null,
+        updatedBy: params.actor.userId,
+        updatedAt: now,
+      })
+      .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)));
 
-  return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    const after = await getNoticeAuditSnapshot(params.noticeId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.publish",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after, noop: false },
+      request: params.request,
+    });
+
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.publish",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: { before },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
 }
 
-export async function retractNotice(params: { userId: string; noticeId: string }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+export async function retractNotice(params: {
+  noticeId: string;
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
+}) {
+  await assertCanOperateNotice(params.actor.userId, params.noticeId);
+
+  const before = await getNoticeAuditSnapshot(params.noticeId);
 
   const now = new Date();
   const row = await db
@@ -731,29 +1002,74 @@ export async function retractNotice(params: { userId: string; noticeId: string }
   if (!current) throw notFound();
 
   if (current.status === "retracted") {
-    return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.retract",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, noop: true },
+      request: params.request,
+    });
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
   }
 
   if (current.status !== "published") {
     throw conflict("仅已发布公告允许撤回");
   }
 
-  await db
-    .update(notices)
-    .set({
-      status: "retracted",
-      pinned: false,
-      pinnedAt: null,
-      updatedBy: params.userId,
-      updatedAt: now,
-    })
-    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)));
+  try {
+    await db
+      .update(notices)
+      .set({
+        status: "retracted",
+        pinned: false,
+        pinnedAt: null,
+        updatedBy: params.actor.userId,
+        updatedAt: now,
+      })
+      .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)));
 
-  return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    const after = await getNoticeAuditSnapshot(params.noticeId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.retract",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after, noop: false },
+      request: params.request,
+    });
+
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.retract",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: { before },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
 }
 
-export async function setNoticePinned(params: { userId: string; noticeId: string; pinned: boolean }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+export async function setNoticePinned(params: {
+  noticeId: string;
+  pinned: boolean;
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
+}) {
+  await assertCanOperateNotice(params.actor.userId, params.noticeId);
+
+  const before = await getNoticeAuditSnapshot(params.noticeId);
 
   const now = new Date();
   const row = await db
@@ -772,30 +1088,83 @@ export async function setNoticePinned(params: { userId: string; noticeId: string
   if (params.pinned) {
     if (current.status !== "published") throw conflict("仅已发布公告允许置顶");
     if (isExpired(current.expireAt, now)) throw conflict("已过期公告不允许置顶");
-    if (current.pinned) return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    if (current.pinned) {
+      await writeAuditLog({
+        actor: params.actor,
+        action: "notice.pin",
+        targetType: "notice",
+        targetId: params.noticeId,
+        success: true,
+        reason: params.reason,
+        diff: { before, noop: true, pinned: true },
+        request: params.request,
+      });
+      return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
+    }
   } else {
-    if (!current.pinned) return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    if (!current.pinned) {
+      await writeAuditLog({
+        actor: params.actor,
+        action: "notice.pin",
+        targetType: "notice",
+        targetId: params.noticeId,
+        success: true,
+        reason: params.reason,
+        diff: { before, noop: true, pinned: false },
+        request: params.request,
+      });
+      return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
+    }
   }
 
-  await db
-    .update(notices)
-    .set({
-      pinned: params.pinned,
-      pinnedAt: params.pinned ? now : null,
-      updatedBy: params.userId,
-      updatedAt: now,
-    })
-    .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)));
+  try {
+    await db
+      .update(notices)
+      .set({
+        pinned: params.pinned,
+        pinnedAt: params.pinned ? now : null,
+        updatedBy: params.actor.userId,
+        updatedAt: now,
+      })
+      .where(and(eq(notices.id, params.noticeId), isNull(notices.deletedAt)));
 
-  return getConsoleNoticeDetail({ userId: params.userId, noticeId: params.noticeId });
+    const after = await getNoticeAuditSnapshot(params.noticeId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.pin",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after, noop: false, pinned: params.pinned },
+      request: params.request,
+    });
+
+    return getConsoleNoticeDetail({ userId: params.actor.userId, noticeId: params.noticeId });
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.pin",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: { before, pinned: params.pinned },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
 }
 
 export async function uploadNoticeAttachment(params: {
-  userId: string;
   noticeId: string;
   file: File;
+  actor: AuditActor;
+  request: RequestContext;
+  reason?: string;
 }) {
-  await assertCanOperateNotice(params.userId, params.noticeId);
+  await assertCanOperateNotice(params.actor.userId, params.noticeId);
 
   if (params.file.size <= 0) throw badRequest("文件为空");
   if (params.file.size > 20 * 1024 * 1024) throw badRequest("文件过大（最大 20MB）");
@@ -804,19 +1173,47 @@ export async function uploadNoticeAttachment(params: {
   const objectKey = `notices/${params.noticeId}/${crypto.randomUUID()}-${safeName}`;
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.storage.from(NOTICE_ATTACHMENTS_BUCKET).upload(objectKey, params.file, {
-    contentType: params.file.type || "application/octet-stream",
-    upsert: false,
-  });
-  if (error) throw badRequest("上传失败", { message: error.message });
+  try {
+    const { error } = await supabase.storage.from(NOTICE_ATTACHMENTS_BUCKET).upload(objectKey, params.file, {
+      contentType: params.file.type || "application/octet-stream",
+      upsert: false,
+    });
+    if (error) throw badRequest("上传失败", { message: error.message });
 
-  return {
-    id: crypto.randomUUID(),
-    fileKey: objectKey,
-    fileName: params.file.name,
-    contentType: params.file.type || "application/octet-stream",
-    size: params.file.size,
-  };
+    const result = {
+      id: crypto.randomUUID(),
+      fileKey: objectKey,
+      fileName: params.file.name,
+      contentType: params.file.type || "application/octet-stream",
+      size: params.file.size,
+    };
+
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.attachment.upload",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: true,
+      reason: params.reason,
+      diff: { fileKey: result.fileKey, fileName: result.fileName, contentType: result.contentType, size: result.size },
+      request: params.request,
+    });
+
+    return result;
+  } catch (err) {
+    await writeAuditLog({
+      actor: params.actor,
+      action: "notice.attachment.upload",
+      targetType: "notice",
+      targetId: params.noticeId,
+      success: false,
+      errorCode: toErrorCode(err),
+      reason: params.reason,
+      diff: { fileName: params.file.name, contentType: params.file.type || "application/octet-stream", size: params.file.size },
+      request: params.request,
+    }).catch(() => {});
+    throw err;
+  }
 }
 
 export async function getNoticeScopeOptions() {

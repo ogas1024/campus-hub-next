@@ -289,10 +289,10 @@
 
 * `main`
   始终保持可部署、可演示。
-  只接受来自 `dev` 或 hotfix 分支的合并，不在 `main` 上直接开发。
+  默认只接受**功能分支的 Merge Commit（`--no-ff`）**，不在 `main` 上直接开发。
 
-* `dev`
-  日常集成分支，所有新功能先合并到 `dev`，稳定后再合并到 `main`。
+* `dev`（可选）
+  日常集成分支。多人协作或并行开发多个模块时推荐；个人学习项目可直接从 `main` 拉功能分支并合回 `main`。
 
 * 功能分支（推荐）
   `feat/<module>/<short-desc>`，例如：
@@ -301,23 +301,35 @@
   * `feat/resource/review-flow`
     bug 修复分支：`fix/<module>/<short-desc>`
 
-基础流程：
+基础流程（推荐 Merge Commit 作为“模块总结块”）：
 
 ```bash
-# 同步最新开发分支
+# [方案 A] 有 dev：从 dev 拉分支，合回 dev，再由 dev 合回 main
 git checkout dev
 git pull origin dev
-
-# 新建功能分支
-git checkout -b feat/reservation/mvp
+git checkout -b feat/reservation/mvp origin/dev
 
 # 开发若干原子 commit ...
 
-# 开发结束后合并回 dev
+# 开发结束后合并回 dev（强制生成 merge commit，形成“一个块”）
 git checkout dev
-git pull origin dev          # 保持最新
 git merge --no-ff feat/reservation/mvp
 git push origin dev
+
+# 稳定后由 dev 合回 main（同样保持 merge commit）
+git checkout main
+git pull origin main
+git merge --no-ff dev
+git push origin main
+
+# [方案 B] 无 dev：直接从 main 拉分支，合回 main（个人学习项目常用）
+# git checkout main
+# git pull origin main
+# git checkout -b feat/reservation/mvp origin/main
+# ... 原子 commit ...
+# git checkout main
+# git merge --no-ff feat/reservation/mvp
+# git push origin main
 
 # 可选：删除功能分支
 git branch -d feat/reservation/mvp
@@ -388,10 +400,6 @@ refactor(db): 抽离公共审计字段到基础 schema
 ### 风险与影响
 - ...
 
-### 测试
-- [x] pnpm lint
-- [ ] pnpm test
-- [x] 手工：在本地通过 /reservations 完成创建/审核/删除流程
 ```
 
 撰写 body 时，优先按照“逻辑变更”分组，而不是简单按文件罗列；动机部分说明为什么要做，而不是重复“我改了什么”。
@@ -424,7 +432,20 @@ chore(config): 调整 lint/test 配置以覆盖新模块
 
 #### 6. 合并策略与历史整理
 
-功能分支开发过程中，同步 dev 建议使用 rebase：
+本项目默认采用：**功能分支保留原子提交 + 合并到主干时生成 Merge Commit（`--no-ff`）**。
+
+这样同时满足：
+- `main` 的高层历史按“模块/阶段”分块（更有成就感、便于回溯）
+- 分支内的工作记录（原子提交）完整保留
+
+##### 6.1 为什么不直接 squash？
+- squash merge 会让 `main` 非常干净，但会丢失“分支内多次提交”的主干可追溯性（除非你永远保留分支/PR 记录）。
+- 如果你想保留工作记录，优先选择 **Merge Commit**；只在分支历史确实杂乱（大量 WIP/临时修复）且你不打算保留细粒度历史时才 squash。
+
+##### 6.2 合并前的历史整理（可选）
+目标是让功能分支里的 commit **“原子、可读、可回滚”**，而不是把一切压扁成 1 个提交。
+
+功能分支开发过程中，同步基线分支建议使用 rebase（避免把“同步噪声 merge commit”带进功能分支）：
 
 ```bash
 git checkout feat/reservation/mvp
@@ -432,7 +453,15 @@ git fetch origin
 git rebase origin/dev
 ```
 
-合并回 dev：
+如中间 commit 过碎/信息不清晰，可在分支上做交互式整理（仅限未推送或已确认可重写历史的情况）：
+
+```bash
+git checkout feat/reservation/mvp
+git rebase -i origin/dev
+```
+
+##### 6.3 合并回主线（形成“一个块”）
+合并时强制生成 merge commit，并把“模块总结”写在 **merge commit 的 body** 里（不需要额外再写一个“总结提交”）。
 
 如果功能分支内 commit 粒度清晰：
 
@@ -441,14 +470,32 @@ git checkout dev
 git merge --no-ff feat/reservation/mvp
 ```
 
-如中间 commit 过碎，可先在分支上 `git rebase -i dev` 清理，再合并。
+合并提交（merge commit）建议模板：
 
-合并后的“总括信息”：
+```
+feat(<module>): 完整实现 <模块> MVP
 
-如果使用 squash 合并，可以在合并时写一条总结性的 message：
+### 变更内容
+- ...
 
-头：`feat(reservation): 完整实现功能房预约模块 MVP`
-body 中按“新增 / 修改 / 移除 / 风险 / 测试”结构简要归纳本分支的全部工作。
+### 风险与影响
+- ...
+
+### 测试
+- [x] pnpm lint
+- [x] pnpm exec tsc --noEmit
+- [x] pnpm build
+- [ ] pnpm test（如有）
+- [x] 手工：按 docs/requirements/<模块>.md 验收
+```
+
+##### 6.4 查看历史的“干净视图”和“细节视图”
+- 只看主线（按模块成块）：`git log --first-parent --oneline main`
+- 看完整细节（含分支原子提交）：`git log --graph --decorate --oneline --all`
+- 查看某个模块合并块：`git show <merge_commit_sha>`
+
+##### 6.5 风险提示（务必确认）
+- `git rebase`、`git reset --hard`、`git push --force-with-lease` 都属于历史重写/破坏性操作：只有在你确定未影响他人或明确需要时才做。
 
 #### 7. 与文档驱动工作流的对应
 

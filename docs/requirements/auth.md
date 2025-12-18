@@ -1,30 +1,18 @@
-# 鉴权与用户 需求说明
-**状态**：🟠 待完善  
-**版本**：v0.1  
-**最近更新**：2025-12-11
+# 鉴权与用户（入口说明）
 
-## 范围（Scope）
-- 目标：统一登录/注册、角色/权限管理、当前用户信息。
-- MVP：邮箱/密码 + Magic Link 登录，当前用户查询，角色分配，权限检查接口。
-- 非目标：社交登录、MFA、SSO。
+**状态**：✅ 已批准  
+**版本**：v1.0  
+**最近更新**：2025-12-17
 
-## 角色与权限
-- user：基础访问。
-- admin/super_admin：管理用户、角色、权限（campus:rbac:*）。
+> 说明：本项目鉴权相关需求已按“基础设施域”拆分为多份文档，以减少耦合、提升可维护性与可扩展性。
 
-## 关键用例
-- 作为 user，我要登录并查看个人信息。
-- 作为 admin，我要为用户分配角色与权限。
+## 文档入口
+- 身份与访问控制（IAM）：`docs/requirements/iam.md`
+- 组织与岗位（部门树/岗位/用户多部门）：`docs/requirements/organization.md`
+- 数据范围与数据权限（类似 Ruoyi）：`docs/requirements/data-permission.md`
+- 审计日志（管理端全量审计）：`docs/requirements/audit.md`
 
-## 领域模型
-- UserProfile：authId、email、displayName、roles、permissions。
-- Role：code、name、scope。
-- Permission：code、module、action。
-
-## 业务规则与约束
-- 权限码格式：campus:<module>:<op>。
-- Supabase Auth 为身份源，业务表扩展属性。
-
-## 开放问题
-- 是否需要临时访问令牌？
-- 是否需要审批流变更角色？
+## 总原则（冻结）
+- Supabase Auth（`auth.users`）为身份与生命周期唯一事实来源（Create/Invite/Ban/Delete 必须走 Admin API）。
+- `public.profiles(id=auth.users.id)` 为业务扩展信息；`profiles` 保持极简，业务域通过独立扩展表扩展用户属性。
+- RBAC（权限码）控制模块可见性与接口访问；数据权限控制“可见数据范围”，两者分层。

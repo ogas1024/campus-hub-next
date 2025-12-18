@@ -10,9 +10,9 @@ export function Badge({
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { variant?: BadgeVariant }) {
   const styles: Record<BadgeVariant, string> = {
-    default: "bg-zinc-900 text-white",
-    secondary: "bg-zinc-100 text-zinc-900",
-    outline: "border border-zinc-200 text-zinc-900",
+    default: "bg-primary text-primary-foreground",
+    secondary: "bg-secondary text-secondary-foreground",
+    outline: "border border-input bg-background text-foreground",
   };
 
   return (
@@ -26,4 +26,3 @@ export function Badge({
     />
   );
 }
-

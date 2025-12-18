@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requirePerm } from "@/lib/auth/permissions";
 import { badRequest } from "@/lib/http/errors";
-import { jsonError } from "@/lib/http/route";
+import { getRequestContext, jsonError } from "@/lib/http/route";
 import { updateNoticeBodySchema } from "@/lib/modules/notices/notices.schemas";
 import { deleteNotice, getConsoleNoticeDetail, updateNotice } from "@/lib/modules/notices/notices.service";
 
@@ -23,6 +23,7 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PUT(request: Request, { params }: Params) {
   try {
     const user = await requirePerm("campus:notice:update");
+    const ctx = getRequestContext(request);
     const { id } = await params;
 
     const body = await request.json().catch(() => {
@@ -32,7 +33,7 @@ export async function PUT(request: Request, { params }: Params) {
     const parsed = updateNoticeBodySchema.safeParse(body);
     if (!parsed.success) throw badRequest("参数校验失败", parsed.error.flatten());
 
-    const data = await updateNotice({ userId: user.id, noticeId: id, ...parsed.data });
+    const data = await updateNotice({ noticeId: id, ...parsed.data, actor: { userId: user.id, email: user.email }, request: ctx });
     return NextResponse.json(data);
   } catch (err) {
     return jsonError(err);
@@ -42,9 +43,10 @@ export async function PUT(request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   try {
     const user = await requirePerm("campus:notice:delete");
+    const ctx = getRequestContext(_request);
     const { id } = await params;
 
-    const data = await deleteNotice({ userId: user.id, noticeId: id });
+    const data = await deleteNotice({ noticeId: id, actor: { userId: user.id, email: user.email }, request: ctx });
     return NextResponse.json(data);
   } catch (err) {
     return jsonError(err);

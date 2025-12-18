@@ -6,20 +6,36 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@campus-hub/db": "workspace:*",
+    "@radix-ui/react-alert-dialog": "*",
+    "@radix-ui/react-checkbox": "*",
+    "@radix-ui/react-collapsible": "*",
+    "@radix-ui/react-dialog": "*",
+    "@radix-ui/react-dropdown-menu": "*",
+    "@radix-ui/react-label": "*",
+    "@radix-ui/react-scroll-area": "*",
+    "@radix-ui/react-separator": "*",
+    "@radix-ui/react-slot": "*",
+    "@radix-ui/react-switch": "*",
+    "@radix-ui/react-tabs": "*",
     "@supabase/ssr": "*",
     "@supabase/supabase-js": "*",
     "@toast-ui/editor": "^3.2.2",
+    "clsx": "*",
     "drizzle-orm": "*",
+    "lucide-react": "*",
     "next": "16.0.10",
     "postgres": "*",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "tailwind-merge": "*",
     "zod": "*"
   },
   "devDependencies": {
@@ -32,6 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "*"
   }
 }

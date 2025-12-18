@@ -2,7 +2,7 @@
 
 **状态**：✅ 已实现（MVP）  
 **版本**：v1.0（MVP）  
-**最近更新**：2025-12-16
+**最近更新**：2025-12-17
 
 > 需求来源：`docs/requirements/notices.md`（已冻结 ✅）
 
@@ -23,6 +23,7 @@
 
 - `visibleAll=true`：全员可见
 - `visibleAll=false`：至少 1 条 scope；用户命中 role / department / position 任一即可见
+  - 其中 `department` 的命中口径为“部门及其子部门”（由组织闭包表支撑）
 
 ### 1.4 错误码（建议）
 
