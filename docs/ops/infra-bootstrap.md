@@ -59,7 +59,7 @@
 
 ### 1.6 配置数据范围（RoleDataScope）
 入口：`/console/roles/:id` → 数据范围配置
-- 先只落地 `module=user`（用于验证“部门及子部门”过滤），其他模块按需逐步补齐。
+- 已落地 `module=user`（用户管理）与 `module=notice`（公告管理）的数据范围注入；其他模块按需逐步补齐。
 - module 命名规则见：`docs/requirements/data-permission.md`
 
 ### 1.7 创建/邀请用户，并分配组织/角色/岗位
@@ -98,9 +98,9 @@
 - ✅ 不同角色登录后 Console 导航显隐符合预期（无权限不显示/不可访问）
 - ✅ 所有写操作可审计
 
-### 2.5 数据范围（先验收 module=user）
-- ✅ 为某角色配置 `module=user` 的数据范围（如 `CUSTOM` 选部门集合）
-- ✅ 用该角色账号登录后，`/console/users` 只能看到范围内用户（部门含子部门）
+### 2.5 数据范围（验收 module=user / module=notice）
+- ✅ 为某角色配置 `module=user` 的数据范围（如 `CUSTOM` 选部门集合），`/console/users` 仅返回范围内用户（部门含子部门）
+- ✅ 为某角色配置 `module=notice` 的数据范围，`/console/notices` 仅返回范围内公告（按公告 `created_by` 的部门归属判定）
 - ✅ 多角色合并规则符合文档（最宽松优先）
 
 ### 2.6 用户生命周期（Supabase Auth + profile.status）

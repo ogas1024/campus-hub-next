@@ -5,7 +5,7 @@
 **最近更新**：2025-12-18
 
 > 目标：用可重复的步骤验收“数据范围”能力是否按预期生效，尤其是**部门及子部门**、**多角色合并**。  
-> 当前落地范围：仅要求在 `module=user`（用户列表）完成注入验收；其他模块按需接入（属于后续迭代）。
+> 当前落地范围：已在 `module=user`（用户列表）与 `module=notice`（公告管理列表）完成注入验收；其他模块按需接入（属于后续迭代）。
 
 ## 0. 前置条件
 
@@ -20,9 +20,10 @@
 ### 1.1 module 命名（冻结）
 - `module` 来自权限码 `campus:<module>:<op>` 的 `module` 段
 - `module=user` ↔ `/console/users` ↔ `/api/console/users`
+- `module=notice` ↔ `/console/notices` ↔ `/api/console/notices`
 
 ### 1.2 默认兜底规则（无显式配置时）
-若用户在 `module=user` 下没有任何 RoleDataScope 配置：
+若用户在某个 `module` 下没有任何 RoleDataScope 配置：
 - 角色含 `admin/super_admin` → 视为 `ALL`
 - 否则 → 视为 `SELF`
 
@@ -134,6 +135,33 @@
 
 ## 5. 已知限制（MVP）
 
-- 当前仅在用户列表（`/console/users`）完成 DataScope 注入验收；其他模块（公告/课程资源/预约/图书等）后续逐模块接入。
+- 当前已在用户列表（`/console/users`）与公告管理（`/console/notices`）完成 DataScope 注入验收；其他模块（课程资源/预约/图书等）后续逐模块接入。
 - DataScope 只负责“可见数据过滤”，不替代 RBAC：无 `campus:user:list` 时仍无法进入用户管理。
 
+## 6. 通知公告（module=notice）验收（已接入）
+
+### 6.1 数据归属口径（Console）
+- Console 下 DataScope 以公告 `created_by`（创建者）作为数据归属字段。
+- 对于 `DEPT/DEPT_AND_CHILD/CUSTOM`：判定“创建者所属部门是否命中范围”。
+
+### 6.2 准备数据（最小集合）
+1) 准备两个“创建者”账号，并分别绑定到不同部门（例如 A11 与 B11），并给他们分配至少：
+   - `campus:notice:create`（用于创建测试公告）
+   - `campus:notice:list`（用于进入公告管理）
+2) 用两账号分别创建 1 条公告（建议标题带上部门标识，便于观察）。
+
+### 6.3 验收：`DEPT_AND_CHILD`
+1) 创建角色 `notice_view_dept_child`，赋予 `campus:notice:list`，并在角色详情页配置数据范围：
+   - `module=notice`
+   - `scopeType=DEPT_AND_CHILD`
+2) 将“查看者”账号绑定部门为 A（信息学院），并绑定该角色。
+3) 用查看者登录访问 `/console/notices`，期望：
+   - 只能看到由 A 或其子部门用户创建的公告（例如 A11 创建者创建的公告）
+   - 看不到 B 分支创建的公告
+   - 直接访问 B 分支公告的 `/console/notices/:id/edit` 返回 404（不可见）
+
+### 6.4 验收：`campus:notice:manage` 不越过 DataScope
+1) 给查看者额外赋予 `campus:notice:manage`（以及需要的 `campus:notice:update/publish/pin/delete`）。
+2) 期望：
+   - 仍不能看到 DataScope 外的公告
+   - 对 DataScope 内的“他人公告”可执行操作（同时仍受 RBAC 细分权限码约束）

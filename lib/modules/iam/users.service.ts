@@ -9,7 +9,7 @@ import { badRequest, conflict, forbidden, notFound } from "@/lib/http/errors";
 import type { RequestContext } from "@/lib/http/route";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
-import { resolveMergedScopeForUser } from "@/lib/modules/data-permission/dataPermission.service";
+import { buildUserIdDataScopeCondition } from "@/lib/modules/data-permission/dataPermission.where";
 import { authUsers, departmentClosure, departments, positions, profiles, roles, userDepartments, userPositions, userRoles } from "@campus-hub/db";
 
 type ProfileStatus = "pending_email_verification" | "pending_approval" | "active" | "disabled" | "banned";
@@ -116,25 +116,7 @@ function computeEffectiveStatus(row: {
 }
 
 async function buildVisibilityCondition(actorUserId: string) {
-  const scope = await resolveMergedScopeForUser({ userId: actorUserId, module: "user" });
-
-  if (scope.scopeType === "ALL") return { scope, condition: undefined };
-  if (scope.scopeType === "NONE") return { scope, condition: sql`false` };
-  if (scope.scopeType === "SELF") return { scope, condition: eq(profiles.id, actorUserId) };
-
-  if (scope.scopeType === "DEPT" || scope.scopeType === "DEPT_AND_CHILD" || scope.scopeType === "CUSTOM") {
-    const ids = scope.departmentIds;
-    if (!ids || ids.length === 0) return { scope, condition: sql`false` };
-
-    const userIdSubQuery = db
-      .select({ userId: userDepartments.userId })
-      .from(userDepartments)
-      .where(inArray(userDepartments.departmentId, ids));
-
-    return { scope, condition: inArray(profiles.id, userIdSubQuery) };
-  }
-
-  return { scope, condition: sql`false` };
+  return buildUserIdDataScopeCondition({ actorUserId, module: "user", targetUserIdColumn: profiles.id });
 }
 
 export async function listConsoleUsers(params: {

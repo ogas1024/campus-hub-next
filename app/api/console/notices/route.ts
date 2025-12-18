@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requirePerm } from "@/lib/auth/permissions";
 import { badRequest } from "@/lib/http/errors";
 import { parseBooleanParam, parseIntParam } from "@/lib/http/query";
-import { jsonError } from "@/lib/http/route";
+import { getRequestContext, jsonError } from "@/lib/http/route";
 import { createNoticeBodySchema } from "@/lib/modules/notices/notices.schemas";
 import { createNotice, listConsoleNotices } from "@/lib/modules/notices/notices.service";
 
@@ -42,6 +42,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requirePerm("campus:notice:create");
+    const ctx = getRequestContext(request);
     const body = await request.json().catch(() => {
       throw badRequest("请求体必须为 JSON");
     });
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     const parsed = createNoticeBodySchema.safeParse(body);
     if (!parsed.success) throw badRequest("参数校验失败", parsed.error.flatten());
 
-    const data = await createNotice({ userId: user.id, ...parsed.data });
+    const data = await createNotice({ ...parsed.data, actor: { userId: user.id, email: user.email }, request: ctx });
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
     return jsonError(err);
