@@ -92,9 +92,9 @@
 
 ## 4. 关键用例（Use Cases）
 
-- UC-R1：作为 user，在 `/resources` 浏览专业 → 课程 → 已发布资源列表，并可下载。
-- UC-R2：作为 user，在“我上传的”中创建草稿并上传文件/填写外链，提交审核。
-- UC-R3：作为 major_lead，在 `/console/resources` 审核本专业待审资源：通过/驳回（填写理由）。
+- UC-R1：作为 user，在 Portal 按“专业 → 课程 → 资源”逐级浏览已发布资源，并可下载。
+- UC-R2：作为 user，在“课程资源列表页”点击 **分享资源**，在同一界面完成文件上传/外链填写并提交审核（必要时可在“我的投稿”继续编辑草稿）。
+- UC-R3：作为 major_lead，在 `/console/resources/pending` 审核本专业待审资源：通过/驳回（填写理由）。
 - UC-R4：作为 major_lead，对本专业已发布资源执行下架维护；不可硬删除。
 - UC-R5：作为 admin/super_admin，跨专业管理专业/课程/负责人，审核资源，硬删除资源。
 - UC-R6：作为任意登录用户，查看下载榜/积分榜，并查看某用户的代表作 Top5/全部代表作。
@@ -233,27 +233,34 @@ stateDiagram-v2
 
 ### 8.1 Portal（/resources）
 
-- `/resources`：专业卡片列表
-- `/resources/courses?majorId=...`：课程卡片列表
-- `/resources/list?courseId=...`：资源列表（仅 published；最佳资源徽标并置顶）
-- `/resources/my`：我上传的（按状态分组/筛选；草稿编辑、提交审核、下架后维护）
-- `/resources/top`：排行榜
+- `/resources`：专业 Gallery（卡片网格；主屏聚焦专业列表）
+- `/resources/majors/:majorId`：课程 Gallery（卡片网格；主屏聚焦课程列表）
+- `/resources/majors/:majorId/courses/:courseId`：课程资源列表（仅 published；最佳置顶；主 CTA：分享资源）
+  - 下载：通过下载入口计数并 302
+  - 分享资源：进入 `/resources/majors/:majorId/courses/:courseId/share`
+- `/resources/majors/:majorId/courses/:courseId/share`：一步式投稿（创建草稿 → 上传/外链 → 提交审核）
+- `/resources/me`：我的投稿（草稿/驳回/下架的继续维护入口）
+- `/resources/leaderboard`：排行榜
   - 资源下载榜：scope（全站/专业/课程）+ days
   - 用户积分榜：scope（全站/专业）+ 代表作 Top5 + 用户抽屉查看全部代表作
 
 ### 8.2 Console（/console/resources）
 
-- 专业管理（admin/super_admin）：专业 CRUD、负责人配置（多选用户）
-- 课程管理（admin 全量；major_lead 仅本专业可见/可操作）
-- 资源审核：
-  - 待审列表（pending）：approve/reject(comment)
-  - 已发布（published）：offline；best/unbest
-  - 回收站（rejected/unpublished）：查看与处理
-  - 硬删除（仅 admin/super_admin）
+- 导航信息架构：Console 左侧新增分组“课程资源分享”，按任务流拆分子页面（避免单页堆叠）。
+- 页面清单：
+  - `/console/resources/pending`：待审核（approve/reject）
+  - `/console/resources/published`：已发布（offline/best/unbest）
+  - `/console/resources/rejected`：已驳回（查看/再次提审在资源详情或作者侧完成）
+  - `/console/resources/unpublished`：已下架（查看；硬删除仅 admin/super_admin）
+  - `/console/resources/majors`：专业管理（admin/super_admin）
+  - `/console/resources/courses`：课程管理（admin 全量；major_lead 仅本专业范围）
+  - `/console/resources/leads`：专业负责人配置（admin/super_admin 或授权账号）
+  - 审计：通过 `/console/audit` 检索（targetType=course_resource）
 
 ## 9. 验收标准（MVP）
 
 - major_lead 在 Console 下仅能看到并操作其负责专业范围内的数据（后端强制过滤）。
+- major_lead 可在 Console 资源详情页下载/打开资源用于审核核验，并在详情页完成 approve/reject；Console 端核验下载不计入下载次数/榜单。
 - user 可创建草稿并完成“签名直传上传 → 保存草稿 → 提交审核”；重复 sha256/URL 的资源无法提交审核。
 - major_lead 可 approve/reject，且 approve 会触发“首次通过”积分（幂等，不重复发放）。
 - best/unbest 可操作；首次 best 会触发“首次最佳”积分（幂等）。

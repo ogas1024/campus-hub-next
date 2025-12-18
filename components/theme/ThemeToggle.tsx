@@ -2,6 +2,7 @@
 
 import { Laptop, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -23,9 +24,15 @@ function normalizeTheme(value: string | undefined): ThemeMode {
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const currentTheme = normalizeTheme(theme);
-  const currentSystemLabel = resolvedTheme ? (resolvedTheme === "dark" ? "深色" : "浅色") : null;
+  const currentTheme = mounted ? normalizeTheme(theme) : "system";
+  const currentSystemLabel = mounted && resolvedTheme ? (resolvedTheme === "dark" ? "深色" : "浅色") : null;
   const buttonLabel =
     currentTheme === "system"
       ? `系统${currentSystemLabel ? `（${currentSystemLabel}）` : ""}`

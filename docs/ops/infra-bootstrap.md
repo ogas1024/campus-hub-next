@@ -22,6 +22,7 @@
 
 ### 0.3 Supabase Storage 配置
 - 创建 bucket：`avatars`，并设为 **public**（用于用户头像上传）。
+- 创建 bucket：`course-resources`，并设为 **private**（用于课程资源分享模块文件直传与下载；由服务端生成 signed upload url/signed url，前端不需要持有 service_role 权限）。
 
 ## 1. 初始化步骤（按推荐顺序）
 

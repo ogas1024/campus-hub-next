@@ -19,9 +19,9 @@ export const portalModules = [
   {
     id: "resources",
     label: "课程资源",
-    description: "课程资料分享与检索（建设中）。",
+    description: "课程资料分享与检索。",
     href: "/resources",
-    status: "comingSoon",
+    status: "available",
   },
   {
     id: "facilities",
@@ -92,6 +92,19 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
       { id: "permissions", label: "权限字典", href: "/console/permissions", permCode: "campus:permission:*" },
       { id: "audit", label: "审计", href: "/console/audit", permCode: "campus:audit:list" },
       { id: "config", label: "配置", href: "/console/config", permCode: "campus:config:update" },
+    ],
+  },
+  {
+    id: "course-resources",
+    label: "课程资源分享",
+    items: [
+      { id: "cr-pending", label: "待审核", href: "/console/resources/pending", permCode: "campus:resource:review" },
+      { id: "cr-published", label: "已发布", href: "/console/resources/published", permCode: "campus:resource:list" },
+      { id: "cr-rejected", label: "已驳回", href: "/console/resources/rejected", permCode: "campus:resource:list" },
+      { id: "cr-unpublished", label: "已下架", href: "/console/resources/unpublished", permCode: "campus:resource:list" },
+      { id: "cr-leads", label: "专业负责人", href: "/console/resources/leads", permCode: "campus:resource:major_lead_update" },
+      { id: "cr-majors", label: "专业管理", href: "/console/resources/majors", permCode: "campus:resource:major_list" },
+      { id: "cr-courses", label: "课程管理", href: "/console/resources/courses", permCode: "campus:resource:course_list" },
     ],
   },
   {

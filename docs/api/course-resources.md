@@ -267,7 +267,7 @@
 **响应（200）**
 
 ```json
-{ "bucket": "course-resources", "key": "resources/<id>/<uuid>-xxx.zip", "uploadUrl": "https://...signed..." }
+{ "bucket": "course-resources", "key": "resources/<id>/<uuid>-xxx.zip", "token": "string", "uploadUrl": "https://...signed..." }
 ```
 
 ## 5. Console（/api/console/resources/**）
@@ -297,6 +297,7 @@
 
 - `GET /api/console/resources`：列表（支持 status/majorId/courseId/q）
 - `GET /api/console/resources/:id`：详情
+- `POST /api/console/resources/:id/download`：下载/打开资源（不计数；用于审核核验，可用于 pending 等状态）
 - `POST /api/console/resources/:id/approve`：审核通过（可选 comment）
 - `POST /api/console/resources/:id/reject`：审核驳回（必填 comment）
 - `POST /api/console/resources/:id/offline`：下架（published -> unpublished）
@@ -306,4 +307,3 @@
 ### 5.5 硬删除（仅 admin/super_admin）
 
 - `DELETE /api/console/resources/:id`：硬删除（仅删库，不删 Storage 对象）
-
