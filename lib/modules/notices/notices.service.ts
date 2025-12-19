@@ -7,10 +7,10 @@ import type { RequestContext } from "@/lib/http/route";
 import { HttpError, badRequest, conflict, forbidden, notFound } from "@/lib/http/errors";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
+import { buildVisibilityCondition, getAudienceContext, getVisibleIdsForUser } from "@/lib/modules/content-visibility/contentVisibility";
 import { buildUserIdDataScopeCondition } from "@/lib/modules/data-permission/dataPermission.where";
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import {
-  departmentClosure,
   departments,
   noticeAttachments,
   noticeReads,
@@ -18,16 +18,7 @@ import {
   notices,
   positions,
   roles,
-  userDepartments,
-  userPositions,
-  userRoles,
 } from "@campus-hub/db";
-
-type AudienceContext = {
-  roleIds: string[];
-  departmentIds: string[];
-  positionIds: string[];
-};
 
 type NoticeScopeInput = { scopeType: "role" | "department" | "position"; refId: string };
 type NoticeAttachmentInput = {
@@ -128,73 +119,8 @@ function assertNoInlineHtml(contentMd: string) {
   }
 }
 
-async function getAudienceContext(userId: string): Promise<AudienceContext> {
-  const roleRows = await db
-    .select({ roleId: userRoles.roleId })
-    .from(userRoles)
-    .where(eq(userRoles.userId, userId));
-
-  const deptRows = await db
-    .select({ departmentId: userDepartments.departmentId })
-    .from(userDepartments)
-    .where(eq(userDepartments.userId, userId));
-
-  const positionRows = await db
-    .select({ positionId: userPositions.positionId })
-    .from(userPositions)
-    .where(eq(userPositions.userId, userId));
-
-  return {
-    roleIds: roleRows.map((r) => r.roleId),
-    departmentIds: deptRows.map((d) => d.departmentId),
-    positionIds: positionRows.map((p) => p.positionId),
-  };
-}
-
-async function getVisibleNoticeIdsForUser(ctx: AudienceContext): Promise<string[]> {
-  const noticeIdSet = new Set<string>();
-
-  if (ctx.roleIds.length > 0) {
-    const rows = await db
-      .select({ noticeId: noticeScopes.noticeId })
-      .from(noticeScopes)
-      .where(and(eq(noticeScopes.scopeType, "role"), inArray(noticeScopes.refId, ctx.roleIds)));
-    for (const r of rows) noticeIdSet.add(r.noticeId);
-  }
-
-  if (ctx.departmentIds.length > 0) {
-    const rows = await db
-      .select({ noticeId: noticeScopes.noticeId })
-      .from(noticeScopes)
-      .innerJoin(
-        departmentClosure,
-        and(
-          eq(departmentClosure.ancestorId, noticeScopes.refId),
-          inArray(departmentClosure.descendantId, ctx.departmentIds),
-        ),
-      )
-      .where(eq(noticeScopes.scopeType, "department"));
-    for (const r of rows) noticeIdSet.add(r.noticeId);
-  }
-
-  if (ctx.positionIds.length > 0) {
-    const rows = await db
-      .select({ noticeId: noticeScopes.noticeId })
-      .from(noticeScopes)
-      .where(and(eq(noticeScopes.scopeType, "position"), inArray(noticeScopes.refId, ctx.positionIds)));
-    for (const r of rows) noticeIdSet.add(r.noticeId);
-  }
-
-  return [...noticeIdSet];
-}
-
 function isExpired(expireAt: Date | null, now: Date) {
   return !!expireAt && expireAt.getTime() <= now.getTime();
-}
-
-function buildVisibilityCondition(visibleNoticeIds: string[]) {
-  if (visibleNoticeIds.length === 0) return eq(notices.visibleAll, true);
-  return or(eq(notices.visibleAll, true), inArray(notices.id, visibleNoticeIds));
 }
 
 export async function listPortalNotices(params: {
@@ -209,12 +135,23 @@ export async function listPortalNotices(params: {
 }) {
   const now = new Date();
   const ctx = await getAudienceContext(params.userId);
-  const visibleIds = await getVisibleNoticeIdsForUser(ctx);
+  const visibleIds = await getVisibleIdsForUser({
+    ctx,
+    scopesTable: noticeScopes,
+    resourceIdColumn: noticeScopes.noticeId,
+    scopeTypeColumn: noticeScopes.scopeType,
+    refIdColumn: noticeScopes.refId,
+  });
   const manageAll = await hasPerm(params.userId, "campus:notice:manage");
 
   const baseWhere = [isNull(notices.deletedAt), eq(notices.status, "published")];
   if (!manageAll) {
-    baseWhere.push(or(eq(notices.createdBy, params.userId), buildVisibilityCondition(visibleIds))!);
+    baseWhere.push(
+      or(
+        eq(notices.createdBy, params.userId),
+        buildVisibilityCondition({ visibleIds, visibleAllColumn: notices.visibleAll, idColumn: notices.id }),
+      )!,
+    );
   }
 
   if (!params.includeExpired) {
@@ -303,9 +240,15 @@ export async function listPortalNotices(params: {
 export async function getPortalNoticeDetail(params: { userId: string; noticeId: string }) {
   const now = new Date();
   const ctx = await getAudienceContext(params.userId);
-  const visibleIds = await getVisibleNoticeIdsForUser(ctx);
+  const visibleIds = await getVisibleIdsForUser({
+    ctx,
+    scopesTable: noticeScopes,
+    resourceIdColumn: noticeScopes.noticeId,
+    scopeTypeColumn: noticeScopes.scopeType,
+    refIdColumn: noticeScopes.refId,
+  });
   const manageAll = await hasPerm(params.userId, "campus:notice:manage");
-  const visibility = buildVisibilityCondition(visibleIds);
+  const visibility = buildVisibilityCondition({ visibleIds, visibleAllColumn: notices.visibleAll, idColumn: notices.id });
 
   const joinOn = and(eq(noticeReads.noticeId, notices.id), eq(noticeReads.userId, params.userId));
 
@@ -406,8 +349,14 @@ export async function getPortalNoticeDetail(params: { userId: string; noticeId: 
 
 export async function markNoticeRead(params: { userId: string; noticeId: string }) {
   const ctx = await getAudienceContext(params.userId);
-  const visibleIds = await getVisibleNoticeIdsForUser(ctx);
-  const visibility = buildVisibilityCondition(visibleIds);
+  const visibleIds = await getVisibleIdsForUser({
+    ctx,
+    scopesTable: noticeScopes,
+    resourceIdColumn: noticeScopes.noticeId,
+    scopeTypeColumn: noticeScopes.scopeType,
+    refIdColumn: noticeScopes.refId,
+  });
+  const visibility = buildVisibilityCondition({ visibleIds, visibleAllColumn: notices.visibleAll, idColumn: notices.id });
   const manageAll = await hasPerm(params.userId, "campus:notice:manage");
 
   const exists = await db

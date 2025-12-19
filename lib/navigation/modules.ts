@@ -33,9 +33,9 @@ export const portalModules = [
   {
     id: "surveys",
     label: "问卷",
-    description: "面向全校的问卷收集（建设中）。",
+    description: "问卷收集、统计、导出与 AI 总结。",
     href: "/surveys",
-    status: "comingSoon",
+    status: "available",
   },
   {
     id: "votes",
@@ -106,6 +106,12 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
         label: "课程资源分享",
         href: "/console/resources",
         permCodes: [...courseResourcesConsoleEntryPermCodes],
+      },
+      {
+        id: "surveys",
+        label: "问卷",
+        href: "/console/surveys",
+        permCodes: ["campus:survey:*", "campus:survey:list", "campus:survey:read", "campus:survey:create", "campus:survey:update"],
       },
     ],
   },
