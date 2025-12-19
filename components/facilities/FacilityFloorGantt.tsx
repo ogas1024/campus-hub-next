@@ -283,6 +283,7 @@ export function FacilityFloorGantt(props: Props) {
                 ? {
                     startMs: Math.min(activeDrag.startMs, activeDrag.currentMs),
                     endMs: Math.max(activeDrag.startMs, activeDrag.currentMs),
+                    cursorMs: activeDrag.currentMs,
                   }
                 : null;
 
@@ -448,7 +449,7 @@ export function FacilityFloorGantt(props: Props) {
                           data-kind="selection-label"
                           className="pointer-events-none absolute top-1 rounded-md bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-700"
                           style={{
-                            left: `${Math.min(98, Math.max(2, ((activeDrag.currentMs - fromMs) / durationMs) * 100))}%`,
+                            left: `${Math.min(98, Math.max(2, ((selection.cursorMs - fromMs) / durationMs) * 100))}%`,
                             transform: "translateX(-50%)",
                           }}
                         >

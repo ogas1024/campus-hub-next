@@ -165,7 +165,7 @@ export default async function FacilitiesMePage({ searchParams }: { searchParams:
                             userId={user.id}
                             reservationId={it.id}
                             status={it.status}
-                            startAt={it.startAt}
+                            startAt={it.startAt.toISOString()}
                             nowIso={nowIso}
                           />
                         </td>

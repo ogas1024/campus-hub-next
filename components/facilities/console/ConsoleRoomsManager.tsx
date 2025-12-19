@@ -129,8 +129,9 @@ export function ConsoleRoomsManager() {
       return;
     }
 
-    const capacityValue = formCapacity.trim() ? Number(formCapacity) : null;
-    if (formCapacity.trim() && (!Number.isFinite(capacityValue) || capacityValue < 0)) {
+    const capacityText = formCapacity.trim();
+    const capacityValue = capacityText ? Number(capacityText) : null;
+    if (capacityValue != null && (!Number.isFinite(capacityValue) || !Number.isInteger(capacityValue) || capacityValue < 0)) {
       action.setError("容量必须为非负整数或留空");
       return;
     }
