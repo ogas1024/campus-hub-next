@@ -551,6 +551,70 @@ export async function listConsoleNotices(params: {
   };
 }
 
+export async function countConsolePublishedNoticesExpiringSoon(params: { userId: string; withinDays: number }) {
+  const withinDays = Math.max(0, Math.floor(params.withinDays));
+  if (withinDays <= 0) return 0;
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.userId,
+    module: "notice",
+    targetUserIdColumn: notices.createdBy,
+  });
+
+  const baseWhere = [
+    isNull(notices.deletedAt),
+    eq(notices.status, "published"),
+    visibilityCondition ?? sql`true`,
+    sql`${notices.expireAt} is not null`,
+    sql`${notices.expireAt} > now()`,
+    sql`${notices.expireAt} <= now() + (${withinDays} * interval '1 day')`,
+  ];
+
+  const rows = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(notices)
+    .where(and(...baseWhere))
+    .limit(1);
+
+  return Number(rows[0]?.total ?? 0);
+}
+
+export async function listConsolePublishedNoticesExpiringSoon(params: { userId: string; withinDays: number; limit: number }) {
+  const withinDays = Math.max(0, Math.floor(params.withinDays));
+  if (withinDays <= 0) return [];
+
+  const limit = Math.min(50, Math.max(1, Math.floor(params.limit)));
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.userId,
+    module: "notice",
+    targetUserIdColumn: notices.createdBy,
+  });
+
+  const baseWhere = [
+    isNull(notices.deletedAt),
+    eq(notices.status, "published"),
+    visibilityCondition ?? sql`true`,
+    sql`${notices.expireAt} is not null`,
+    sql`${notices.expireAt} > now()`,
+    sql`${notices.expireAt} <= now() + (${withinDays} * interval '1 day')`,
+  ];
+
+  const rows = await db
+    .select({
+      id: notices.id,
+      title: notices.title,
+      expireAt: notices.expireAt,
+      updatedAt: notices.updatedAt,
+    })
+    .from(notices)
+    .where(and(...baseWhere))
+    .orderBy(asc(notices.expireAt), desc(notices.updatedAt))
+    .limit(limit);
+
+  return rows.flatMap((r) => (r.expireAt ? [{ id: r.id, title: r.title, expireAt: r.expireAt }] : []));
+}
+
 export async function getConsoleNoticeDetail(params: { userId: string; noticeId: string }) {
   const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
     actorUserId: params.userId,

@@ -19,9 +19,9 @@ export const portalModules = [
   {
     id: "resources",
     label: "课程资源",
-    description: "课程资料分享与检索（建设中）。",
+    description: "课程资料分享与检索。",
     href: "/resources",
-    status: "comingSoon",
+    status: "available",
   },
   {
     id: "facilities",
@@ -71,7 +71,7 @@ export type ConsoleModule = {
   id: string;
   label: string;
   href: string;
-  permCode: string;
+  permCodes: string[];
 };
 
 export type ConsoleNavGroup = {
@@ -80,26 +80,43 @@ export type ConsoleNavGroup = {
   items: ConsoleModule[];
 };
 
+export const courseResourcesConsoleEntryPermCodes = [
+  "campus:resource:review",
+  "campus:resource:list",
+  "campus:resource:read",
+  "campus:resource:major_list",
+  "campus:resource:course_list",
+  "campus:resource:major_lead_update",
+] as const;
+
 export const consoleNavGroups: ConsoleNavGroup[] = [
+  {
+    id: "life",
+    label: "生活平台",
+    items: [
+      { id: "notices", label: "通知公告", href: "/console/notices", permCodes: ["campus:notice:list"] },
+      {
+        id: "resources",
+        label: "课程资源分享",
+        href: "/console/resources",
+        permCodes: [...courseResourcesConsoleEntryPermCodes],
+      },
+    ],
+  },
   {
     id: "infra",
     label: "基础设施",
     items: [
-      { id: "users", label: "用户", href: "/console/users", permCode: "campus:user:list" },
-      { id: "roles", label: "角色", href: "/console/roles", permCode: "campus:role:*" },
-      { id: "departments", label: "部门", href: "/console/departments", permCode: "campus:department:*" },
-      { id: "positions", label: "岗位", href: "/console/positions", permCode: "campus:position:*" },
-      { id: "permissions", label: "权限字典", href: "/console/permissions", permCode: "campus:permission:*" },
-      { id: "audit", label: "审计", href: "/console/audit", permCode: "campus:audit:list" },
-      { id: "config", label: "配置", href: "/console/config", permCode: "campus:config:update" },
+      { id: "users", label: "用户", href: "/console/users", permCodes: ["campus:user:list"] },
+      { id: "roles", label: "角色", href: "/console/roles", permCodes: ["campus:role:*"] },
+      { id: "departments", label: "部门", href: "/console/departments", permCodes: ["campus:department:*"] },
+      { id: "positions", label: "岗位", href: "/console/positions", permCodes: ["campus:position:*"] },
+      { id: "permissions", label: "权限字典", href: "/console/permissions", permCodes: ["campus:permission:*"] },
+      { id: "audit", label: "审计", href: "/console/audit", permCodes: ["campus:audit:list"] },
+      { id: "config", label: "配置", href: "/console/config", permCodes: ["campus:config:update"] },
     ],
-  },
-  {
-    id: "business",
-    label: "业务模块",
-    items: [{ id: "notices", label: "公告管理", href: "/console/notices", permCode: "campus:notice:list" }],
   },
 ] satisfies ConsoleNavGroup[];
 
 export const consoleModules: ConsoleModule[] = consoleNavGroups.flatMap((g) => g.items);
-export const consoleEntryPermCodes = consoleModules.map((m) => m.permCode);
+export const consoleEntryPermCodes = [...new Set(consoleModules.flatMap((m) => m.permCodes))];

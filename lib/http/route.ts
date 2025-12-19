@@ -29,8 +29,13 @@ export function jsonError(err: unknown) {
     );
   }
 
+  console.error("[route] unhandled error", err);
+
+  const isDev = process.env.NODE_ENV !== "production";
+  const details = isDev && err instanceof Error ? { name: err.name, message: err.message } : {};
+
   return NextResponse.json(
-    { error: { code: "INTERNAL_ERROR", message: "服务端错误", details: {} } },
+    { error: { code: "INTERNAL_ERROR", message: "服务端错误", details } },
     { status: 500 },
   );
 }
