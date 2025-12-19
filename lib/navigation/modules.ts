@@ -26,9 +26,9 @@ export const portalModules = [
   {
     id: "facilities",
     label: "功能房预约",
-    description: "在线预约与管理功能房（建设中）。",
+    description: "在线预约与管理功能房。",
     href: "/facilities",
-    status: "comingSoon",
+    status: "available",
   },
   {
     id: "surveys",
@@ -95,6 +95,12 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
     label: "生活平台",
     items: [
       { id: "notices", label: "通知公告", href: "/console/notices", permCodes: ["campus:notice:list"] },
+      {
+        id: "facilities",
+        label: "功能房预约",
+        href: "/console/facilities",
+        permCodes: ["campus:facility:*", "campus:facility:review", "campus:facility:config", "campus:facility:ban"],
+      },
       {
         id: "resources",
         label: "课程资源分享",

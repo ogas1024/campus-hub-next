@@ -12,7 +12,7 @@
 - ✅ [数据范围与数据权限（Data Permission）](./data-permission.md)
 - ✅ [审计日志（Audit）](./audit.md)
 - ✅ [Console 信息架构（IA）](./console-ia.md)
-- 🟠 [功能房预约](./facility-reservation.md)
+- ✅ [功能房预约](./facility-reservation.md)
 - ✅ [课程资源分享](./course-resources.md)
 - ✅ [通知公告](./notices.md)
 - 🟠 [数字图书馆](./library.md)
