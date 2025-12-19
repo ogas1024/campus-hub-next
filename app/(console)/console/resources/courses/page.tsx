@@ -40,18 +40,8 @@ export default async function ConsoleResourceCoursesPage({ searchParams }: { sea
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <Link href="/console/resources" className="text-sm text-muted-foreground hover:text-foreground">
-          ← 返回课程资源
-        </Link>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-semibold">课程管理</h1>
-            <p className="text-sm text-muted-foreground">维护课程字典；major_lead 仅能操作本专业范围。</p>
-          </div>
-          <Link href="/console/resources" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            资源列表
-          </Link>
-        </div>
+        <h1 className="text-xl font-semibold">课程管理</h1>
+        <p className="text-sm text-muted-foreground">维护课程字典；major_lead 仅能操作本专业范围。</p>
       </div>
 
       {majors.length === 0 ? (
@@ -110,4 +100,3 @@ export default async function ConsoleResourceCoursesPage({ searchParams }: { sea
     </div>
   );
 }
-

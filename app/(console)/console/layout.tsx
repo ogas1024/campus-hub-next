@@ -5,7 +5,7 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ConsoleSidebar } from "@/components/console/ConsoleSidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
-import { hasPerm } from "@/lib/auth/permissions";
+import { hasAnyPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { consoleNavGroups } from "@/lib/navigation/modules";
 
@@ -19,7 +19,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
 
   const allowedGroups = await Promise.all(
     consoleNavGroups.map(async (g) => {
-      const allowedItems = await Promise.all(g.items.map(async (m) => ((await hasPerm(user.id, m.permCode)) ? m : null)));
+      const allowedItems = await Promise.all(g.items.map(async (m) => ((await hasAnyPerm(user.id, m.permCodes)) ? m : null)));
       const items = allowedItems.filter((m): m is NonNullable<typeof m> => m !== null).map(({ id, label, href }) => ({ id, label, href }));
       if (items.length === 0) return null;
       return { id: g.id, label: g.label, items };
@@ -28,6 +28,12 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   const navGroups = allowedGroups.filter((g): g is NonNullable<typeof g> => g !== null);
 
   if (navGroups.length === 0) redirect("/notices");
+
+  navGroups.unshift({
+    id: "workbench",
+    label: "工作台",
+    items: [{ id: "workbench", label: "概览", href: "/console/workbench" }],
+  });
 
   return (
     <div className="min-h-screen bg-background">

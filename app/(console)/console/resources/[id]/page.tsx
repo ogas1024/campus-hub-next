@@ -33,10 +33,6 @@ export default async function ConsoleResourceDetailPage({ params }: { params: Pr
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <Link href="/console/resources" className="text-sm text-muted-foreground hover:text-foreground">
-          ← 返回课程资源
-        </Link>
-
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold">{resource.title}</h1>
           {resource.isBest ? <Badge>最佳</Badge> : null}

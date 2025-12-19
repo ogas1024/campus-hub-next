@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { MajorsManager } from "@/components/course-resources/MajorsManager";
 import { Card, CardContent } from "@/components/ui/card";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
@@ -20,9 +18,6 @@ export default async function ConsoleResourceMajorsPage() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <Link href="/console/resources" className="text-sm text-muted-foreground hover:text-foreground">
-          ← 返回课程资源
-        </Link>
         <h1 className="text-xl font-semibold">专业管理</h1>
         <p className="text-sm text-muted-foreground">维护专业字典与负责人映射（major_lead）。专业为软删，不级联删除课程/资源。</p>
       </div>
@@ -42,4 +37,3 @@ export default async function ConsoleResourceMajorsPage() {
     </div>
   );
 }
-

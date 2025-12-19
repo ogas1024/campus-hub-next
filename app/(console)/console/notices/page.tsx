@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
+import { ConsoleModuleTabs } from "@/components/console/ConsoleModuleTabs";
 import { ConsoleNoticeActions } from "@/components/notices/ConsoleNoticeActions";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { parseIntParam } from "@/lib/http/query";
 import { listConsoleNotices } from "@/lib/modules/notices/notices.service";
+import { formatZhDateTime } from "@/lib/ui/datetime";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -60,13 +62,14 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
   const status = pickString(sp.status);
   const statusValue = status === "draft" || status === "published" || status === "retracted" ? status : undefined;
 
-  const [canCreate, canUpdate, canDelete, canPin, canPublish, canManageAll] = await Promise.all([
+  const [canCreate, canUpdate, canDelete, canPin, canPublish, canManageAll, canAuditList] = await Promise.all([
     hasPerm(user.id, "campus:notice:create"),
     hasPerm(user.id, "campus:notice:update"),
     hasPerm(user.id, "campus:notice:delete"),
     hasPerm(user.id, "campus:notice:pin"),
     hasPerm(user.id, "campus:notice:publish"),
     hasPerm(user.id, "campus:notice:manage"),
+    hasPerm(user.id, "campus:audit:list"),
   ]);
 
   const page = parseIntParam(pickString(sp.page) ?? null, { defaultValue: 1, min: 1 });
@@ -101,41 +104,39 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">公告管理</h1>
+          <h1 className="text-xl font-semibold">通知公告</h1>
           <p className="text-sm text-muted-foreground">草稿/撤回 → 发布；已发布可撤回；置顶仅对“已发布且未过期”生效。</p>
           <div className="text-sm text-muted-foreground">
             共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
           </div>
         </div>
-        {canCreate ? (
-          <Link href="/console/notices/new" className={buttonVariants({ size: "sm" })}>
-            新建公告
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {canAuditList ? (
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/audit?targetType=notice">
+              审计检索
+            </Link>
+          ) : null}
+          {canCreate ? (
+            <Link href="/console/notices/new" className={buttonVariants({ size: "sm" })}>
+              新建公告
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {[
-          { label: "全部", value: undefined },
-          { label: "已发布", value: "published" },
-          { label: "草稿", value: "draft" },
-          { label: "已撤回", value: "retracted" },
-        ].map((t) => {
-          const active = (statusValue ?? undefined) === t.value;
-          return (
-            <Link
-              key={t.label}
-              href={buildConsoleNoticesHref({ status: t.value, q, includeExpired, mine, page: 1, pageSize })}
-              className={[
-                "rounded-full px-3 py-1 text-xs font-medium",
-                active ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                "border border-input",
-              ].join(" ")}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
+        <div className="max-w-full overflow-x-auto">
+          <ConsoleModuleTabs
+            ariaLabel="通知公告 状态切换"
+            activeId={statusValue ?? "all"}
+            tabs={[
+              { id: "all", label: "全部", href: buildConsoleNoticesHref({ status: undefined, q, includeExpired, mine, page: 1, pageSize }) },
+              { id: "published", label: "已发布", href: buildConsoleNoticesHref({ status: "published", q, includeExpired, mine, page: 1, pageSize }) },
+              { id: "draft", label: "草稿", href: buildConsoleNoticesHref({ status: "draft", q, includeExpired, mine, page: 1, pageSize }) },
+              { id: "retracted", label: "已撤回", href: buildConsoleNoticesHref({ status: "retracted", q, includeExpired, mine, page: 1, pageSize }) },
+            ]}
+          />
+        </div>
 
         <div className="ml-auto" />
 
@@ -227,9 +228,9 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
                     {statusMeta(n.status).label}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{n.publishAt ? new Date(n.publishAt).toLocaleString() : "—"}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{n.expireAt ? new Date(n.expireAt).toLocaleString() : "—"}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(n.updatedAt).toLocaleString()}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{formatZhDateTime(n.publishAt)}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{formatZhDateTime(n.expireAt)}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{formatZhDateTime(n.updatedAt)}</td>
                 <td className="px-3 py-2 text-right text-sm text-muted-foreground">{n.readCount}</td>
                 <td className="px-3 py-2">
                   <ConsoleNoticeActions

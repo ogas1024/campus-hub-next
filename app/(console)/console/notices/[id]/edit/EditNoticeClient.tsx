@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
 import { DepartmentTreeSelector } from "@/components/organization/DepartmentTreeSelector";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ type Props = {
     canPin: boolean;
     canPublish: boolean;
     canManageAll: boolean;
+    canAuditList: boolean;
   };
 };
 
@@ -212,9 +213,19 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
             状态：<span className="font-medium text-foreground">{statusLabel(status)}</span> · 置顶：{pinned ? "是" : "否"}
           </p>
         </div>
-        <Link className="text-sm text-muted-foreground hover:text-foreground" href="/console/notices">
-          ← 返回
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {perms.canAuditList ? (
+            <Link
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              href={`/console/audit?targetType=notice&targetId=${noticeId}`}
+            >
+              查看审计
+            </Link>
+          ) : null}
+          <Link className="text-sm text-muted-foreground hover:text-foreground" href="/console/notices">
+            ← 返回
+          </Link>
+        </div>
       </div>
 
       <Card>

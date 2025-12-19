@@ -17,9 +17,6 @@ export default async function ConsoleResourceLeadsPage() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <Link href="/console/resources" className="text-sm text-muted-foreground hover:text-foreground">
-          ← 返回课程资源分享
-        </Link>
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-xl font-semibold">专业负责人</h1>
@@ -46,4 +43,3 @@ export default async function ConsoleResourceLeadsPage() {
     </div>
   );
 }
-

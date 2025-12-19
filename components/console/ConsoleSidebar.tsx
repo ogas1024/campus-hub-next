@@ -27,8 +27,10 @@ export function ConsoleSidebar({ groups }: Props) {
   }, [groups, pathname]);
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => {
+    const preferOpenId = groupsWithActive.some((g) => g.id === "life") ? "life" : (groupsWithActive.find((g) => g.id !== "workbench")?.id ?? "");
+
     const initial: Record<string, boolean> = {};
-    for (const g of groupsWithActive) initial[g.id] = g.id === "infra" || g.hasActive;
+    for (const g of groupsWithActive) initial[g.id] = g.id === "workbench" || g.id === preferOpenId || g.hasActive;
     return initial;
   });
 
