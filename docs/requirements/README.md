@@ -15,6 +15,7 @@
 - ✅ [功能房预约](./facility-reservation.md)
 - ✅ [课程资源分享](./course-resources.md)
 - ✅ [通知公告](./notices.md)
+- ✅ [问卷](./surveys.md)
 - 🟠 [数字图书馆](./library.md)
 - 🟠 [失物招领](./lost-found.md)
 - ✅ [鉴权与用户](./auth.md)
