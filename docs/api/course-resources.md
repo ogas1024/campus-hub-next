@@ -1,10 +1,10 @@
-# 课程资源分享模块 API 契约（MVP 草案）
+# 课程资源分享模块 API 契约（MVP）
 
-**状态**：🟠 待冻结（等待确认）  
-**版本**：v1.0-draft（MVP）  
-**最近更新**：2025-12-18
+**状态**：✅ 已实现（MVP）  
+**版本**：v1.0（MVP）  
+**最近更新**：2025-12-19
 
-> 需求来源：`docs/requirements/course-resources.md`（待冻结）  
+> 需求来源：`docs/requirements/course-resources.md`（已冻结 ✅）  
 > 约定：Portal 端仅要求登录（`requireUser`）；Console 端按权限码（RBAC）控制，并在 Service 层强制执行 `major_lead` 的专业范围过滤。
 
 ## 1. 通用约定
@@ -272,7 +272,7 @@
 
 ## 5. Console（/api/console/resources/**）
 
-> 权限码建议见：`docs/requirements/course-resources.md` 与 `docs/ops/role-permission-matrix.md`（待迁移落地）。
+> 权限码建议见：`docs/requirements/course-resources.md` 与 `docs/ops/role-permission-matrix.md`（权限字典与默认授权已在迁移落地：`packages/db/migrations/0004_course_resources.sql`）。
 
 ### 5.1 专业（admin/super_admin）
 

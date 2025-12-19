@@ -2,7 +2,7 @@
 
 **状态**：建议采用（可按学校组织与业务裁剪）  
 **版本**：v1.0  
-**最近更新**：2025-12-18
+**最近更新**：2025-12-19
 
 > 目标：给出“默认角色集合 + 推荐权限码集合 + 授权口径”，便于从 0 落地一套可维护、可扩展的 RBAC。  
 > 原则：**模块可见性/接口访问**用权限码（RBAC）控制；**数据范围**用 RoleDataScope 控制（见 `docs/requirements/data-permission.md`）。
@@ -58,9 +58,9 @@
 - 审计（module=audit）：`campus:audit:list`
 - 配置（module=config）：`campus:config:update`
 
-### 2.3 课程资源分享（module=resource）（待落地）
+### 2.3 课程资源分享（module=resource）（已落地）
 
-> 说明：本节为“课程资源分享 MVP”规划权限码；将在对应 DB 迁移中补齐权限字典与默认授权。
+> 说明：本节对应“课程资源分享 MVP”；权限字典与默认授权已在迁移中落地：`packages/db/migrations/0004_course_resources.sql`。
 
 - 专业（admin/super_admin）
   - `campus:resource:major_list`

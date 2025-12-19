@@ -1,8 +1,8 @@
-# 课程资源分享模块需求说明（MVP 冻结草案）
+# 课程资源分享模块需求说明（MVP 冻结版）
 
-**状态**：🟠 待冻结（等待确认）  
-**版本**：v1.0-draft（MVP）  
-**最近更新**：2025-12-18
+**状态**：✅ 已批准  
+**版本**：v1.0（MVP）  
+**最近更新**：2025-12-19
 
 > 业务参考来源：`campus-hub-ruoyi/docs/requirements/课程资源分享.md`（仅作为业务输入；本仓库按 `campus-hub-next` 架构与最佳实践重构落地）。  
 > 目标：在不引入额外付费/复杂基础设施的前提下，落地一个“可运行、可测试、可部署”的课程资源分享 MVP。
@@ -246,7 +246,7 @@ stateDiagram-v2
 
 ### 8.2 Console（/console/resources）
 
-- 导航信息架构：Console 左侧新增分组“课程资源分享”，按任务流拆分子页面（避免单页堆叠）。
+- 导航信息架构：遵循 `docs/requirements/console-ia.md`；入口位于 Console 的“生活平台 → 课程资源分享”，模块内子视图使用 Tabs，并按任务流拆分子页面（避免单页堆叠）。
 - 页面清单：
   - `/console/resources/pending`：待审核（approve/reject）
   - `/console/resources/published`：已发布（offline/best/unbest）
@@ -266,6 +266,6 @@ stateDiagram-v2
 - best/unbest 可操作；首次 best 会触发“首次最佳”积分（幂等）。
 - 下载入口会计数并跳转；榜单按 days 窗口正确返回；用户积分榜展示代表作 Top5 且可查看全部代表作。
 
-## 10. 待确认（本轮已冻结，无遗留）
+## 10. 待确认（已冻结，无遗留）
 
-- 本文档为待冻结草案；待你确认后将状态改为 ✅ 已批准，并进入 DB/API/实现阶段。
+- 无
