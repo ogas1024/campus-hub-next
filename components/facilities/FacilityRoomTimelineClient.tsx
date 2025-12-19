@@ -20,14 +20,22 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { fetchFacilityRoomTimeline, type RoomTimelineResponse } from "@/lib/api/facilities";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
-import { formatFacilityFloorLabel } from "@/lib/modules/facilities/facilities.ui";
+import { useFacilityPortalConfig } from "@/lib/hooks/useFacilityPortalConfig";
+import {
+  DEFAULT_FACILITY_TIMELINE_DAYS,
+  DEFAULT_FACILITY_TIMELINE_TICK_HOURS,
+  FACILITY_TIMELINE_TICK_HOURS,
+  FACILITY_TIMELINE_WINDOW_DAYS,
+  formatFacilityFloorLabel,
+} from "@/lib/modules/facilities/facilities.ui";
 
 type Props = {
   userId: string;
   roomId: string;
 };
 
-type Days = 7 | 30;
+type Days = (typeof FACILITY_TIMELINE_WINDOW_DAYS)[number];
+type TickHours = (typeof FACILITY_TIMELINE_TICK_HOURS)[number];
 
 function todayLocalDateString() {
   const now = new Date();
@@ -54,9 +62,15 @@ function isoToLocalDateString(iso: string) {
 
 export function FacilityRoomTimelineClient(props: Props) {
   const sp = useSearchParams();
+  const portalConfig = useFacilityPortalConfig();
   const timelineAction = useAsyncAction({ fallbackErrorMessage: "加载时间轴失败" });
 
-  const initialDays = useMemo<Days>(() => (sp.get("days") === "7" ? 7 : 30), [sp]);
+  const initialDays = useMemo<Days>(() => {
+    const raw = sp.get("days");
+    const n = raw ? Number(raw) : NaN;
+    if (Number.isFinite(n) && FACILITY_TIMELINE_WINDOW_DAYS.some((d) => d === n)) return n as Days;
+    return DEFAULT_FACILITY_TIMELINE_DAYS;
+  }, [sp]);
   const initialFromDate = useMemo(() => {
     const raw = sp.get("from");
     return raw ? isoToLocalDateString(raw) : todayLocalDateString();
@@ -64,6 +78,7 @@ export function FacilityRoomTimelineClient(props: Props) {
 
   const [days, setDays] = useState<Days>(initialDays);
   const [fromDate, setFromDate] = useState(initialFromDate);
+  const [tickHours, setTickHours] = useState<TickHours>(DEFAULT_FACILITY_TIMELINE_TICK_HOURS);
   const [data, setData] = useState<RoomTimelineResponse | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -121,7 +136,7 @@ export function FacilityRoomTimelineClient(props: Props) {
         </div>
       </div>
 
-      <InlineError message={timelineAction.error} />
+      <InlineError message={portalConfig.error || timelineAction.error} />
 
       <div className="grid gap-3 md:grid-cols-12">
         <div className="md:col-span-3">
@@ -130,9 +145,22 @@ export function FacilityRoomTimelineClient(props: Props) {
         </div>
         <div className="md:col-span-2">
           <Label>窗口</Label>
-          <Select value={String(days)} onChange={(e) => setDays((e.target.value === "7" ? 7 : 30) as Days)}>
-            <option value="7">7 天</option>
-            <option value="30">30 天</option>
+          <Select value={String(days)} onChange={(e) => setDays(Number(e.target.value) as Days)}>
+            {FACILITY_TIMELINE_WINDOW_DAYS.map((d) => (
+              <option key={d} value={String(d)}>
+                {d} 天
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="md:col-span-2">
+          <Label>刻度</Label>
+          <Select value={String(tickHours)} onChange={(e) => setTickHours(Number(e.target.value) as TickHours)}>
+            {FACILITY_TIMELINE_TICK_HOURS.map((h) => (
+              <option key={h} value={String(h)}>
+                {h}h
+              </option>
+            ))}
           </Select>
         </div>
         <div className="flex items-end md:col-span-2">
@@ -152,7 +180,7 @@ export function FacilityRoomTimelineClient(props: Props) {
             刷新
           </Button>
         </div>
-        <div className="flex flex-wrap items-center gap-2 md:col-span-5">
+        <div className="flex flex-wrap items-center gap-2 md:col-span-3">
           <Badge variant="secondary">
             显示 {days} 天（{windowFrom.toLocaleDateString()} - {windowTo.toLocaleDateString()}）
           </Badge>
@@ -168,6 +196,8 @@ export function FacilityRoomTimelineClient(props: Props) {
             window={{ from: windowFrom, to: windowTo }}
             rooms={[roomRow]}
             items={items}
+            tickHours={tickHours}
+            maxDurationHours={portalConfig.config?.maxDurationHours}
             canCreate={(room) => room.enabled}
             onCreate={({ room, startAt, endAt }) => {
               if (!room.enabled) return;

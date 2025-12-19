@@ -19,8 +19,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
 
-    const days = parseIntParam(searchParams.get("days"), { defaultValue: 30, min: 1, max: 30 });
-    if (![7, 30].includes(days)) throw badRequest("days 仅支持 7 或 30");
+    const days = parseIntParam(searchParams.get("days"), { defaultValue: 7, min: 1, max: 30 });
+    if (![5, 7, 30].includes(days)) throw badRequest("days 仅支持 5 / 7 / 30");
 
     const from = parseIsoParam(searchParams.get("from"), "from");
 
@@ -30,4 +30,3 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return jsonError(err);
   }
 }
-

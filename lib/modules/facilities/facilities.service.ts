@@ -53,8 +53,17 @@ async function getConfigNumber(key: string, defaultValue: number) {
 }
 
 function ensureDays(value: number) {
-  if (value !== 7 && value !== 30) throw badRequest("days 仅支持 7 或 30");
+  if (value !== 5 && value !== 7 && value !== 30) throw badRequest("days 仅支持 5 / 7 / 30");
   return value;
+}
+
+async function readFacilityConfig() {
+  const [auditRequired, maxDurationHours] = await Promise.all([
+    getConfigBool("facility.auditRequired", false),
+    getConfigNumber("facility.maxDurationHours", 72),
+  ]);
+
+  return { auditRequired, maxDurationHours };
 }
 
 async function assertActiveUsersExist(userIds: string[]) {
@@ -714,12 +723,11 @@ export async function getFacilityConfig(params: { actorUserId: string }) {
   const manageAll = await canManageFacility(params.actorUserId);
   if (!ok && !manageAll) throw forbidden();
 
-  const [auditRequired, maxDurationHours] = await Promise.all([
-    getConfigBool("facility.auditRequired", false),
-    getConfigNumber("facility.maxDurationHours", 72),
-  ]);
+  return readFacilityConfig();
+}
 
-  return { auditRequired, maxDurationHours };
+export async function getPortalFacilityConfig() {
+  return readFacilityConfig();
 }
 
 export async function updateFacilityConfig(params: {

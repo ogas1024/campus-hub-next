@@ -26,8 +26,8 @@ export async function GET(request: Request) {
     const floorNo = Number(floorNoRaw);
     if (!Number.isFinite(floorNo) || !Number.isInteger(floorNo)) throw badRequest("floorNo 必须为整数");
 
-    const days = parseIntParam(searchParams.get("days"), { defaultValue: 30, min: 1, max: 30 });
-    if (![7, 30].includes(days)) throw badRequest("days 仅支持 7 或 30");
+    const days = parseIntParam(searchParams.get("days"), { defaultValue: 7, min: 1, max: 30 });
+    if (![5, 7, 30].includes(days)) throw badRequest("days 仅支持 5 / 7 / 30");
 
     const from = parseIsoParam(searchParams.get("from"), "from");
 

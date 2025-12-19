@@ -8,9 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { fetchFacilityFloorOverview, fetchFacilityFloors, type Building, type FloorOverviewResponse } from "@/lib/api/facilities";
+import {
+  fetchFacilityFloorOverview,
+  fetchFacilityFloors,
+  type Building,
+  type FloorOverviewResponse,
+} from "@/lib/api/facilities";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
-import { formatFacilityFloorLabel } from "@/lib/modules/facilities/facilities.ui";
+import { useFacilityPortalConfig } from "@/lib/hooks/useFacilityPortalConfig";
+import {
+  DEFAULT_FACILITY_TIMELINE_DAYS,
+  DEFAULT_FACILITY_TIMELINE_TICK_HOURS,
+  FACILITY_TIMELINE_TICK_HOURS,
+  FACILITY_TIMELINE_WINDOW_DAYS,
+  formatFacilityFloorLabel,
+} from "@/lib/modules/facilities/facilities.ui";
 
 import { FacilityFloorGantt, type FacilityRoomRow, type FacilityTimelineItem } from "./FacilityFloorGantt";
 import { ReservationEditorDialog } from "./ReservationEditorDialog";
@@ -20,7 +32,8 @@ type Props = {
   buildings: Building[];
 };
 
-type Days = 7 | 30;
+type Days = (typeof FACILITY_TIMELINE_WINDOW_DAYS)[number];
+type TickHours = (typeof FACILITY_TIMELINE_TICK_HOURS)[number];
 
 function todayLocalDateString() {
   const now = new Date();
@@ -37,6 +50,7 @@ function localDayStartIso(date: string) {
 }
 
 export function FacilitiesOverviewClient(props: Props) {
+  const portalConfig = useFacilityPortalConfig();
   const floorsAction = useAsyncAction({ fallbackErrorMessage: "加载楼层失败" });
   const overviewAction = useAsyncAction({ fallbackErrorMessage: "加载纵览失败" });
 
@@ -46,8 +60,9 @@ export function FacilitiesOverviewClient(props: Props) {
   const [buildingId, setBuildingId] = useState(() => buildingOptions[0]?.id ?? "");
   const [floors, setFloors] = useState<number[]>([]);
   const [floorNo, setFloorNo] = useState<number | null>(null);
-  const [days, setDays] = useState<Days>(30);
+  const [days, setDays] = useState<Days>(DEFAULT_FACILITY_TIMELINE_DAYS);
   const [fromDate, setFromDate] = useState(() => todayLocalDateString());
+  const [tickHours, setTickHours] = useState<TickHours>(DEFAULT_FACILITY_TIMELINE_TICK_HOURS);
 
   const [overview, setOverview] = useState<FloorOverviewResponse | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -115,7 +130,7 @@ export function FacilitiesOverviewClient(props: Props) {
 
   return (
     <div className="space-y-4">
-      <InlineError message={floorsAction.error || overviewAction.error} />
+      <InlineError message={portalConfig.error || floorsAction.error || overviewAction.error} />
 
       <div className="grid gap-3 md:grid-cols-12">
         <div className="md:col-span-4">
@@ -145,11 +160,25 @@ export function FacilitiesOverviewClient(props: Props) {
           <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
         </div>
 
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
           <Label>窗口</Label>
-          <Select value={String(days)} onChange={(e) => setDays((e.target.value === "7" ? 7 : 30) as Days)}>
-            <option value="7">7 天</option>
-            <option value="30">30 天</option>
+          <Select value={String(days)} onChange={(e) => setDays(Number(e.target.value) as Days)}>
+            {FACILITY_TIMELINE_WINDOW_DAYS.map((d) => (
+              <option key={d} value={String(d)}>
+                {d} 天
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="md:col-span-1">
+          <Label>刻度</Label>
+          <Select value={String(tickHours)} onChange={(e) => setTickHours(Number(e.target.value) as TickHours)}>
+            {FACILITY_TIMELINE_TICK_HOURS.map((h) => (
+              <option key={h} value={String(h)}>
+                {h}h
+              </option>
+            ))}
           </Select>
         </div>
 
@@ -181,6 +210,8 @@ export function FacilitiesOverviewClient(props: Props) {
         window={{ from: windowFrom, to: windowTo }}
         rooms={rooms}
         items={items}
+        tickHours={tickHours}
+        maxDurationHours={portalConfig.config?.maxDurationHours}
         canCreate={(room) => room.enabled}
         onCreate={({ room, startAt, endAt }) => openCreate(room, startAt, endAt)}
       />

@@ -10,3 +10,18 @@ export function formatFacilityFloorLabel(floorNo: number) {
   return `F${floorNo}`;
 }
 
+/**
+ * Portal 时间轴常用窗口（天）。
+ *
+ * 说明：后续如需调整常用值，仅修改此处即可。
+ */
+export const FACILITY_TIMELINE_WINDOW_DAYS = [5, 7, 30] as const;
+export const DEFAULT_FACILITY_TIMELINE_DAYS: (typeof FACILITY_TIMELINE_WINDOW_DAYS)[number] = 7;
+
+/**
+ * Portal 时间轴刻度（小时）。
+ *
+ * 说明：后续如需调整常用值，仅修改此处即可。
+ */
+export const FACILITY_TIMELINE_TICK_HOURS = [1, 2, 4, 6] as const;
+export const DEFAULT_FACILITY_TIMELINE_TICK_HOURS: (typeof FACILITY_TIMELINE_TICK_HOURS)[number] = 2;

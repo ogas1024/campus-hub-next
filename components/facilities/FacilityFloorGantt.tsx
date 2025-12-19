@@ -3,9 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatFacilityFloorLabel } from "@/lib/modules/facilities/facilities.ui";
+import { DEFAULT_FACILITY_TIMELINE_TICK_HOURS, FACILITY_TIMELINE_TICK_HOURS, formatFacilityFloorLabel } from "@/lib/modules/facilities/facilities.ui";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +35,16 @@ export type FacilityTimelineItem = {
   endAt: Date;
 };
 
+type TickHours = (typeof FACILITY_TIMELINE_TICK_HOURS)[number];
+
 type Props = {
   buildingName: string;
   floorNo: number;
   window: { from: Date; to: Date };
   rooms: FacilityRoomRow[];
   items: FacilityTimelineItem[];
+  tickHours?: TickHours;
+  maxDurationHours?: number;
   canCreate: (room: FacilityRoomRow) => boolean;
   onCreate: (params: { room: FacilityRoomRow; startAt: Date; endAt?: Date }) => void;
 };
@@ -39,7 +52,8 @@ type Props = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SNAP_MINUTES = 30;
 const SNAP_MS = SNAP_MINUTES * 60 * 1000;
-const DAY_WIDTH = 120;
+const MIN_DAY_WIDTH = 120;
+const TARGET_TICK_PX = 10;
 const LEFT_COL_WIDTH = 240;
 const DRAG_THRESHOLD_PX = 6;
 const EDGE_SCROLL_THRESHOLD_PX = 48;
@@ -68,6 +82,13 @@ function formatHeaderDay(value: Date) {
   return `${m}-${d} 周${w}`;
 }
 
+function formatRangeShort(startAt: Date, endAt: Date) {
+  const sameDay = startAt.toDateString() === endAt.toDateString();
+  const startLabel = `${formatMd(startAt)} ${formatHm(startAt)}`;
+  const endLabel = sameDay ? formatHm(endAt) : `${formatMd(endAt)} ${formatHm(endAt)}`;
+  return `${startLabel} → ${endLabel}`;
+}
+
 function snapToSlot(value: number) {
   return Math.floor(value / SNAP_MS) * SNAP_MS;
 }
@@ -86,6 +107,14 @@ function formatDurationMinutes(totalMinutes: number) {
 }
 
 export function FacilityFloorGantt(props: Props) {
+  const tickHours = useMemo<TickHours>(() => {
+    const raw = props.tickHours;
+    if (typeof raw === "number" && FACILITY_TIMELINE_TICK_HOURS.some((h) => h === raw)) return raw as TickHours;
+    return DEFAULT_FACILITY_TIMELINE_TICK_HOURS;
+  }, [props.tickHours]);
+
+  const maxDurationHours = typeof props.maxDurationHours === "number" && Number.isFinite(props.maxDurationHours) ? props.maxDurationHours : null;
+
   const fromMs = props.window.from.getTime();
   const toMs = props.window.to.getTime();
   const durationMs = Math.max(1, toMs - fromMs);
@@ -104,7 +133,9 @@ export function FacilityFloorGantt(props: Props) {
     return map;
   }, [props.items]);
 
-  const timeAreaWidth = dayCount * DAY_WIDTH;
+  const dayWidth = Math.max(MIN_DAY_WIDTH, Math.round((24 / tickHours) * TARGET_TICK_PX));
+  const tickWidth = Math.max(1, Math.round((dayWidth / 24) * tickHours));
+  const timeAreaWidth = dayCount * dayWidth;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const dragTargetRef = useRef<HTMLDivElement | null>(null);
@@ -120,6 +151,7 @@ export function FacilityFloorGantt(props: Props) {
 
   const [hoverMs, setHoverMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [notice, setNotice] = useState<{ title: string; description?: string } | null>(null);
 
   const nowPercent = nowMs >= fromMs && nowMs <= toMs ? ((nowMs - fromMs) / durationMs) * 100 : null;
   const hoverPercent = hoverMs != null ? ((hoverMs - fromMs) / durationMs) * 100 : null;
@@ -186,8 +218,26 @@ export function FacilityFloorGantt(props: Props) {
   }, [drag?.pointerId, fromMs, durationMs, toMs]);
 
   return (
-    <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-border bg-card">
-      <div style={{ minWidth: LEFT_COL_WIDTH + timeAreaWidth }}>
+    <>
+      <AlertDialog
+        open={notice != null}
+        onOpenChange={(open) => {
+          if (!open) setNotice(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{notice?.title ?? ""}</AlertDialogTitle>
+            {notice?.description ? <AlertDialogDescription>{notice.description}</AlertDialogDescription> : null}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>知道了</AlertDialogCancelButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-border bg-card">
+        <div style={{ minWidth: LEFT_COL_WIDTH + timeAreaWidth }}>
         <div className="sticky top-0 z-10 flex border-b border-border bg-card">
           <div className="shrink-0 border-r border-border px-3 py-2" style={{ width: LEFT_COL_WIDTH }}>
             <div className="text-sm font-semibold">房间</div>
@@ -197,7 +247,7 @@ export function FacilityFloorGantt(props: Props) {
           </div>
           <div className="relative flex" style={{ width: timeAreaWidth }}>
             {days.map((d) => (
-              <div key={d.toISOString()} className="border-r border-border px-2 py-2 text-xs text-muted-foreground" style={{ width: DAY_WIDTH }}>
+              <div key={d.toISOString()} className="border-r border-border px-2 py-2 text-xs text-muted-foreground" style={{ width: dayWidth }}>
                 {formatHeaderDay(d)}
               </div>
             ))}
@@ -226,7 +276,7 @@ export function FacilityFloorGantt(props: Props) {
           ) : (
             props.rooms.map((room) => {
               const roomItems = byRoomId.get(room.id) ?? [];
-              const createDisabled = !props.canCreate(room);
+              const createDisabled = !props.canCreate(room) || maxDurationHours == null;
 
               const activeDrag = drag?.roomId === room.id ? drag : null;
               const selection = activeDrag
@@ -254,7 +304,10 @@ export function FacilityFloorGantt(props: Props) {
                         size="sm"
                         variant="outline"
                         disabled={createDisabled}
-                        onClick={() => props.onCreate({ room, startAt: new Date(snapToSlot(Date.now())) })}
+                        onClick={() => {
+                          const start = snapUpToSlot(Math.max(fromMs, Date.now() + 1));
+                          props.onCreate({ room, startAt: new Date(start) });
+                        }}
                       >
                         预约
                       </Button>
@@ -267,9 +320,10 @@ export function FacilityFloorGantt(props: Props) {
                     className={cn("relative h-14", createDisabled ? "cursor-not-allowed" : "cursor-crosshair")}
                     style={{
                       width: timeAreaWidth,
-                      backgroundImage:
-                        "repeating-linear-gradient(to right, transparent, transparent calc(120px - 1px), hsl(var(--border)) calc(120px - 1px), hsl(var(--border)) 120px)",
-                      backgroundSize: `${DAY_WIDTH}px 100%`,
+                      backgroundImage: [
+                        `repeating-linear-gradient(to right, transparent, transparent calc(${tickWidth}px - 1px), hsl(var(--border) / 0.25) calc(${tickWidth}px - 1px), hsl(var(--border) / 0.25) ${tickWidth}px)`,
+                        `repeating-linear-gradient(to right, transparent, transparent calc(${dayWidth}px - 1px), hsl(var(--border)) calc(${dayWidth}px - 1px), hsl(var(--border)) ${dayWidth}px)`,
+                      ].join(","),
                     }}
                     onPointerDown={(e) => {
                       if (createDisabled) return;
@@ -313,13 +367,45 @@ export function FacilityFloorGantt(props: Props) {
                       dragClientXRef.current = null;
                       setDrag(null);
 
+                      if (maxDurationHours == null) {
+                        setNotice({ title: "配置尚未就绪", description: "正在加载最大可预约时长配置，请稍后再试或刷新页面。" });
+                        return;
+                      }
+
                       if (isClick) {
-                        props.onCreate({ room, startAt: new Date(rawStart) });
+                        const start = snapToSlot(rawStart);
+                        const conflictItem = roomItems.find((it) => it.startAt.getTime() <= start && it.endAt.getTime() > start);
+                        if (conflictItem) {
+                          setNotice({ title: "该时间点已被占用", description: `冲突区间：${formatRangeShort(conflictItem.startAt, conflictItem.endAt)}` });
+                          return;
+                        }
+
+                        props.onCreate({ room, startAt: new Date(start) });
                         return;
                       }
 
                       const start = snapToSlot(rawStart);
-                      const end = Math.max(start + SNAP_MS, Math.min(toMs, snapUpToSlot(rawEnd)));
+                      const end = Math.min(toMs, Math.max(start + SNAP_MS, snapUpToSlot(rawEnd)));
+                      if (end <= start) {
+                        setNotice({ title: "请选择窗口内的时间段", description: "选区结束时间必须晚于开始时间。" });
+                        return;
+                      }
+
+                      const maxMs = maxDurationHours * 60 * 60 * 1000;
+                      if (end - start > maxMs) {
+                        setNotice({
+                          title: "超过最大预约时长",
+                          description: `单次预约最长 ${maxDurationHours} 小时，请缩短选区后重试。`,
+                        });
+                        return;
+                      }
+
+                      const conflictItem = roomItems.find((it) => it.startAt.getTime() < end && it.endAt.getTime() > start);
+                      if (conflictItem) {
+                        setNotice({ title: "该时间段已被预约", description: `冲突区间：${formatRangeShort(conflictItem.startAt, conflictItem.endAt)}` });
+                        return;
+                      }
+
                       props.onCreate({ room, startAt: new Date(start), endAt: new Date(end) });
                     }}
                     onPointerCancel={(e) => {
@@ -368,7 +454,7 @@ export function FacilityFloorGantt(props: Props) {
                         >
                           {(() => {
                             const start = snapToSlot(selection.startMs);
-                            const end = Math.max(start + SNAP_MS, Math.min(toMs, snapUpToSlot(selection.endMs)));
+                            const end = Math.min(toMs, Math.max(start + SNAP_MS, snapUpToSlot(selection.endMs)));
                             const minutes = (end - start) / 60_000;
                             const startDt = new Date(start);
                             const endDt = new Date(end);
@@ -413,7 +499,8 @@ export function FacilityFloorGantt(props: Props) {
             })
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -107,6 +107,20 @@
 
 ## 3. Portal（/api/facilities/**）
 
+### 3.0 Portal 配置：GET `/api/facilities/config`
+
+**认证**：登录  
+**用途**：Portal 端读取预约相关配置（用于时间轴交互与前置校验）。
+
+**响应（200）**
+
+```json
+{
+  "auditRequired": false,
+  "maxDurationHours": 72
+}
+```
+
 ### 3.1 楼房列表：GET `/api/facilities/buildings`
 
 **认证**：登录  
@@ -121,7 +135,7 @@
 { "buildingId": "uuid", "floors": [1, 0, -1] }
 ```
 
-### 3.3 楼层纵览（甘特图数据）：GET `/api/facilities/floors/overview?buildingId=<uuid>&floorNo=<int>&from=<iso>&days=7|30`
+### 3.3 楼层纵览（甘特图数据）：GET `/api/facilities/floors/overview?buildingId=<uuid>&floorNo=<int>&from=<iso>&days=5|7|30`
 
 **认证**：登录  
 **响应（200）**
@@ -136,7 +150,7 @@
 }
 ```
 
-### 3.4 房间时间轴：GET `/api/facilities/rooms/:id/timeline?from=<iso>&days=7|30`
+### 3.4 房间时间轴：GET `/api/facilities/rooms/:id/timeline?from=<iso>&days=5|7|30`
 
 **认证**：登录  
 **响应（200）**：`{ room: Room, window, items: TimelineItem[] }`
