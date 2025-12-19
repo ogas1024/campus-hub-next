@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { WorkbenchProvider } from "@/lib/workbench/types";
+import type { WorkbenchProvider, WorkbenchQuickLink } from "@/lib/workbench/types";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 
 import { countConsolePublishedNoticesExpiringSoon, listConsoleNotices, listConsolePublishedNoticesExpiringSoon } from "./notices.service";
@@ -82,9 +82,11 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
     if (!canList) return [];
 
     const canCreate = await ctx.canPerm("campus:notice:create");
-    return [
+    const links: WorkbenchQuickLink[] = [
       { id: "console.notices", order: 20, label: "通知公告", href: "/console/notices", variant: "default" },
-      ...(canCreate ? [{ id: "console.notices.new", order: 21, label: "新建公告", href: "/console/notices/new", variant: "outline" }] : []),
     ];
+    if (canCreate) links.push({ id: "console.notices.new", order: 21, label: "新建公告", href: "/console/notices/new", variant: "outline" });
+
+    return links;
   },
 };

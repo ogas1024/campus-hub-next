@@ -1,7 +1,7 @@
 import "server-only";
 
 import { courseResourcesConsoleEntryPermCodes } from "@/lib/navigation/modules";
-import type { WorkbenchProvider } from "@/lib/workbench/types";
+import type { WorkbenchProvider, WorkbenchQuickLink } from "@/lib/workbench/types";
 
 import { listConsoleResources } from "./courseResources.service";
 
@@ -33,7 +33,7 @@ export const courseResourcesWorkbenchProvider: WorkbenchProvider = {
   async getQuickLinks(ctx) {
     const canEnterModule = await ctx.canAnyPerm(courseResourcesConsoleEntryPermCodes);
     if (!canEnterModule) return [];
-    return [
+    const links: WorkbenchQuickLink[] = [
       {
         id: "console.resources",
         order: 10,
@@ -42,5 +42,6 @@ export const courseResourcesWorkbenchProvider: WorkbenchProvider = {
         variant: "default",
       },
     ];
+    return links;
   },
 };
