@@ -15,6 +15,8 @@
 - `migrations/0003_department_parent_fk.sql`
 - `migrations/0004_course_resources.sql`
 - `migrations/0005_course_resources_constraints.sql`
+- `migrations/0006_facility_reservations.sql`
+- `migrations/0007_surveys.sql`
 
 > 注意：`0002_infra.sql` 依赖 `0001_baseline.sql` 中的 `public.set_updated_at()` 等基础函数与基线表结构。
 
@@ -58,6 +60,24 @@
 ### 0005_course_resources_constraints.sql 变更概览
 - 调整 `public.course_resources` 的 `course_resources_file_or_link_chk`：
   - 允许 `draft` 阶段暂不绑定 file/link 细节（支撑“先草稿 → 签名直传/填写外链 → 提交审核”流程）
+
+### 0006_facility_reservations.sql 变更概览
+- 新增功能房预约相关枚举与业务表：
+  - `public.facility_buildings` / `public.facility_rooms`
+  - `public.facility_reservations` / `public.facility_reservation_participants`
+  - `public.facility_bans` / `public.app_config` 默认值
+- 种子数据：
+  - `public.permissions`：新增 `campus:facility:*` 等权限码并为 `staff/admin/super_admin` 授权
+- RLS：对新增表 `enable row level security`（默认不下发策略；避免客户端直连）
+
+### 0007_surveys.sql 变更概览
+- 新增问卷相关枚举与业务表：
+  - `public.surveys` / `public.survey_scopes`
+  - `public.survey_sections` / `public.survey_questions` / `public.survey_question_options`
+  - `public.survey_responses` / `public.survey_response_items`
+- 种子数据：
+  - `public.permissions`：新增 `campus:survey:*` 等权限码并为 `staff/admin/super_admin` 授权
+- RLS：对新增表 `enable row level security`（默认不下发策略；避免客户端直连）
 
 ## 本地/远端初始化（推荐流程）
 

@@ -7,3 +7,4 @@ export * from "./schema/audit";
 export * from "./schema/config";
 export * from "./schema/courseResources";
 export * from "./schema/facilities";
+export * from "./schema/surveys";
