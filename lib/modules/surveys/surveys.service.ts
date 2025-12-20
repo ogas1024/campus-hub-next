@@ -1052,7 +1052,6 @@ function sanitizeTextSampleForAi(raw: string) {
   text = text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "<邮箱已脱敏>");
   text = text.replace(/(^|[^0-9])(1[3-9][0-9]{9})(?![0-9])/g, "$1<手机号已脱敏>");
   text = text.replace(/(^|[^0-9])(\d{15}|\d{17}[0-9Xx])(?![0-9])/g, "$1<身份证号已脱敏>");
-  text = text.replace(/(^|[^0-9])(\d{8,12})(?![0-9])/g, "$1<编号已脱敏>");
   text = text.replace(/```/g, "`\u200b``");
 
   const maxLen = 300;

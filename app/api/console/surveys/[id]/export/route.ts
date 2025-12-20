@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requirePerm } from "@/lib/auth/permissions";
 import { jsonError } from "@/lib/http/route";
+import { requireUuid } from "@/lib/http/uuid";
 import { exportSurveyCsv } from "@/lib/modules/surveys/surveys.service";
 
 type Params = { params: Promise<{ id: string }> };
@@ -10,8 +11,9 @@ export async function GET(_request: Request, { params }: Params) {
   try {
     const user = await requirePerm("campus:survey:export");
     const { id } = await params;
+    const surveyId = requireUuid(id, "id");
 
-    const { csv, fileName } = await exportSurveyCsv({ actorUserId: user.id, surveyId: id });
+    const { csv, fileName } = await exportSurveyCsv({ actorUserId: user.id, surveyId });
     const csvWithBom = `\ufeff${csv}`;
 
     return new NextResponse(csvWithBom, {
@@ -24,4 +26,3 @@ export async function GET(_request: Request, { params }: Params) {
     return jsonError(err);
   }
 }
-

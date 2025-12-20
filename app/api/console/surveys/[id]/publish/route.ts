@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requirePerm } from "@/lib/auth/permissions";
 import { getRequestContext, jsonError } from "@/lib/http/route";
+import { requireUuid } from "@/lib/http/uuid";
 import { publishSurvey } from "@/lib/modules/surveys/surveys.service";
 
 type Params = { params: Promise<{ id: string }> };
@@ -11,11 +12,11 @@ export async function POST(request: Request, { params }: Params) {
     const user = await requirePerm("campus:survey:publish");
     const ctx = getRequestContext(request);
     const { id } = await params;
+    const surveyId = requireUuid(id, "id");
 
-    const data = await publishSurvey({ actorUserId: user.id, surveyId: id, actor: { userId: user.id, email: user.email }, request: ctx });
+    const data = await publishSurvey({ actorUserId: user.id, surveyId, actor: { userId: user.id, email: user.email }, request: ctx });
     return NextResponse.json(data);
   } catch (err) {
     return jsonError(err);
   }
 }
-
