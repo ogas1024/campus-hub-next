@@ -4,19 +4,11 @@ export const COURSE_RESOURCES_MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 const ALLOWED_ARCHIVE_EXTS = [".zip", ".rar", ".7z"] as const;
 
+export { sanitizeFileName, sanitizeStorageObjectKeyPart } from "@/lib/utils/fileName";
+
 export function isAllowedArchiveFileName(fileName: string) {
   const name = fileName.trim().toLowerCase();
   return ALLOWED_ARCHIVE_EXTS.some((ext) => name.endsWith(ext));
-}
-
-export function sanitizeFileName(input: string) {
-  const raw = input.trim();
-  const base = raw.split(/[\\/]/).pop() ?? raw;
-  return base
-    .replace(/\s+/g, " ")
-    .replace(/[^\p{L}\p{N}._ -]/gu, "_")
-    .trim()
-    .slice(0, 180);
 }
 
 function hasScheme(value: string) {
@@ -58,4 +50,3 @@ export function normalizeExternalUrl(input: string) {
 
   return url.toString();
 }
-

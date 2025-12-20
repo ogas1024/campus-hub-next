@@ -7,7 +7,7 @@ import { HttpError, badRequest, conflict, notFound } from "@/lib/http/errors";
 import type { RequestContext } from "@/lib/http/route";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
-import { COURSE_RESOURCES_BUCKET, normalizeExternalUrl, sanitizeFileName } from "@/lib/modules/course-resources/courseResources.utils";
+import { COURSE_RESOURCES_BUCKET, normalizeExternalUrl, sanitizeStorageObjectKeyPart } from "@/lib/modules/course-resources/courseResources.utils";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   appConfig,
@@ -1058,7 +1058,7 @@ export async function createMyResourceUploadUrl(params: {
     .limit(1);
   if (exists[0]) throw conflict("同一课程下已存在相同文件（sha256）");
 
-  const safeName = sanitizeFileName(params.fileName);
+  const safeName = sanitizeStorageObjectKeyPart(params.fileName);
 
   let key = row.fileKey ?? null;
   const sameAsCurrent =

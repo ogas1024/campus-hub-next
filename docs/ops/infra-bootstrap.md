@@ -2,7 +2,7 @@
 
 **状态**：建议执行  
 **版本**：v1.0  
-**最近更新**：2025-12-17
+**最近更新**：2025-12-20
 
 > 目标：用最短路径把“用户/组织/权限/数据范围/审计/配置”跑通，并形成可复用的验收口径。  
 > 原则：Supabase Auth 是账号生命周期唯一事实源；业务访问以 BFF（Next.js）为唯一入口；所有管理端写操作可审计。
@@ -23,6 +23,8 @@
 ### 0.3 Supabase Storage 配置
 - 创建 bucket：`avatars`，并设为 **public**（用于用户头像上传）。
 - 创建 bucket：`course-resources`，并设为 **private**（用于课程资源分享模块文件直传与下载；由服务端生成 signed upload url/signed url，前端不需要持有 service_role 权限）。
+- 创建 bucket：`material-templates`，并设为 **private**（材料收集：材料项模板文件）。
+- 创建 bucket：`material-submissions`，并设为 **private**（材料收集：学生提交文件；默认敏感，下载走服务端签名 URL）。
 
 ## 1. 初始化步骤（按推荐顺序）
 
@@ -60,7 +62,7 @@
 
 ### 1.6 配置数据范围（RoleDataScope）
 入口：`/console/roles/:id` → 数据范围配置
-- 已落地 `module=user`（用户管理）与 `module=notice`（公告管理）的数据范围注入；其他模块按需逐步补齐。
+- 已落地 `module=user`（用户管理）、`module=notice`（公告管理）、`module=material`（材料收集）、`module=survey`（问卷）的数据范围注入；其他模块按需逐步补齐。
 - module 命名规则见：`docs/requirements/data-permission.md`
 
 ### 1.7 创建/邀请用户，并分配组织/角色/岗位
@@ -99,9 +101,11 @@
 - ✅ 不同角色登录后 Console 导航显隐符合预期（无权限不显示/不可访问）
 - ✅ 所有写操作可审计
 
-### 2.5 数据范围（验收 module=user / module=notice）
+### 2.5 数据范围（验收 module=user / module=notice / module=material / module=survey）
 - ✅ 为某角色配置 `module=user` 的数据范围（如 `CUSTOM` 选部门集合），`/console/users` 仅返回范围内用户（部门含子部门）
 - ✅ 为某角色配置 `module=notice` 的数据范围，`/console/notices` 仅返回范围内公告（按公告 `created_by` 的部门归属判定）
+- ✅ 为某角色配置 `module=material` 的数据范围，`/console/materials` 仅返回范围内材料任务（按任务 `created_by` 的部门归属判定）
+- ✅ 为某角色配置 `module=survey` 的数据范围，`/console/surveys` 仅返回范围内问卷（按问卷 `created_by` 的部门归属判定）
 - ✅ 多角色合并规则符合文档（最宽松优先）
 
 ### 2.6 用户生命周期（Supabase Auth + profile.status）

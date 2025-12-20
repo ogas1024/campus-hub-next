@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NoticeMarkdown } from "@/components/notices/NoticeMarkdown";
 import { NoticeReadMarker } from "@/components/notices/NoticeReadMarker";
 import { getCurrentUser } from "@/lib/auth/session";
+import { findPortalMaterialByNoticeId } from "@/lib/modules/materials/materials.service";
 import { getPortalNoticeDetail } from "@/lib/modules/notices/notices.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ export default async function NoticeDetailPage({ params }: Params) {
 
   const { id } = await params;
   const notice = await getPortalNoticeDetail({ userId: user.id, noticeId: id });
+  const material = await findPortalMaterialByNoticeId({ userId: user.id, noticeId: id }).catch(() => null);
 
   return (
     <div className="space-y-6">
@@ -51,6 +53,26 @@ export default async function NoticeDetailPage({ params }: Params) {
           <NoticeMarkdown contentMd={notice.contentMd} />
         </CardContent>
       </Card>
+
+      {material ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">材料提交</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                {material.canSubmit ? <Badge>可提交</Badge> : <Badge variant="secondary">不可提交</Badge>}
+                {material.dueAt ? <Badge variant="outline">截止：{formatZhDateTime(material.dueAt)}</Badge> : null}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-sm text-muted-foreground">本公告已关联材料收集任务：{material.title}</div>
+            <Link className={buttonVariants({ size: "sm" })} href={`/materials/${material.id}`}>
+              前往提交
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {notice.attachments.length > 0 ? (
         <Card>

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiResponseError } from "@/lib/api/http";
+import { formatZhDateTime } from "@/lib/ui/datetime";
 import {
   deleteConsoleNotice,
   fetchConsoleNoticeDetail,
@@ -45,6 +46,12 @@ type Props = {
     canManageAll: boolean;
     canAuditList: boolean;
   };
+  materials: {
+    canCreate: boolean;
+    canRead: boolean;
+    canProcess: boolean;
+    linked: null | { id: string; title: string; status: "draft" | "published" | "closed"; dueAt: string | null; archivedAt: string | null };
+  };
 };
 
 function toIsoOrUndefined(value: string) {
@@ -67,7 +74,20 @@ function statusLabel(status: string) {
   }
 }
 
-export default function EditNoticeClient({ noticeId, currentUserId, perms }: Props) {
+function materialStatusLabel(status: "draft" | "published" | "closed") {
+  switch (status) {
+    case "draft":
+      return "草稿";
+    case "published":
+      return "已发布";
+    case "closed":
+      return "已关闭";
+    default:
+      return status;
+  }
+}
+
+export default function EditNoticeClient({ noticeId, currentUserId, perms, materials }: Props) {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
@@ -409,6 +429,56 @@ export default function EditNoticeClient({ noticeId, currentUserId, perms }: Pro
               </div>
             ) : (
               <div className="text-sm text-muted-foreground">暂无附件（上传后记得点击“保存”以写入数据库记录）</div>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-sm font-medium">材料收集</div>
+                <div className="text-xs text-muted-foreground">公告最多关联 1 个材料收集任务（学生端可从公告跳转提交）。</div>
+              </div>
+
+              {materials.linked ? (
+                <div className="text-xs text-muted-foreground">
+                  状态：<span className="font-medium text-foreground">{materialStatusLabel(materials.linked.status)}</span>
+                </div>
+              ) : null}
+            </div>
+
+            {!materials.canCreate && !materials.canRead ? (
+              <div className="text-sm text-muted-foreground">你没有材料收集模块权限。</div>
+            ) : materials.linked ? (
+              <div className="space-y-2">
+                <div className="text-sm">
+                  <span className="font-medium">{materials.linked.title}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">ID：{materials.linked.id}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  截止：{materials.linked.dueAt ? formatZhDateTime(new Date(materials.linked.dueAt)) : "—"}
+                  {materials.linked.archivedAt ? ` · 已归档：${formatZhDateTime(new Date(materials.linked.archivedAt))}` : ""}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/materials/${materials.linked.id}/edit`}>
+                    打开任务
+                  </Link>
+                  {materials.canProcess ? (
+                    <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/materials/${materials.linked.id}/submissions`}>
+                      提交管理
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm text-muted-foreground">尚未关联材料收集任务。</div>
+                {materials.canCreate ? (
+                  <Link className={buttonVariants({ size: "sm" })} href={`/console/materials/new?noticeId=${noticeId}`}>
+                    创建材料收集任务
+                  </Link>
+                ) : null}
+              </div>
             )}
           </div>
 

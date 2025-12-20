@@ -5,6 +5,7 @@
 ## 目录
 - `notices.md`：通知公告（已实现）
 - `surveys.md`：问卷（已实现）
+- `materials.md`：材料收集（已实现）
 - `course-resources.md`：课程资源分享（已实现）
 - `iam.md`：身份与访问控制（已实现）
 - `organization.md`：组织与岗位（已实现）

@@ -17,6 +17,13 @@ export const portalModules = [
     status: "available",
   },
   {
+    id: "materials",
+    label: "材料收集",
+    description: "在线提交申请材料，支持模板下载与撤回。",
+    href: "/materials",
+    status: "available",
+  },
+  {
     id: "resources",
     label: "课程资源",
     description: "课程资料分享与检索。",
@@ -95,6 +102,20 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
     label: "生活平台",
     items: [
       { id: "notices", label: "通知公告", href: "/console/notices", permCodes: ["campus:notice:list"] },
+      {
+        id: "materials",
+        label: "材料收集",
+        href: "/console/materials",
+        permCodes: [
+          "campus:material:*",
+          "campus:material:manage",
+          "campus:material:list",
+          "campus:material:read",
+          "campus:material:create",
+          "campus:material:update",
+          "campus:material:process",
+        ],
+      },
       {
         id: "facilities",
         label: "功能房预约",

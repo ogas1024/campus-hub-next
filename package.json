@@ -26,6 +26,7 @@
     "@supabase/ssr": "*",
     "@supabase/supabase-js": "*",
     "@toast-ui/editor": "^3.2.2",
+    "archiver": "^7.0.1",
     "clsx": "*",
     "drizzle-orm": "*",
     "lucide-react": "*",
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/archiver": "^7.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

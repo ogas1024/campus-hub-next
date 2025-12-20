@@ -14,6 +14,8 @@
 - `module` 必须与模块/资源命名一致：
   - `module=user` ↔ `/console/users` ↔ `/api/console/users`
   - `module=notice` ↔ `/console/notices` ↔ `/api/console/notices`
+  - `module=material` ↔ `/console/materials` ↔ `/api/console/materials`
+  - `module=survey` ↔ `/console/surveys` ↔ `/api/console/surveys`
   - `module=resource` ↔ `/console/resources` ↔ `/api/console/resources`
   - 详见：`docs/requirements/data-permission.md`
 
@@ -81,6 +83,37 @@
   - `campus:resource:best`
   - `campus:resource:stats`
   - `campus:resource:delete`（硬删除；仅 admin/super_admin）
+
+### 2.4 问卷（module=survey）（已落地）
+
+> 说明：本节对应“问卷 MVP”；权限字典与默认授权已在迁移中落地：`packages/db/migrations/0007_surveys.sql`。
+
+- `campus:survey:*`（全量）
+- `campus:survey:list`
+- `campus:survey:read`
+- `campus:survey:create`
+- `campus:survey:update`
+- `campus:survey:publish`
+- `campus:survey:close`
+- `campus:survey:export`
+- `campus:survey:ai_summary`
+- `campus:survey:delete`
+
+### 2.5 材料收集（module=material）（已落地）
+
+> 说明：本节对应“材料收集 MVP（收集引擎试点）”；权限字典与默认授权已在迁移中落地：`packages/db/migrations/0008_materials.sql`。
+
+- `campus:material:list`
+- `campus:material:read`
+- `campus:material:create`
+- `campus:material:update`
+- `campus:material:delete`
+- `campus:material:publish`
+- `campus:material:close`
+- `campus:material:archive`
+- `campus:material:process`
+- `campus:material:export`
+- `campus:material:manage`（全量管理；在 DataScope 范围内可操作他人创建的任务与提交）
 
 ## 3. 默认角色集合（建议保留）
 

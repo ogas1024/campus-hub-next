@@ -2,7 +2,7 @@
 
 **状态**：✅ 已批准  
 **版本**：v1.0（MVP 冻结版）  
-**最近更新**：2025-12-17
+**最近更新**：2025-12-20
 
 > 说明：RBAC 解决“能不能访问某功能/接口”，数据权限解决“能访问的数据范围是多少”。  
 > 本项目采用 BFF 强约束：数据权限在 Service/Repository 层统一计算与注入，避免散落在 Route Handler/前端。
@@ -43,6 +43,8 @@
 | `audit` | 审计日志 | `campus:audit:list` | `/console/audit` |
 | `config` | 平台配置 | `campus:config:update` | `/console/config` |
 | `notice` | 通知公告 | `campus:notice:*` | `/console/notices` |
+| `material` | 材料收集（收集引擎试点） | `campus:material:*` | `/console/materials` |
+| `survey` | 问卷 | `campus:survey:*` | `/console/surveys` |
 | `resource` | 课程资源分享 | `campus:resource:*` | `/console/resources` |
 | `facility` | 功能房预约 | `campus:facility:*` | `/console/facilities` |
 | `library` | 数字图书馆 | `campus:library:*` | `/console/library` |

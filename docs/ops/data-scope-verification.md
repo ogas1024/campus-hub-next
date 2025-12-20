@@ -2,10 +2,10 @@
 
 **状态**：建议执行  
 **版本**：v1.0  
-**最近更新**：2025-12-18
+**最近更新**：2025-12-20
 
 > 目标：用可重复的步骤验收“数据范围”能力是否按预期生效，尤其是**部门及子部门**、**多角色合并**。  
-> 当前落地范围：已在 `module=user`（用户列表）与 `module=notice`（公告管理列表）完成注入验收；其他模块按需接入（属于后续迭代）。
+> 当前落地范围：已在 `module=user`（用户列表）、`module=notice`（公告管理）、`module=material`（材料收集）、`module=survey`（问卷）完成注入；其他模块按需接入（属于后续迭代）。
 
 ## 0. 前置条件
 
@@ -21,6 +21,8 @@
 - `module` 来自权限码 `campus:<module>:<op>` 的 `module` 段
 - `module=user` ↔ `/console/users` ↔ `/api/console/users`
 - `module=notice` ↔ `/console/notices` ↔ `/api/console/notices`
+- `module=material` ↔ `/console/materials` ↔ `/api/console/materials`
+- `module=survey` ↔ `/console/surveys` ↔ `/api/console/surveys`
 
 ### 1.2 默认兜底规则（无显式配置时）
 若用户在某个 `module` 下没有任何 RoleDataScope 配置：
@@ -135,7 +137,7 @@
 
 ## 5. 已知限制（MVP）
 
-- 当前已在用户列表（`/console/users`）与公告管理（`/console/notices`）完成 DataScope 注入验收；其他模块（课程资源/预约/图书等）后续逐模块接入。
+- 当前已在用户列表（`/console/users`）、公告管理（`/console/notices`）、材料收集（`/console/materials`）、问卷（`/console/surveys`）完成 DataScope 注入验收；其他模块（课程资源/预约/图书等）后续逐模块接入。
 - DataScope 只负责“可见数据过滤”，不替代 RBAC：无 `campus:user:list` 时仍无法进入用户管理。
 
 ## 6. 通知公告（module=notice）验收（已接入）
@@ -165,3 +167,42 @@
 2) 期望：
    - 仍不能看到 DataScope 外的公告
    - 对 DataScope 内的“他人公告”可执行操作（同时仍受 RBAC 细分权限码约束）
+
+## 7. 材料收集（module=material）验收（已接入）
+
+### 7.1 数据归属口径（Console）
+- Console 下 DataScope 以材料任务（收集任务）`created_by` 作为数据归属字段。
+- 对于 `DEPT/DEPT_AND_CHILD/CUSTOM`：判定“创建者所属部门是否命中范围”。
+
+### 7.2 准备数据（最小集合）
+1) 准备两个“创建者”账号，并分别绑定到不同部门（例如 A11 与 B11），并给他们分配至少：
+   - `campus:material:create`（用于创建测试材料任务）
+   - `campus:material:list`（用于进入材料管理）
+2) 用两账号分别创建 1 个材料收集任务（建议标题带部门标识，便于观察）。
+
+### 7.3 验收：`DEPT_AND_CHILD`
+1) 创建角色 `material_view_dept_child`，赋予 `campus:material:list`，并在角色详情页配置数据范围：
+   - `module=material`
+   - `scopeType=DEPT_AND_CHILD`
+2) 将“查看者”账号绑定部门为 A（信息学院），并绑定该角色。
+3) 用查看者登录访问 `/console/materials`，期望：
+   - 只能看到由 A 或其子部门用户创建的材料任务（例如 A11 创建者创建的任务）
+   - 看不到 B 分支创建的任务
+   - 直接访问 B 分支任务的 `/console/materials/:id/edit` 返回 404（不可见）
+
+### 7.4 验收：`campus:material:manage` 不越过 DataScope
+1) 给查看者额外赋予 `campus:material:manage`（以及需要的 `campus:material:update/publish/close/archive/delete/process/export`）。
+2) 期望：
+   - 仍不能看到 DataScope 外的材料任务
+   - 对 DataScope 内的“他人任务/提交”可执行操作（同时仍受 RBAC 细分权限码约束）
+
+## 8. 问卷（module=survey）验收（已接入）
+
+### 8.1 数据归属口径（Console）
+- Console 下 DataScope 以问卷 `created_by` 作为数据归属字段。
+
+### 8.2 验收：`DEPT_AND_CHILD`
+参照 6.3/7.3 的步骤，将权限码替换为 `campus:survey:list`，并配置：
+- `module=survey`
+- `scopeType=DEPT_AND_CHILD`
+期望：`/console/surveys` 仅显示范围内创建者创建的问卷；对范围外问卷详情/编辑（`/console/surveys/:id`）不可见。

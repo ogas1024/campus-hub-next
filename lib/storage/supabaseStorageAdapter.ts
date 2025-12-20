@@ -2,7 +2,13 @@ import "server-only";
 
 import { HttpError } from "@/lib/http/errors";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { StorageAdapter, StorageUploadParams, StorageUploadResult } from "@/lib/storage/storageAdapter";
+import type {
+  StorageAdapter,
+  StorageSignedDownloadUrlParams,
+  StorageSignedDownloadUrlResult,
+  StorageUploadParams,
+  StorageUploadResult,
+} from "@/lib/storage/storageAdapter";
 
 function formatStorageError(prefix: string, err: unknown) {
   const e = err as { message?: string; status?: number; statusCode?: string } | null;
@@ -37,6 +43,32 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     };
   }
 
+  async uploadPrivate(params: StorageUploadParams): Promise<{ bucket: string; key: string }> {
+    const { error } = await this.supabase.storage.from(params.bucket).upload(params.key, params.file, {
+      upsert: params.upsert,
+      contentType: params.contentType,
+      cacheControl: params.cacheControl ?? "3600",
+    });
+
+    if (error) {
+      throw new HttpError(500, "INTERNAL_ERROR", formatStorageError("文件上传失败", error));
+    }
+
+    return { bucket: params.bucket, key: params.key };
+  }
+
+  async createSignedDownloadUrl(params: StorageSignedDownloadUrlParams): Promise<StorageSignedDownloadUrlResult> {
+    const { data, error } = await this.supabase.storage
+      .from(params.bucket)
+      .createSignedUrl(params.key, params.expiresIn, params.download ? { download: params.download } : undefined);
+
+    if (error || !data?.signedUrl) {
+      throw new HttpError(500, "INTERNAL_ERROR", formatStorageError("生成签名下载链接失败", error));
+    }
+
+    return { bucket: params.bucket, key: params.key, signedUrl: data.signedUrl };
+  }
+
   async remove(params: { bucket: string; keys: string[] }): Promise<void> {
     const keys = params.keys.map((k) => k.trim()).filter(Boolean);
     if (keys.length === 0) return;
@@ -50,4 +82,3 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     throw new HttpError(500, "INTERNAL_ERROR", formatStorageError("文件删除失败", error));
   }
 }
-
