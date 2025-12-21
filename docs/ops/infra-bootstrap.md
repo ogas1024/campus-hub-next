@@ -23,6 +23,7 @@
 ### 0.3 Supabase Storage 配置
 - 创建 bucket：`avatars`，并设为 **public**（用于用户头像上传）。
 - 创建 bucket：`course-resources`，并设为 **private**（用于课程资源分享模块文件直传与下载；由服务端生成 signed upload url/signed url，前端不需要持有 service_role 权限）。
+- 创建 bucket：`library-books`，并设为 **private**（用于数字图书馆模块文件直传与下载；单文件上限 100MB；由服务端生成 signed upload url/signed url）。
 - 创建 bucket：`material-templates`，并设为 **private**（材料收集：材料项模板文件）。
 - 创建 bucket：`material-submissions`，并设为 **private**（材料收集：学生提交文件；默认敏感，下载走服务端签名 URL）。
 

@@ -17,6 +17,8 @@
 - `migrations/0005_course_resources_constraints.sql`
 - `migrations/0006_facility_reservations.sql`
 - `migrations/0007_surveys.sql`
+- `migrations/0008_materials.sql`
+- `migrations/0009_library.sql`
 
 > 注意：`0002_infra.sql` 依赖 `0001_baseline.sql` 中的 `public.set_updated_at()` 等基础函数与基线表结构。
 
@@ -77,6 +79,24 @@
   - `public.survey_responses` / `public.survey_response_items`
 - 种子数据：
   - `public.permissions`：新增 `campus:survey:*` 等权限码并为 `staff/admin/super_admin` 授权
+- RLS：对新增表 `enable row level security`（默认不下发策略；避免客户端直连）
+
+### 0008_materials.sql 变更概览
+（略，见文件内注释）
+
+### 0009_library.sql 变更概览
+- 新增数字图书馆相关枚举：
+  - `public.library_book_status`（`draft|pending|published|rejected|unpublished`）
+  - `public.library_book_asset_type`（`file|link`）
+  - `public.library_book_file_format`（`pdf|epub|mobi|zip`）
+- 新增业务表：
+  - `public.library_books`（图书主体：ISBN 唯一、审核字段、统计）
+  - `public.library_book_assets`（多格式文件/外链资产）
+  - `public.library_book_favorites`（收藏关系，复合唯一）
+  - `public.library_book_download_events`（下载事件事实表，支持 days 窗口榜单）
+- 种子数据：
+  - `public.roles`：新增 `librarian`
+  - `public.permissions`：新增 `campus:library:*` 及细分权限；为 `librarian/admin/super_admin` 授权
 - RLS：对新增表 `enable row level security`（默认不下发策略；避免客户端直连）
 
 ## 本地/远端初始化（推荐流程）

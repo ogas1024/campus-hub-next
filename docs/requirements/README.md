@@ -18,7 +18,7 @@
 - ✅ [问卷](./surveys.md)
 - ✅ [收集引擎（Collect Engine）](./collect-engine.md)
 - ✅ [材料收集](./materials.md)
-- 🟠 [数字图书馆](./library.md)
+- ✅ [数字图书馆](./library.md)
 - 🟠 [失物招领](./lost-found.md)
 - ✅ [鉴权与用户](./auth.md)
 - 🟠 [用户管理（历史拆分稿）](./user-management.md)

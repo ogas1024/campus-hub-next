@@ -54,9 +54,9 @@ export const portalModules = [
   {
     id: "library",
     label: "数字图书馆",
-    description: "电子书与资料库（建设中）。",
+    description: "电子书/资料的检索、收藏与下载。",
     href: "/library",
-    status: "comingSoon",
+    status: "available",
   },
   {
     id: "lost-found",
@@ -127,6 +127,19 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
         label: "课程资源分享",
         href: "/console/resources",
         permCodes: [...courseResourcesConsoleEntryPermCodes],
+      },
+      {
+        id: "library",
+        label: "数字图书馆",
+        href: "/console/library",
+        permCodes: [
+          "campus:library:*",
+          "campus:library:list",
+          "campus:library:read",
+          "campus:library:review",
+          "campus:library:offline",
+          "campus:library:delete",
+        ],
       },
       {
         id: "surveys",

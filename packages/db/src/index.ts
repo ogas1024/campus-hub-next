@@ -9,3 +9,4 @@ export * from "./schema/courseResources";
 export * from "./schema/facilities";
 export * from "./schema/surveys";
 export * from "./schema/materials";
+export * from "./schema/library";
