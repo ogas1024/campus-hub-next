@@ -80,7 +80,7 @@
 
 ### 视图分层：前台 / 后台
 - **前台（portal）**
-  - URL 示例：`/`、`/resources`、`/facilities`、`/library`、`/lost-and-found`。
+  - URL 示例：`/`、`/resources`、`/facilities`、`/library`、`/lostfound`。
   - 面向普通学生 / 校园用户。
   - 功能：浏览资源、提交预约、发布/查看失物、阅读公告等。
 
@@ -143,7 +143,7 @@
     - `resources`（课程资源）
     - `notices`（通知公告）
     - `library`（数字图书）
-    - `lost-found`（失物招领）
+    - `lostfound`（失物招领）
   - 标准形式：
     - `GET /api/<resource>`：列表（支持分页 / 过滤）
     - `GET /api/<resource>/:id`：详情

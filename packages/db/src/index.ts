@@ -10,3 +10,4 @@ export * from "./schema/facilities";
 export * from "./schema/surveys";
 export * from "./schema/materials";
 export * from "./schema/library";
+export * from "./schema/lostfound";

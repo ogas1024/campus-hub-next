@@ -59,11 +59,11 @@ export const portalModules = [
     status: "available",
   },
   {
-    id: "lost-found",
+    id: "lostfound",
     label: "失物招领",
-    description: "发布失物/拾物、认领处理（建设中）。",
-    href: "/lost-found",
-    status: "comingSoon",
+    description: "发布失物/拾物信息、审核与状态流转。",
+    href: "/lostfound",
+    status: "available",
   },
 ] as const satisfies PortalModule[];
 
@@ -146,6 +146,19 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
         label: "问卷",
         href: "/console/surveys",
         permCodes: ["campus:survey:*", "campus:survey:list", "campus:survey:read", "campus:survey:create", "campus:survey:update"],
+      },
+      {
+        id: "lostfound",
+        label: "失物招领",
+        href: "/console/lostfound",
+        permCodes: [
+          "campus:lostfound:*",
+          "campus:lostfound:list",
+          "campus:lostfound:review",
+          "campus:lostfound:offline",
+          "campus:lostfound:restore",
+          "campus:lostfound:delete",
+        ],
       },
     ],
   },

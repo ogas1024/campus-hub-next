@@ -79,7 +79,7 @@ export function ModuleIcon({ moduleId, className }: Props) {
           <path d="M8 10h8" />
         </svg>
       );
-    case "lost-found":
+    case "lostfound":
       return (
         <svg {...common} aria-hidden>
           <path d="M11 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14z" />
