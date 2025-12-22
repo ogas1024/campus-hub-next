@@ -25,6 +25,18 @@ const nextConfig: NextConfig = {
         ],
       }
     : undefined,
+  turbopack: {
+    resolveAlias: {
+      "@supabase/supabase-js": "@supabase/supabase-js/dist/module/index.js",
+    },
+  },
+  webpack: (config) => {
+    config.resolve ??= {};
+    config.resolve.alias ??= {};
+    config.resolve.alias["@supabase/supabase-js"] =
+      "@supabase/supabase-js/dist/module/index.js";
+    return config;
+  },
 };
 
 export default nextConfig;

@@ -8,9 +8,10 @@ type Props = {
   value: string;
   onChange: (nextValue: string) => void;
   height?: string;
+  placeholder?: string;
 };
 
-export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
+export function NoticeEditor({ value, onChange, height = "420px", placeholder }: Props) {
   const { resolvedTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<import("@toast-ui/editor").default | null>(null);
@@ -39,6 +40,7 @@ export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
         theme: resolvedTheme === "dark" ? "dark" : "light",
         usageStatistics: false,
         initialValue: valueRef.current || "",
+        placeholder: placeholder || "",
       });
 
       editor.on("change", () => {
@@ -55,7 +57,7 @@ export function NoticeEditor({ value, onChange, height = "420px" }: Props) {
       editorRef.current?.destroy();
       editorRef.current = null;
     };
-  }, [height, onChange, resolvedTheme]);
+  }, [height, onChange, placeholder, resolvedTheme]);
 
   useEffect(() => {
     const editor = editorRef.current;

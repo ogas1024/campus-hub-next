@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { VisibilityScopeSelector } from "@/components/console/VisibilityScopeSelector";
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
-import { DepartmentTreeSelector } from "@/components/organization/DepartmentTreeSelector";
 import { InlineError } from "@/components/common/InlineError";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiResponseError } from "@/lib/api/http";
+import { createEmptySelectedScopes, selectedScopesFromInputs, selectedScopesToInputs } from "@/lib/ui/visibilityScope";
+import { useVisibilityScopeOptions } from "@/lib/hooks/useVisibilityScopeOptions";
 import {
   closeConsoleSurvey,
   fetchConsoleSurveyDetail,
@@ -24,7 +25,7 @@ import {
   publishConsoleSurvey,
   updateConsoleSurveyDraft,
 } from "@/lib/api/console-surveys";
-import type { ScopeType, SurveyQuestionType, SurveyScopeInput, SurveySection } from "@/lib/api/surveys";
+import type { SurveyQuestionType, SurveySection } from "@/lib/api/surveys";
 import { cn } from "@/lib/utils";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
@@ -95,6 +96,8 @@ export default function EditSurveyClient(props: Props) {
   const router = useRouter();
   const action = useAsyncAction();
 
+  const scopeOptionsQuery = useVisibilityScopeOptions(fetchSurveyScopeOptions, { silent: true });
+
   const [loading, setLoading] = useState(true);
   const [detailError, setDetailError] = useState<string | null>(null);
 
@@ -104,15 +107,10 @@ export default function EditSurveyClient(props: Props) {
   const [endAtLocal, setEndAtLocal] = useState("");
   const [anonymousResponses, setAnonymousResponses] = useState(false);
   const [visibleAll, setVisibleAll] = useState(true);
-  const [selected, setSelected] = useState<Record<ScopeType, Set<string>>>({
-    role: new Set(),
-    department: new Set(),
-    position: new Set(),
-  });
+  const [selected, setSelected] = useState(createEmptySelectedScopes);
   const [sections, setSections] = useState<SurveySection[]>([]);
   const [status, setStatus] = useState<"draft" | "published" | "closed">("draft");
   const [effectiveStatus, setEffectiveStatus] = useState<"draft" | "published" | "closed">("draft");
-  const [scopeOptions, setScopeOptions] = useState<Awaited<ReturnType<typeof fetchSurveyScopeOptions>> | null>(null);
 
   const editable = status === "draft" && props.perms.canUpdate;
 
@@ -122,10 +120,7 @@ export default function EditSurveyClient(props: Props) {
       setLoading(true);
       setDetailError(null);
       try {
-        const [detail, options] = await Promise.all([
-          fetchConsoleSurveyDetail(id),
-          fetchSurveyScopeOptions().catch(() => null),
-        ]);
+        const detail = await fetchConsoleSurveyDetail(id);
         if (cancelled) return;
 
         setTitle(detail.title);
@@ -138,15 +133,7 @@ export default function EditSurveyClient(props: Props) {
         setEffectiveStatus(detail.effectiveStatus);
         setSections(normalizeSorts(detail.sections));
 
-        const nextSelected: Record<ScopeType, Set<string>> = {
-          role: new Set(),
-          department: new Set(),
-          position: new Set(),
-        };
-        for (const s of detail.scopes) nextSelected[s.scopeType].add(s.refId);
-        setSelected(nextSelected);
-
-        if (options) setScopeOptions(options);
+        setSelected(selectedScopesFromInputs(detail.scopes));
       } catch (err) {
         if (cancelled) return;
         setDetailError(err instanceof ApiResponseError ? err.message : "加载失败");
@@ -161,22 +148,8 @@ export default function EditSurveyClient(props: Props) {
   }, [id]);
 
   const scopes = useMemo(() => {
-    const items: SurveyScopeInput[] = [];
-    for (const refId of selected.role) items.push({ scopeType: "role", refId });
-    for (const refId of selected.department) items.push({ scopeType: "department", refId });
-    for (const refId of selected.position) items.push({ scopeType: "position", refId });
-    return items;
+    return selectedScopesToInputs(selected);
   }, [selected]);
-
-  const departmentItems = useMemo(() => {
-    if (!scopeOptions) return [];
-    return scopeOptions.departments.map((d) => ({
-      id: d.id,
-      name: d.name,
-      parentId: d.parentId ?? null,
-      sort: 0,
-    }));
-  }, [scopeOptions]);
 
   async function saveDraft() {
     action.reset();
@@ -310,7 +283,7 @@ export default function EditSurveyClient(props: Props) {
                       const next = v === true;
                       setVisibleAll(next);
                       if (next) {
-                        setSelected({ role: new Set(), department: new Set(), position: new Set() });
+                        setSelected(createEmptySelectedScopes());
                       }
                     }}
                   />
@@ -320,87 +293,7 @@ export default function EditSurveyClient(props: Props) {
                   {!visibleAll ? <span className="text-xs text-muted-foreground">（role/department/position 任一命中即可见，OR 逻辑）</span> : null}
                 </div>
 
-                {!visibleAll ? (
-                  <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
-                    <div className="text-sm font-medium">可见范围</div>
-                    {!scopeOptions ? (
-                      <div className="text-sm text-muted-foreground">加载中...</div>
-                    ) : (
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-muted-foreground">角色</div>
-                          <ScrollArea className="h-56 rounded-md border border-border bg-background">
-                            <div className="space-y-1 p-2">
-                              {scopeOptions.roles.map((r) => (
-                                <label key={r.id} className="flex items-center gap-2 text-sm">
-                                  <Checkbox
-                                    checked={selected.role.has(r.id)}
-                                    disabled={!editable}
-                                    onCheckedChange={(v) => {
-                                      setSelected((prev) => {
-                                        const next = { ...prev, role: new Set(prev.role) };
-                                        if (v === true) next.role.add(r.id);
-                                        else next.role.delete(r.id);
-                                        return next;
-                                      });
-                                    }}
-                                  />
-                                  <span className="truncate">{r.name}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-muted-foreground">部门</div>
-                          {departmentItems.length === 0 ? (
-                            <div className="text-sm text-muted-foreground">暂无部门</div>
-                          ) : (
-                            <DepartmentTreeSelector
-                              departments={departmentItems}
-                              value={[...selected.department]}
-                              onChange={(nextIds) => {
-                                if (!editable) return;
-                                setSelected((prev) => ({ ...prev, department: new Set(nextIds) }));
-                              }}
-                              maxHeight={224}
-                            />
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-muted-foreground">岗位</div>
-                          {scopeOptions.positions.length === 0 ? (
-                            <div className="text-sm text-muted-foreground">暂无岗位</div>
-                          ) : (
-                            <ScrollArea className="h-56 rounded-md border border-border bg-background">
-                              <div className="space-y-1 p-2">
-                                {scopeOptions.positions.map((p) => (
-                                  <label key={p.id} className="flex items-center gap-2 text-sm">
-                                    <Checkbox
-                                      checked={selected.position.has(p.id)}
-                                      disabled={!editable}
-                                      onCheckedChange={(v) => {
-                                        setSelected((prev) => {
-                                          const next = { ...prev, position: new Set(prev.position) };
-                                          if (v === true) next.position.add(p.id);
-                                          else next.position.delete(p.id);
-                                          return next;
-                                        });
-                                      }}
-                                    />
-                                    <span className="truncate">{p.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </ScrollArea>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
+                {!visibleAll ? <VisibilityScopeSelector options={scopeOptionsQuery.options} selected={selected} setSelected={setSelected} disabled={!editable} /> : null}
 
                 <div className="space-y-2">
                   <Label>说明（Markdown，可选）</Label>

@@ -5,6 +5,7 @@
 ## 目录
 - `notices.md`：通知公告（已实现）
 - `surveys.md`：问卷（已实现）
+- `votes.md`：投票（已实现）
 - `materials.md`：材料收集（已实现）
 - `course-resources.md`：课程资源分享（已实现）
 - `library.md`：数字图书馆（已实现）

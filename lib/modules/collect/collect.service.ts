@@ -11,6 +11,7 @@ import type { RequestContext } from "@/lib/http/route";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
 import { buildVisibilityCondition, getAudienceContext, getVisibleIdsForUser } from "@/lib/modules/content-visibility/contentVisibility";
+import { getVisibilityScopeOptions } from "@/lib/modules/content-visibility/scopeOptions";
 import { buildUserIdDataScopeCondition } from "@/lib/modules/data-permission/dataPermission.where";
 import { storageAdapter } from "@/lib/storage";
 import { sanitizeStorageObjectKeyPart } from "@/lib/utils/fileName";
@@ -24,9 +25,7 @@ import {
   departmentClosure,
   notices,
   noticeScopes,
-  positions,
   profiles,
-  roles,
   userDepartments,
 } from "@campus-hub/db";
 
@@ -154,17 +153,7 @@ async function assertUniqueSourceBinding(params: { module: string; source: { typ
 }
 
 export async function getCollectScopeOptions() {
-  const [roleRows, deptRows, positionRows] = await Promise.all([
-    db.select({ id: roles.id, name: roles.name, code: roles.code }).from(roles).orderBy(desc(roles.updatedAt)),
-    db.select({ id: departments.id, name: departments.name, parentId: departments.parentId }).from(departments).orderBy(desc(departments.updatedAt)),
-    db.select({ id: positions.id, name: positions.name }).from(positions).orderBy(desc(positions.updatedAt)),
-  ]);
-
-  return {
-    roles: roleRows.map((r) => ({ id: r.id, name: r.name, code: r.code })),
-    departments: deptRows.map((d) => ({ id: d.id, name: d.name, parentId: d.parentId })),
-    positions: positionRows.map((p) => ({ id: p.id, name: p.name })),
-  };
+  return getVisibilityScopeOptions();
 }
 
 export async function listConsoleCollectTasks(params: {

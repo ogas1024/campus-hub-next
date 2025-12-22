@@ -8,16 +8,14 @@ import { HttpError, badRequest, conflict, forbidden, notFound } from "@/lib/http
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
 import { buildVisibilityCondition, getAudienceContext, getVisibleIdsForUser } from "@/lib/modules/content-visibility/contentVisibility";
+import { getVisibilityScopeOptions } from "@/lib/modules/content-visibility/scopeOptions";
 import { buildUserIdDataScopeCondition } from "@/lib/modules/data-permission/dataPermission.where";
 import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import {
-  departments,
   noticeAttachments,
   noticeReads,
   noticeScopes,
   notices,
-  positions,
-  roles,
 } from "@campus-hub/db";
 
 type NoticeScopeInput = { scopeType: "role" | "department" | "position"; refId: string };
@@ -1230,18 +1228,5 @@ export async function uploadNoticeAttachment(params: {
 }
 
 export async function getNoticeScopeOptions() {
-  const [roleRows, deptRows, positionRows] = await Promise.all([
-    db.select({ id: roles.id, name: roles.name, code: roles.code }).from(roles).orderBy(desc(roles.updatedAt)),
-    db
-      .select({ id: departments.id, name: departments.name, parentId: departments.parentId })
-      .from(departments)
-      .orderBy(desc(departments.updatedAt)),
-    db.select({ id: positions.id, name: positions.name }).from(positions).orderBy(desc(positions.updatedAt)),
-  ]);
-
-  return {
-    roles: roleRows.map((r) => ({ id: r.id, name: r.name, code: r.code })),
-    departments: deptRows.map((d) => ({ id: d.id, name: d.name, parentId: d.parentId })),
-    positions: positionRows.map((p) => ({ id: p.id, name: p.name })),
-  };
+  return getVisibilityScopeOptions();
 }

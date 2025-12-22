@@ -16,6 +16,7 @@
 - ✅ [课程资源分享](./course-resources.md)
 - ✅ [通知公告](./notices.md)
 - ✅ [问卷](./surveys.md)
+- ✅ [投票（冻结版）](./votes.md)
 - ✅ [收集引擎（Collect Engine）](./collect-engine.md)
 - ✅ [材料收集](./materials.md)
 - ✅ [数字图书馆](./library.md)

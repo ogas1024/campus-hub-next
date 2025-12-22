@@ -1,12 +1,9 @@
 import { apiDeleteJson, apiGetJson, apiPostJson, apiPutJson } from "@/lib/api/http";
 import type { ScopeType, SurveyScopeInput, SurveySection, SurveyStatus } from "@/lib/api/surveys";
 import type { SurveyResults } from "@/lib/modules/surveys/surveys.analytics";
+import type { ScopeOptionsResponse } from "@/lib/api/visibility-scope";
 
-export type SurveyScopeOptionsResponse = {
-  roles: Array<{ id: string; name: string; code?: string }>;
-  departments: Array<{ id: string; name: string; parentId?: string | null }>;
-  positions: Array<{ id: string; name: string }>;
-};
+export type SurveyScopeOptionsResponse = ScopeOptionsResponse;
 
 export type ConsoleSurveyListResponse = {
   page: number;

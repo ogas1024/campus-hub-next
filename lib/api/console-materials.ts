@@ -1,18 +1,12 @@
 import { apiDeleteJson, apiGetJson, apiPostForm, apiPostJson, apiPutJson } from "@/lib/api/http";
-import type { ScopeType } from "@/lib/api/surveys";
+import type { ScopeInput, ScopeOptionsResponse } from "@/lib/api/visibility-scope";
 
 export type MaterialStatus = "draft" | "published" | "closed";
 export type MaterialSubmissionStatus = "pending" | "complete" | "need_more" | "approved" | "rejected";
 
-export type ScopeOption = { id: string; name: string; parentId?: string | null; code?: string };
+export type MaterialScopeOptionsResponse = ScopeOptionsResponse;
 
-export type MaterialScopeOptionsResponse = {
-  roles: ScopeOption[];
-  departments: ScopeOption[];
-  positions: ScopeOption[];
-};
-
-export type MaterialScopeInput = { scopeType: ScopeType; refId: string };
+export type MaterialScopeInput = ScopeInput;
 
 export type MaterialItemInput = { id: string; title: string; description?: string | null; required: boolean; sort: number };
 

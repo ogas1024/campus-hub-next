@@ -19,6 +19,8 @@
 - `migrations/0007_surveys.sql`
 - `migrations/0008_materials.sql`
 - `migrations/0009_library.sql`
+- `migrations/0010_lostfound.sql`
+- `migrations/0011_votes.sql`
 
 > 注意：`0002_infra.sql` 依赖 `0001_baseline.sql` 中的 `public.set_updated_at()` 等基础函数与基线表结构。
 

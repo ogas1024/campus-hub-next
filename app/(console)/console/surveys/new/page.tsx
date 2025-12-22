@@ -2,21 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
+import { VisibilityScopeSelector } from "@/components/console/VisibilityScopeSelector";
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
-import { DepartmentTreeSelector } from "@/components/organization/DepartmentTreeSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiResponseError } from "@/lib/api/http";
 import { createConsoleSurvey, fetchSurveyScopeOptions } from "@/lib/api/console-surveys";
-import type { ScopeType, SurveyScopeInput } from "@/lib/api/surveys";
-
-type ScopeOptions = Awaited<ReturnType<typeof fetchSurveyScopeOptions>>;
+import { useVisibilityScopeOptions } from "@/lib/hooks/useVisibilityScopeOptions";
+import { createEmptySelectedScopes, selectedScopesToInputs } from "@/lib/ui/visibilityScope";
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -49,50 +47,15 @@ export default function NewSurveyPage() {
 
   const [anonymousResponses, setAnonymousResponses] = useState(false);
   const [visibleAll, setVisibleAll] = useState(true);
-  const [selected, setSelected] = useState<Record<ScopeType, Set<string>>>({
-    role: new Set(),
-    department: new Set(),
-    position: new Set(),
-  });
+  const [selected, setSelected] = useState(createEmptySelectedScopes);
 
-  const [options, setOptions] = useState<ScopeOptions | null>(null);
+  const scopeOptionsQuery = useVisibilityScopeOptions(fetchSurveyScopeOptions, { enabled: !visibleAll });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const data = await fetchSurveyScopeOptions();
-        if (cancelled) return;
-        setOptions(data);
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof ApiResponseError ? err.message : "加载可见范围选项失败");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const scopes = useMemo(() => {
-    const items: SurveyScopeInput[] = [];
-    for (const refId of selected.role) items.push({ scopeType: "role", refId });
-    for (const refId of selected.department) items.push({ scopeType: "department", refId });
-    for (const refId of selected.position) items.push({ scopeType: "position", refId });
-    return items;
+    return selectedScopesToInputs(selected);
   }, [selected]);
-
-  const departmentItems = useMemo(() => {
-    if (!options) return [];
-    return options.departments.map((d) => ({
-      id: d.id,
-      name: d.name,
-      parentId: d.parentId ?? null,
-      sort: 0,
-    }));
-  }, [options]);
 
   return (
     <div className="space-y-5">
@@ -148,81 +111,9 @@ export default function NewSurveyPage() {
           </div>
 
           {!visibleAll ? (
-            <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
-              <div className="text-sm font-medium">可见范围</div>
-              {!options ? (
-                <div className="text-sm text-muted-foreground">加载中...</div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground">角色</div>
-                    <ScrollArea className="h-56 rounded-md border border-border bg-background">
-                      <div className="space-y-1 p-2">
-                        {options.roles.map((r) => (
-                          <label key={r.id} className="flex items-center gap-2 text-sm">
-                            <Checkbox
-                              checked={selected.role.has(r.id)}
-                              onCheckedChange={(v) => {
-                                setSelected((prev) => {
-                                  const next = { ...prev, role: new Set(prev.role) };
-                                  if (v === true) next.role.add(r.id);
-                                  else next.role.delete(r.id);
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span className="truncate">{r.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground">部门</div>
-                    {departmentItems.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">暂无部门</div>
-                    ) : (
-                      <DepartmentTreeSelector
-                        departments={departmentItems}
-                        value={[...selected.department]}
-                        onChange={(nextIds) => {
-                          setSelected((prev) => ({ ...prev, department: new Set(nextIds) }));
-                        }}
-                        maxHeight={224}
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground">岗位</div>
-                    {options.positions.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">暂无岗位</div>
-                    ) : (
-                      <ScrollArea className="h-56 rounded-md border border-border bg-background">
-                        <div className="space-y-1 p-2">
-                          {options.positions.map((p) => (
-                            <label key={p.id} className="flex items-center gap-2 text-sm">
-                              <Checkbox
-                                checked={selected.position.has(p.id)}
-                                onCheckedChange={(v) => {
-                                  setSelected((prev) => {
-                                    const next = { ...prev, position: new Set(prev.position) };
-                                    if (v === true) next.position.add(p.id);
-                                    else next.position.delete(p.id);
-                                    return next;
-                                  });
-                                }}
-                              />
-                              <span className="truncate">{p.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="space-y-2">
+              <VisibilityScopeSelector options={scopeOptionsQuery.options} selected={selected} setSelected={setSelected} />
+              {scopeOptionsQuery.error ? <div className="text-sm text-destructive">{scopeOptionsQuery.error}</div> : null}
             </div>
           ) : null}
 
@@ -272,4 +163,3 @@ export default function NewSurveyPage() {
     </div>
   );
 }
-

@@ -4,20 +4,24 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { PortalShell } from "@/components/layout/PortalShell";
 import { hasAnyPerm } from "@/lib/auth/permissions";
 import { ModuleIcon } from "@/components/layout/ModuleIcon";
-import { consoleEntryPermCodes, portalModules, portalNavItems } from "@/lib/navigation/modules";
+import { consoleEntryPermCodes, portalModules, portalNavItems, type PortalModuleStatus } from "@/lib/navigation/modules";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+function filterPortalModulesByStatus(status: PortalModuleStatus) {
+  return portalModules.filter((m) => m.status === status);
+}
+
 export default async function Home() {
   const user = await getCurrentUser();
   const canEnterConsole = user ? await hasAnyPerm(user.id, [...consoleEntryPermCodes]) : false;
 
-  const availableCount = portalModules.filter((m) => m.status === "available").length;
   const totalCount = portalModules.length;
-  const availableModules = portalModules.filter((m) => m.status === "available");
-  const comingSoonModules = portalModules.filter((m) => m.status === "comingSoon");
+  const availableModules = filterPortalModulesByStatus("available");
+  const comingSoonModules = filterPortalModulesByStatus("comingSoon");
+  const availableCount = availableModules.length;
 
   return (
     <PortalShell user={user} canEnterConsole={canEnterConsole} navItems={portalNavItems}>

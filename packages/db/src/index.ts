@@ -11,3 +11,4 @@ export * from "./schema/surveys";
 export * from "./schema/materials";
 export * from "./schema/library";
 export * from "./schema/lostfound";
+export * from "./schema/votes";

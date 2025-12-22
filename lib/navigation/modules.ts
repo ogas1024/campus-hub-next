@@ -47,9 +47,9 @@ export const portalModules = [
   {
     id: "votes",
     label: "投票",
-    description: "投票/评选活动（建设中）。",
+    description: "多题单选/多选投票，支持置顶、延期与归档。",
     href: "/votes",
-    status: "comingSoon",
+    status: "available",
   },
   {
     id: "library",
@@ -146,6 +146,12 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
         label: "问卷",
         href: "/console/surveys",
         permCodes: ["campus:survey:*", "campus:survey:list", "campus:survey:read", "campus:survey:create", "campus:survey:update"],
+      },
+      {
+        id: "votes",
+        label: "投票",
+        href: "/console/votes",
+        permCodes: ["campus:vote:*", "campus:vote:list", "campus:vote:read", "campus:vote:create", "campus:vote:update"],
       },
       {
         id: "lostfound",

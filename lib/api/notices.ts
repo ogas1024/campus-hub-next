@@ -1,17 +1,13 @@
 import { apiDeleteJson, apiGetJson, apiPostForm, apiPostJson, apiPutJson } from "@/lib/api/http";
+import type { ScopeInput, ScopeOptionsResponse } from "@/lib/api/visibility-scope";
 
 export type NoticeStatus = "draft" | "published" | "retracted";
 
-export type ScopeType = "role" | "department" | "position";
-export type ScopeOption = { id: string; name: string; parentId?: string | null; code?: string };
+export type { ScopeOption, ScopeType } from "@/lib/api/visibility-scope";
 
-export type NoticeScopeOptionsResponse = {
-  roles: ScopeOption[];
-  departments: ScopeOption[];
-  positions: ScopeOption[];
-};
+export type NoticeScopeOptionsResponse = ScopeOptionsResponse;
 
-export type NoticeScopeInput = { scopeType: ScopeType; refId: string };
+export type NoticeScopeInput = ScopeInput;
 
 export type NoticeAttachmentInput = {
   fileKey: string;
@@ -92,4 +88,3 @@ export function uploadConsoleNoticeAttachment(noticeId: string, file: File) {
     formData,
   );
 }
-

@@ -1,10 +1,11 @@
 import { apiGetJson, apiPostJson } from "@/lib/api/http";
+import type { ScopeInput } from "@/lib/api/visibility-scope";
 
 export type SurveyStatus = "draft" | "published" | "closed";
 export type SurveyQuestionType = "text" | "single" | "multi" | "rating";
-export type ScopeType = "role" | "department" | "position";
+export type { ScopeType } from "@/lib/api/visibility-scope";
 
-export type SurveyScopeInput = { scopeType: ScopeType; refId: string };
+export type SurveyScopeInput = ScopeInput;
 
 export type SurveyOption = { id: string; label: string; sort: number };
 
@@ -80,4 +81,3 @@ export function fetchPortalSurveyDetail(surveyId: string) {
 export function submitSurveyResponse(surveyId: string, body: { items: Array<{ questionId: string; value: SurveyAnswerValue }> }) {
   return apiPostJson<{ ok: true; responseId: string; submittedAt: string }>(`/api/surveys/${surveyId}/responses`, body);
 }
-

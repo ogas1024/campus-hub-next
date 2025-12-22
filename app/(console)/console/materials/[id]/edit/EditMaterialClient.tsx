@@ -5,16 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ConsoleDeleteDialog } from "@/components/console/crud/ConsoleDeleteDialog";
+import { VisibilityScopeSelector } from "@/components/console/VisibilityScopeSelector";
 import { InlineError } from "@/components/common/InlineError";
 import { NoticeEditor } from "@/components/notices/NoticeEditor";
-import { DepartmentTreeSelector } from "@/components/organization/DepartmentTreeSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { ApiResponseError } from "@/lib/api/http";
 import {
@@ -28,9 +27,10 @@ import {
   updateConsoleMaterialDueAt,
   uploadMaterialItemTemplate,
 } from "@/lib/api/console-materials";
-import type { ConsoleMaterialDetail, MaterialItemInput, MaterialScopeInput } from "@/lib/api/console-materials";
-import type { ScopeType } from "@/lib/api/surveys";
+import type { ConsoleMaterialDetail, MaterialItemInput } from "@/lib/api/console-materials";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
+import { useVisibilityScopeOptions } from "@/lib/hooks/useVisibilityScopeOptions";
+import { createEmptySelectedScopes, selectedScopesFromInputs, selectedScopesToInputs } from "@/lib/ui/visibilityScope";
 
 type Props = {
   materialId: string;
@@ -71,6 +71,8 @@ export default function EditMaterialClient(props: Props) {
   const router = useRouter();
   const action = useAsyncAction();
 
+  const scopeOptionsQuery = useVisibilityScopeOptions(fetchMaterialScopeOptions, { silent: true });
+
   const [loading, setLoading] = useState(true);
   const [detailError, setDetailError] = useState<string | null>(null);
 
@@ -78,40 +80,21 @@ export default function EditMaterialClient(props: Props) {
   const [descriptionMd, setDescriptionMd] = useState("");
   const [noticeId, setNoticeId] = useState<string | null>(null);
   const [visibleAll, setVisibleAll] = useState(true);
-  const [selected, setSelected] = useState<Record<ScopeType, Set<string>>>({
-    role: new Set(),
-    department: new Set(),
-    position: new Set(),
-  });
+  const [selected, setSelected] = useState(createEmptySelectedScopes);
   const [maxFilesPerSubmission, setMaxFilesPerSubmission] = useState(10);
   const [dueAtLocal, setDueAtLocal] = useState("");
   const [items, setItems] = useState<ConsoleMaterialDetail["items"]>([]);
   const [status, setStatus] = useState<"draft" | "published" | "closed">("draft");
   const [archivedAt, setArchivedAt] = useState<string | null>(null);
   const [createdBy, setCreatedBy] = useState<string>("");
-  const [scopeOptions, setScopeOptions] = useState<Awaited<ReturnType<typeof fetchMaterialScopeOptions>> | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const linkedToNotice = !!noticeId;
   const canOperate = props.perms.canManageAll || (!!createdBy && createdBy === props.currentUserId);
   const editableStructure = status === "draft" && props.perms.canUpdate && canOperate && !archivedAt;
 
-  const departmentItems = useMemo(() => {
-    if (!scopeOptions) return [];
-    return scopeOptions.departments.map((d) => ({
-      id: d.id,
-      name: d.name,
-      parentId: d.parentId ?? null,
-      sort: 0,
-    }));
-  }, [scopeOptions]);
-
   const scopes = useMemo(() => {
-    const out: MaterialScopeInput[] = [];
-    for (const refId of selected.role) out.push({ scopeType: "role", refId });
-    for (const refId of selected.department) out.push({ scopeType: "department", refId });
-    for (const refId of selected.position) out.push({ scopeType: "position", refId });
-    return out;
+    return selectedScopesToInputs(selected);
   }, [selected]);
 
   useEffect(() => {
@@ -120,10 +103,7 @@ export default function EditMaterialClient(props: Props) {
       setLoading(true);
       setDetailError(null);
       try {
-        const [detail, options] = await Promise.all([
-          fetchConsoleMaterialDetail(id),
-          fetchMaterialScopeOptions().catch(() => null),
-        ]);
+        const detail = await fetchConsoleMaterialDetail(id);
         if (cancelled) return;
 
         setTitle(detail.title);
@@ -136,16 +116,8 @@ export default function EditMaterialClient(props: Props) {
         setStatus(detail.status);
         setArchivedAt(detail.archivedAt ?? null);
         setCreatedBy(detail.createdBy);
+        setSelected(selectedScopesFromInputs(detail.scopes));
 
-        const nextSelected: Record<ScopeType, Set<string>> = {
-          role: new Set(),
-          department: new Set(),
-          position: new Set(),
-        };
-        for (const s of detail.scopes ?? []) nextSelected[s.scopeType].add(s.refId);
-        setSelected(nextSelected);
-
-        if (options) setScopeOptions(options);
       } catch (err) {
         if (cancelled) return;
         setDetailError(err instanceof ApiResponseError ? err.message : "加载失败");
@@ -171,14 +143,7 @@ export default function EditMaterialClient(props: Props) {
     setStatus(detail.status);
     setArchivedAt(detail.archivedAt ?? null);
     setCreatedBy(detail.createdBy);
-
-    const nextSelected: Record<ScopeType, Set<string>> = {
-      role: new Set(),
-      department: new Set(),
-      position: new Set(),
-    };
-    for (const s of detail.scopes ?? []) nextSelected[s.scopeType].add(s.refId);
-    setSelected(nextSelected);
+    setSelected(selectedScopesFromInputs(detail.scopes));
   }
 
   async function saveDraft() {
@@ -410,85 +375,7 @@ export default function EditMaterialClient(props: Props) {
           </div>
 
           {!visibleAll && !linkedToNotice ? (
-            <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
-              <div className="text-sm font-medium">可见范围</div>
-              {!scopeOptions ? (
-                <div className="text-sm text-muted-foreground">加载中...</div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground">角色</div>
-                    <ScrollArea className="h-56 rounded-md border border-border bg-background">
-                      <div className="space-y-1 p-2">
-                        {scopeOptions.roles.map((r) => (
-                          <label key={r.id} className="flex items-center gap-2 text-sm">
-                            <Checkbox
-                              checked={selected.role.has(r.id)}
-                              disabled={scopeDisabled}
-                              onCheckedChange={(v) => {
-                                setSelected((prev) => {
-                                  const next = { ...prev, role: new Set(prev.role) };
-                                  if (v === true) next.role.add(r.id);
-                                  else next.role.delete(r.id);
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span className="truncate">{r.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground">部门</div>
-                    {departmentItems.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">暂无部门</div>
-                    ) : (
-                      <DepartmentTreeSelector
-                        departments={departmentItems}
-                        value={[...selected.department]}
-                        disabled={scopeDisabled}
-                        onChange={(nextIds) => {
-                          setSelected((prev) => ({ ...prev, department: new Set(nextIds) }));
-                        }}
-                        maxHeight={224}
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground">岗位</div>
-                    {scopeOptions.positions.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">暂无岗位</div>
-                    ) : (
-                      <ScrollArea className="h-56 rounded-md border border-border bg-background">
-                        <div className="space-y-1 p-2">
-                          {scopeOptions.positions.map((p) => (
-                            <label key={p.id} className="flex items-center gap-2 text-sm">
-                              <Checkbox
-                                checked={selected.position.has(p.id)}
-                                disabled={scopeDisabled}
-                                onCheckedChange={(v) => {
-                                  setSelected((prev) => {
-                                    const next = { ...prev, position: new Set(prev.position) };
-                                    if (v === true) next.position.add(p.id);
-                                    else next.position.delete(p.id);
-                                    return next;
-                                  });
-                                }}
-                              />
-                              <span className="truncate">{p.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <VisibilityScopeSelector options={scopeOptionsQuery.options} selected={selected} setSelected={setSelected} disabled={scopeDisabled} />
           ) : null}
 
           <div className="space-y-2">
