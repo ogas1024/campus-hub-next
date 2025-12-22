@@ -5,6 +5,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forbidden } from "@/lib/http/errors";
 import { requireUser } from "@/lib/auth/session";
+import { devTtlCached } from "@/lib/utils/devTtlCache";
+import { requestCached } from "@/lib/utils/requestCache";
 import { permissions, rolePermissions, userRoles } from "@campus-hub/db";
 
 function expandPermCandidates(permCode: string) {
@@ -30,15 +32,20 @@ export async function hasPerm(userId: string, permCode: string) {
   const candidates = expandPermCandidates(permCode);
   if (candidates.length === 0) return false;
 
-  const rows = await db
-    .select({ ok: userRoles.userId })
-    .from(userRoles)
-    .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
-    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(and(eq(userRoles.userId, userId), inArray(permissions.code, candidates)))
-    .limit(1);
+  const key = `auth:hasPerm:${userId}:${[...candidates].sort().join("\u0000")}`;
+  return requestCached(key, () =>
+    devTtlCached(key, 10_000, async () => {
+      const rows = await db
+        .select({ ok: userRoles.userId })
+        .from(userRoles)
+        .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
+        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+        .where(and(eq(userRoles.userId, userId), inArray(permissions.code, candidates)))
+        .limit(1);
 
-  return rows.length > 0;
+      return rows.length > 0;
+    }),
+  );
 }
 
 export async function hasAnyPerm(userId: string, permCodes: string[]) {
@@ -53,15 +60,20 @@ export async function hasAnyPerm(userId: string, permCodes: string[]) {
   const candidates = [...candidateSet];
   if (candidates.length === 0) return false;
 
-  const rows = await db
-    .select({ ok: userRoles.userId })
-    .from(userRoles)
-    .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
-    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(and(eq(userRoles.userId, userId), inArray(permissions.code, candidates)))
-    .limit(1);
+  const key = `auth:hasAnyPerm:${userId}:${[...candidates].sort().join("\u0000")}`;
+  return requestCached(key, () =>
+    devTtlCached(key, 10_000, async () => {
+      const rows = await db
+        .select({ ok: userRoles.userId })
+        .from(userRoles)
+        .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
+        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+        .where(and(eq(userRoles.userId, userId), inArray(permissions.code, candidates)))
+        .limit(1);
 
-  return rows.length > 0;
+      return rows.length > 0;
+    }),
+  );
 }
 
 export async function requirePerm(permCode: string) {

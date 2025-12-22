@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { InlineError } from "@/components/common/InlineError";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +17,7 @@ import {
   rejectConsoleLibraryBook,
 } from "@/lib/api/console-library";
 import type { BookStatus } from "@/lib/api/library";
+import { cn } from "@/lib/utils";
 
 type ActionKind = "approve" | "reject" | "offline" | "delete";
 
@@ -101,6 +103,10 @@ export function ConsoleLibraryBookActions(props: Props) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
+        <Link className={cn(buttonVariants({ variant: "outline", size: btnSize }), btnClass)} href={`/console/library/${props.bookId}`}>
+          详情
+        </Link>
+
         {canApprove ? (
           <Button size={btnSize} className={btnClass} disabled={action.pending} onClick={() => open("approve")}>
             通过

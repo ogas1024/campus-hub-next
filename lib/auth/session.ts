@@ -1,11 +1,14 @@
 import "server-only";
 
 import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 
 import { unauthorized } from "@/lib/http/errors";
 import { db } from "@/lib/db";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/lib/auth/types";
+import { devTtlCached, hashCacheKey } from "@/lib/utils/devTtlCache";
+import { requestCached } from "@/lib/utils/requestCache";
 import { appConfig, authUsers, profiles } from "@campus-hub/db";
 
 type ProfileStatus = "active" | "disabled" | "banned" | "pending_approval" | "pending_email_verification";
@@ -51,84 +54,105 @@ async function getRegistrationRequiresApproval(): Promise<boolean> {
   return coerceBoolean(rows[0]?.value) ?? false;
 }
 
+async function getSupabaseSessionCookieKey(): Promise<string> {
+  const store = await cookies();
+  return store
+    .getAll()
+    .filter((c) => c.name.startsWith("sb-") && c.value)
+    .map((c) => `${c.name}=${c.value}`)
+    .sort()
+    .join("&");
+}
+
 export async function getUserAccessInfo(): Promise<UserAccessInfo> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return { authenticated: false, allowed: false, blockCode: "NOT_AUTHENTICATED" };
+  return requestCached("auth:getUserAccessInfo", async () => {
+    const cookieKey = await getSupabaseSessionCookieKey();
+    if (!cookieKey) return { authenticated: false, allowed: false, blockCode: "NOT_AUTHENTICATED" };
 
-  const userId = data.user.id;
-  const userEmail = data.user.email ?? null;
+    const supabase = await createSupabaseServerClient();
+    const cacheKey = `auth:supabase:getUser:${hashCacheKey(cookieKey)}`;
+    const user = await devTtlCached(cacheKey, 10_000, async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) return null;
+      return { id: data.user.id, email: data.user.email ?? null };
+    });
 
-  const rows = await db
-    .select({
-      status: profiles.status,
-      emailConfirmedAt: authUsers.emailConfirmedAt,
-      bannedUntil: authUsers.bannedUntil,
-      deletedAt: authUsers.deletedAt,
-    })
-    .from(profiles)
-    .leftJoin(authUsers, eq(authUsers.id, profiles.id))
-    .where(eq(profiles.id, userId))
-    .limit(1);
+    if (!user) return { authenticated: false, allowed: false, blockCode: "NOT_AUTHENTICATED" };
 
-  const row = rows[0];
-  if (!row) {
-    return { authenticated: true, allowed: false, userId, email: userEmail, blockCode: "PROFILE_MISSING" };
-  }
+    const userId = user.id;
+    const userEmail = user.email;
 
-  const now = Date.now();
-  const emailVerified = !!row.emailConfirmedAt;
-  const isBanned = !!row.bannedUntil && row.bannedUntil.getTime() > now;
-  const isDeleted = !!row.deletedAt;
+    const rows = await db
+      .select({
+        status: profiles.status,
+        emailConfirmedAt: authUsers.emailConfirmedAt,
+        bannedUntil: authUsers.bannedUntil,
+        deletedAt: authUsers.deletedAt,
+      })
+      .from(profiles)
+      .leftJoin(authUsers, eq(authUsers.id, profiles.id))
+      .where(eq(profiles.id, userId))
+      .limit(1);
 
-  const profileStatus = row.status as ProfileStatus;
-  let requiresApproval: boolean | undefined;
-  let effectiveProfileStatus = profileStatus;
+    const row = rows[0];
+    if (!row) {
+      return { authenticated: true, allowed: false, userId, email: userEmail, blockCode: "PROFILE_MISSING" };
+    }
 
-  if (profileStatus === "pending_approval" && emailVerified) {
-    requiresApproval = await getRegistrationRequiresApproval();
-    if (!requiresApproval) effectiveProfileStatus = "active";
-  }
+    const now = Date.now();
+    const emailVerified = !!row.emailConfirmedAt;
+    const isBanned = !!row.bannedUntil && row.bannedUntil.getTime() > now;
+    const isDeleted = !!row.deletedAt;
 
-  const allowed = emailVerified && !isBanned && !isDeleted && effectiveProfileStatus === "active";
+    const profileStatus = row.status as ProfileStatus;
+    let requiresApproval: boolean | undefined;
+    let effectiveProfileStatus = profileStatus;
 
-  if (allowed) {
+    if (profileStatus === "pending_approval" && emailVerified) {
+      requiresApproval = await getRegistrationRequiresApproval();
+      if (!requiresApproval) effectiveProfileStatus = "active";
+    }
+
+    const allowed = emailVerified && !isBanned && !isDeleted && effectiveProfileStatus === "active";
+
+    if (allowed) {
+      return {
+        authenticated: true,
+        allowed: true,
+        userId,
+        email: userEmail,
+        profileStatus,
+        effectiveProfileStatus,
+        emailVerified,
+        requiresApproval,
+        banned: false,
+        deleted: false,
+      };
+    }
+
+    let blockCode: UserAccessBlockCode;
+    if (!emailVerified) blockCode = "EMAIL_NOT_VERIFIED";
+    else if (isDeleted) blockCode = "DELETED";
+    else if (isBanned) blockCode = "BANNED";
+    else if (effectiveProfileStatus === "pending_approval") blockCode = "PENDING_APPROVAL";
+    else if (effectiveProfileStatus === "disabled") blockCode = "DISABLED";
+    else if (effectiveProfileStatus === "banned") blockCode = "BANNED";
+    else blockCode = "DISABLED";
+
     return {
       authenticated: true,
-      allowed: true,
+      allowed: false,
       userId,
       email: userEmail,
       profileStatus,
       effectiveProfileStatus,
       emailVerified,
       requiresApproval,
-      banned: false,
-      deleted: false,
+      banned: isBanned,
+      deleted: isDeleted,
+      blockCode,
     };
-  }
-
-  let blockCode: UserAccessBlockCode;
-  if (!emailVerified) blockCode = "EMAIL_NOT_VERIFIED";
-  else if (isDeleted) blockCode = "DELETED";
-  else if (isBanned) blockCode = "BANNED";
-  else if (effectiveProfileStatus === "pending_approval") blockCode = "PENDING_APPROVAL";
-  else if (effectiveProfileStatus === "disabled") blockCode = "DISABLED";
-  else if (effectiveProfileStatus === "banned") blockCode = "BANNED";
-  else blockCode = "DISABLED";
-
-  return {
-    authenticated: true,
-    allowed: false,
-    userId,
-    email: userEmail,
-    profileStatus,
-    effectiveProfileStatus,
-    emailVerified,
-    requiresApproval,
-    banned: isBanned,
-    deleted: isDeleted,
-    blockCode,
-  };
+  });
 }
 
 export async function getCurrentUser(): Promise<AppUser | null> {

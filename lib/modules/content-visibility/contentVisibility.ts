@@ -5,6 +5,8 @@ import type { SQL } from "drizzle-orm";
 import type { AnyPgColumn, AnyPgTable } from "drizzle-orm/pg-core";
 
 import { db } from "@/lib/db";
+import { devTtlCached } from "@/lib/utils/devTtlCache";
+import { requestCached } from "@/lib/utils/requestCache";
 import { departmentClosure, userDepartments, userPositions, userRoles } from "@campus-hub/db";
 
 export type AudienceContext = {
@@ -20,17 +22,33 @@ type IdColumn = AnyPgColumn<{ data: string }>;
 type VisibleAllColumn = AnyPgColumn<{ data: boolean }>;
 
 export async function getAudienceContext(userId: string): Promise<AudienceContext> {
-  const [roleRows, deptRows, positionRows] = await Promise.all([
-    db.select({ roleId: userRoles.roleId }).from(userRoles).where(eq(userRoles.userId, userId)),
-    db.select({ departmentId: userDepartments.departmentId }).from(userDepartments).where(eq(userDepartments.userId, userId)),
-    db.select({ positionId: userPositions.positionId }).from(userPositions).where(eq(userPositions.userId, userId)),
-  ]);
+  const key = `visibility:getAudienceContext:${userId}`;
+  return requestCached(key, () =>
+    devTtlCached(key, 10_000, async () => {
+      const [roleRows, deptRows, positionRows] = await Promise.all([
+        db.select({ roleId: userRoles.roleId }).from(userRoles).where(eq(userRoles.userId, userId)),
+        db.select({ departmentId: userDepartments.departmentId }).from(userDepartments).where(eq(userDepartments.userId, userId)),
+        db.select({ positionId: userPositions.positionId }).from(userPositions).where(eq(userPositions.userId, userId)),
+      ]);
 
-  return {
-    roleIds: roleRows.map((r) => r.roleId),
-    departmentIds: deptRows.map((d) => d.departmentId),
-    positionIds: positionRows.map((p) => p.positionId),
-  };
+      return {
+        roleIds: roleRows.map((r) => r.roleId),
+        departmentIds: deptRows.map((d) => d.departmentId),
+        positionIds: positionRows.map((p) => p.positionId),
+      };
+    }),
+  );
+}
+
+function normalizeIds(ids: string[]) {
+  if (ids.length === 0) return "";
+  return [...ids].sort().join(",");
+}
+
+function getTableName(table: AnyPgTable): string {
+  const name = (table as unknown as Record<symbol, unknown>)[Symbol.for("drizzle:Name")];
+  if (typeof name === "string" && name.trim()) return name;
+  return "unknown";
 }
 
 export async function getVisibleIdsForUser(params: {
@@ -40,43 +58,55 @@ export async function getVisibleIdsForUser(params: {
   scopeTypeColumn: ScopeTypeColumn;
   refIdColumn: IdColumn;
 }): Promise<string[]> {
-  const idSet = new Set<string>();
+  const key = [
+    "visibility:getVisibleIdsForUser",
+    getTableName(params.scopesTable),
+    normalizeIds(params.ctx.roleIds),
+    normalizeIds(params.ctx.departmentIds),
+    normalizeIds(params.ctx.positionIds),
+  ].join("\u0000");
 
-  if (params.ctx.roleIds.length > 0) {
-    const rows = await db
-      .select({ resourceId: params.resourceIdColumn })
-      .from(params.scopesTable)
-      .where(and(eq(params.scopeTypeColumn, "role"), inArray(params.refIdColumn, params.ctx.roleIds)));
-    for (const r of rows) {
-      if (r.resourceId) idSet.add(r.resourceId);
-    }
-  }
+  return requestCached(key, () =>
+    devTtlCached(key, 10_000, async () => {
+      const idSet = new Set<string>();
 
-  if (params.ctx.departmentIds.length > 0) {
-    const rows = await db
-      .select({ resourceId: params.resourceIdColumn })
-      .from(params.scopesTable)
-      .innerJoin(
-        departmentClosure,
-        and(eq(departmentClosure.ancestorId, params.refIdColumn), inArray(departmentClosure.descendantId, params.ctx.departmentIds)),
-      )
-      .where(eq(params.scopeTypeColumn, "department"));
-    for (const r of rows) {
-      if (r.resourceId) idSet.add(r.resourceId);
-    }
-  }
+      if (params.ctx.roleIds.length > 0) {
+        const rows = await db
+          .select({ resourceId: params.resourceIdColumn })
+          .from(params.scopesTable)
+          .where(and(eq(params.scopeTypeColumn, "role"), inArray(params.refIdColumn, params.ctx.roleIds)));
+        for (const r of rows) {
+          if (r.resourceId) idSet.add(r.resourceId);
+        }
+      }
 
-  if (params.ctx.positionIds.length > 0) {
-    const rows = await db
-      .select({ resourceId: params.resourceIdColumn })
-      .from(params.scopesTable)
-      .where(and(eq(params.scopeTypeColumn, "position"), inArray(params.refIdColumn, params.ctx.positionIds)));
-    for (const r of rows) {
-      if (r.resourceId) idSet.add(r.resourceId);
-    }
-  }
+      if (params.ctx.departmentIds.length > 0) {
+        const rows = await db
+          .select({ resourceId: params.resourceIdColumn })
+          .from(params.scopesTable)
+          .innerJoin(
+            departmentClosure,
+            and(eq(departmentClosure.ancestorId, params.refIdColumn), inArray(departmentClosure.descendantId, params.ctx.departmentIds)),
+          )
+          .where(eq(params.scopeTypeColumn, "department"));
+        for (const r of rows) {
+          if (r.resourceId) idSet.add(r.resourceId);
+        }
+      }
 
-  return [...idSet];
+      if (params.ctx.positionIds.length > 0) {
+        const rows = await db
+          .select({ resourceId: params.resourceIdColumn })
+          .from(params.scopesTable)
+          .where(and(eq(params.scopeTypeColumn, "position"), inArray(params.refIdColumn, params.ctx.positionIds)));
+        for (const r of rows) {
+          if (r.resourceId) idSet.add(r.resourceId);
+        }
+      }
+
+      return [...idSet];
+    }),
+  );
 }
 
 export function buildVisibilityCondition(params: {
