@@ -1,8 +1,13 @@
 export type WorkbenchActionVariant = "default" | "outline";
 
+export type WorkbenchSettings = {
+  reminderWindowDays: number;
+};
+
 export type WorkbenchContext = {
   actorUserId: string;
   now: Date;
+  settings: WorkbenchSettings;
   canPerm: (permCode: string) => Promise<boolean>;
   canAnyPerm: (permCodes: readonly string[]) => Promise<boolean>;
 };

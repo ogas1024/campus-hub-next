@@ -3,10 +3,26 @@ import "server-only";
 import type { WorkbenchCard, WorkbenchContext, WorkbenchProvider, WorkbenchQuickLink } from "./types";
 
 import { courseResourcesWorkbenchProvider } from "@/lib/modules/course-resources/courseResources.workbench";
+import { facilitiesWorkbenchProvider } from "@/lib/modules/facilities/facilities.workbench";
+import { libraryWorkbenchProvider } from "@/lib/modules/library/library.workbench";
+import { lostfoundWorkbenchProvider } from "@/lib/modules/lostfound/lostfound.workbench";
+import { materialsWorkbenchProvider } from "@/lib/modules/materials/materials.workbench";
 import { noticesWorkbenchProvider } from "@/lib/modules/notices/notices.workbench";
+import { surveysWorkbenchProvider } from "@/lib/modules/surveys/surveys.workbench";
+import { votesWorkbenchProvider } from "@/lib/modules/votes/votes.workbench";
 import { infraWorkbenchProvider } from "@/lib/workbench/system.workbench";
 
-const providers: WorkbenchProvider[] = [noticesWorkbenchProvider, courseResourcesWorkbenchProvider, infraWorkbenchProvider];
+const providers: WorkbenchProvider[] = [
+  noticesWorkbenchProvider,
+  materialsWorkbenchProvider,
+  courseResourcesWorkbenchProvider,
+  facilitiesWorkbenchProvider,
+  libraryWorkbenchProvider,
+  surveysWorkbenchProvider,
+  votesWorkbenchProvider,
+  lostfoundWorkbenchProvider,
+  infraWorkbenchProvider,
+];
 
 type WorkbenchContributions = {
   cards: WorkbenchCard[];

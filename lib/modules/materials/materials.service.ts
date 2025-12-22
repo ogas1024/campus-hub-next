@@ -6,6 +6,7 @@ import {
   archiveCollectTask,
   batchProcessCollectSubmissions,
   closeCollectTask,
+  countConsolePublishedCollectTasksDueSoon,
   createCollectTaskDraft,
   deleteCollectTask,
   deleteMyCollectFile,
@@ -16,6 +17,7 @@ import {
   getConsoleCollectSubmissionDetail,
   getConsoleCollectTaskDetail,
   getPortalCollectTaskDetail,
+  listConsolePublishedCollectTasksDueSoon,
   listConsoleCollectSubmissions,
   listConsoleCollectTasks,
   listPortalCollectTasks,
@@ -148,6 +150,19 @@ export async function listConsoleMaterials(params: {
       updatedAt: i.updatedAt,
     })),
   };
+}
+
+export async function countConsolePublishedMaterialsDueSoon(params: { actorUserId: string; withinDays: number }) {
+  return countConsolePublishedCollectTasksDueSoon({ config: materialConfig, actorUserId: params.actorUserId, withinDays: params.withinDays });
+}
+
+export async function listConsolePublishedMaterialsDueSoon(params: { actorUserId: string; withinDays: number; limit: number }) {
+  return listConsolePublishedCollectTasksDueSoon({
+    config: materialConfig,
+    actorUserId: params.actorUserId,
+    withinDays: params.withinDays,
+    limit: params.limit,
+  });
 }
 
 export async function getConsoleMaterialDetail(params: { actorUserId: string; materialId: string }) {

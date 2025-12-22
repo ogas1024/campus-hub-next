@@ -231,6 +231,84 @@ export async function listConsoleCollectTasks(params: {
   };
 }
 
+export async function countConsolePublishedCollectTasksDueSoon(params: { config: CollectModuleConfig; actorUserId: string; withinDays: number }) {
+  const withinDays = Math.max(1, Math.min(365, Math.floor(params.withinDays)));
+  const now = new Date();
+  const to = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.actorUserId,
+    module: params.config.module,
+    targetUserIdColumn: collectTasks.createdBy,
+  });
+
+  const where = [
+    eq(collectTasks.module, params.config.module),
+    isNull(collectTasks.deletedAt),
+    sql`${collectTasks.archivedAt} is null`,
+    eq(collectTasks.status, "published"),
+    sql`${collectTasks.dueAt} is not null`,
+    sql`${collectTasks.dueAt} > ${now.toISOString()}`,
+    sql`${collectTasks.dueAt} <= ${to.toISOString()}`,
+  ];
+  if (visibilityCondition) where.push(visibilityCondition);
+
+  const row = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(collectTasks)
+    .where(and(...where));
+
+  return Number(row[0]?.total ?? 0);
+}
+
+export async function listConsolePublishedCollectTasksDueSoon(params: {
+  config: CollectModuleConfig;
+  actorUserId: string;
+  withinDays: number;
+  limit: number;
+}) {
+  const withinDays = Math.max(1, Math.min(365, Math.floor(params.withinDays)));
+  const limit = Math.max(1, Math.min(100, Math.floor(params.limit)));
+  const now = new Date();
+  const to = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.actorUserId,
+    module: params.config.module,
+    targetUserIdColumn: collectTasks.createdBy,
+  });
+
+  const where = [
+    eq(collectTasks.module, params.config.module),
+    isNull(collectTasks.deletedAt),
+    sql`${collectTasks.archivedAt} is null`,
+    eq(collectTasks.status, "published"),
+    sql`${collectTasks.dueAt} is not null`,
+    sql`${collectTasks.dueAt} > ${now.toISOString()}`,
+    sql`${collectTasks.dueAt} <= ${to.toISOString()}`,
+  ];
+  if (visibilityCondition) where.push(visibilityCondition);
+
+  const rows = await db
+    .select({
+      id: collectTasks.id,
+      title: collectTasks.title,
+      dueAt: collectTasks.dueAt,
+      updatedAt: collectTasks.updatedAt,
+    })
+    .from(collectTasks)
+    .where(and(...where))
+    .orderBy(asc(collectTasks.dueAt), desc(collectTasks.updatedAt), desc(collectTasks.id))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    dueAt: r.dueAt,
+    updatedAt: r.updatedAt,
+  }));
+}
+
 export async function getConsoleCollectTaskDetail(params: { config: CollectModuleConfig; actorUserId: string; taskId: string }) {
   const task = await getTaskBaseForConsole({ module: params.config.module, actorUserId: params.actorUserId, taskId: params.taskId });
 

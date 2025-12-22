@@ -4,11 +4,13 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { PortalShell } from "@/components/layout/PortalShell";
 import { hasAnyPerm } from "@/lib/auth/permissions";
 import { ModuleIcon } from "@/components/layout/ModuleIcon";
+import { PortalHomeFavorites } from "@/components/portal/PortalHomeFavorites";
 import { consoleEntryPermCodes, portalModules, portalNavItems, type PortalModuleStatus } from "@/lib/navigation/modules";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { readPortalHomePreferences } from "@/lib/workbench/preferences.server";
 
 function filterPortalModulesByStatus(status: PortalModuleStatus) {
   return portalModules.filter((m) => m.status === status);
@@ -17,6 +19,8 @@ function filterPortalModulesByStatus(status: PortalModuleStatus) {
 export default async function Home() {
   const user = await getCurrentUser();
   const canEnterConsole = user ? await hasAnyPerm(user.id, [...consoleEntryPermCodes]) : false;
+
+  const portalHomePreferences = await readPortalHomePreferences();
 
   const totalCount = portalModules.length;
   const availableModules = filterPortalModulesByStatus("available");
@@ -56,6 +60,8 @@ export default async function Home() {
           </CardContent>
         </Card>
 
+        <PortalHomeFavorites modules={portalModules} initialPreferences={portalHomePreferences} />
+
         <section className="space-y-3">
           <div className="flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">已上线</h2>
@@ -85,34 +91,36 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="space-y-3">
-          <div className="flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">建设中</h2>
-            <div className="text-sm text-muted-foreground">按优先级逐步落地</div>
-          </div>
+        {comingSoonModules.length > 0 ? (
+          <section className="space-y-3">
+            <div className="flex items-end justify-between">
+              <h2 className="text-lg font-semibold tracking-tight">建设中</h2>
+              <div className="text-sm text-muted-foreground">按优先级逐步落地</div>
+            </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            {comingSoonModules.map((m) => (
-              <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-dashed border-border bg-card hover:bg-accent")}>
-                <div className="flex items-start justify-between gap-4 p-5">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <div className="mt-0.5 text-muted-foreground">
-                      <ModuleIcon moduleId={m.id} className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-base font-semibold">{m.label}</div>
-                        <Badge variant="secondary">建设中</Badge>
+            <div className="grid gap-3 md:grid-cols-2">
+              {comingSoonModules.map((m) => (
+                <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-dashed border-border bg-card hover:bg-accent")}>
+                  <div className="flex items-start justify-between gap-4 p-5">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="mt-0.5 text-muted-foreground">
+                        <ModuleIcon moduleId={m.id} className="h-5 w-5" />
                       </div>
-                      <div className="text-sm text-muted-foreground">{m.description}</div>
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-base font-semibold">{m.label}</div>
+                          <Badge variant="secondary">建设中</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">{m.description}</div>
+                      </div>
                     </div>
+                    <div className="shrink-0 text-sm text-muted-foreground">查看规划 →</div>
                   </div>
-                  <div className="shrink-0 text-sm text-muted-foreground">查看规划 →</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </PortalShell>
   );

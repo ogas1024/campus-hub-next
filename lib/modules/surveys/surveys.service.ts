@@ -575,6 +575,68 @@ export async function listConsoleSurveys(params: {
   };
 }
 
+export async function countConsolePublishedSurveysEndingSoon(params: { actorUserId: string; withinDays: number }) {
+  const withinDays = Math.max(1, Math.min(365, Math.floor(params.withinDays)));
+  const now = new Date();
+  const to = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.actorUserId,
+    module: "survey",
+    targetUserIdColumn: surveys.createdBy,
+  });
+
+  const where = [
+    isNull(surveys.deletedAt),
+    eq(surveys.status, "published"),
+    sql`${surveys.endAt} > now()`,
+    sql`${surveys.endAt} <= ${to.toISOString()}`,
+  ];
+  if (visibilityCondition) where.push(visibilityCondition);
+
+  const row = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(surveys)
+    .where(and(...where));
+
+  return Number(row[0]?.total ?? 0);
+}
+
+export async function listConsolePublishedSurveysEndingSoon(params: { actorUserId: string; withinDays: number; limit: number }) {
+  const withinDays = Math.max(1, Math.min(365, Math.floor(params.withinDays)));
+  const limit = Math.max(1, Math.min(100, Math.floor(params.limit)));
+  const now = new Date();
+  const to = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.actorUserId,
+    module: "survey",
+    targetUserIdColumn: surveys.createdBy,
+  });
+
+  const where = [
+    isNull(surveys.deletedAt),
+    eq(surveys.status, "published"),
+    sql`${surveys.endAt} > now()`,
+    sql`${surveys.endAt} <= ${to.toISOString()}`,
+  ];
+  if (visibilityCondition) where.push(visibilityCondition);
+
+  const rows = await db
+    .select({
+      id: surveys.id,
+      title: surveys.title,
+      endAt: surveys.endAt,
+      updatedAt: surveys.updatedAt,
+    })
+    .from(surveys)
+    .where(and(...where))
+    .orderBy(asc(surveys.endAt), desc(surveys.updatedAt), desc(surveys.id))
+    .limit(limit);
+
+  return rows.map((r) => ({ id: r.id, title: r.title, endAt: r.endAt, updatedAt: r.updatedAt }));
+}
+
 async function getConsoleSurveyBase(params: { actorUserId: string; surveyId: string }) {
   const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
     actorUserId: params.actorUserId,

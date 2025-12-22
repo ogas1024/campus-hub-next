@@ -4,8 +4,9 @@ import { hasAnyPerm, hasPerm } from "@/lib/auth/permissions";
 
 import type { WorkbenchContext } from "./types";
 
-export function createWorkbenchContext(params: { actorUserId: string; now?: Date }): WorkbenchContext {
+export function createWorkbenchContext(params: { actorUserId: string; now?: Date; settings?: WorkbenchContext["settings"] }): WorkbenchContext {
   const now = params.now ?? new Date();
+  const settings = params.settings ?? { reminderWindowDays: 7 };
 
   const permCache = new Map<string, Promise<boolean>>();
   const anyPermCache = new Map<string, Promise<boolean>>();
@@ -31,8 +32,8 @@ export function createWorkbenchContext(params: { actorUserId: string; now?: Date
   return {
     actorUserId: params.actorUserId,
     now,
+    settings,
     canPerm,
     canAnyPerm,
   };
 }
-

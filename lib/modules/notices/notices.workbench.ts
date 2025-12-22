@@ -5,7 +5,6 @@ import { formatZhDateTime } from "@/lib/ui/datetime";
 
 import { countConsolePublishedNoticesExpiringSoon, listConsoleNotices, listConsolePublishedNoticesExpiringSoon } from "./notices.service";
 
-const EXPIRE_SOON_WITHIN_DAYS = 7;
 const EXPIRE_SOON_DIALOG_LIMIT = 30;
 
 export const noticesWorkbenchProvider: WorkbenchProvider = {
@@ -14,6 +13,8 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
   async getCards(ctx) {
     const canList = await ctx.canPerm("campus:notice:list");
     if (!canList) return [];
+
+    const withinDays = Math.max(1, Math.floor(ctx.settings.reminderWindowDays));
 
     const [draftTotal, expiringSoonTotal, expiringSoonItems, canCreate] = await Promise.all([
       listConsoleNotices({
@@ -26,11 +27,11 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
       }).then((r) => r.total),
       countConsolePublishedNoticesExpiringSoon({
         userId: ctx.actorUserId,
-        withinDays: EXPIRE_SOON_WITHIN_DAYS,
+        withinDays,
       }),
       listConsolePublishedNoticesExpiringSoon({
         userId: ctx.actorUserId,
-        withinDays: EXPIRE_SOON_WITHIN_DAYS,
+        withinDays,
         limit: EXPIRE_SOON_DIALOG_LIMIT,
       }),
       ctx.canPerm("campus:notice:create"),
@@ -45,8 +46,8 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
 
     const expiringSoonDialogDescription =
       expiringSoonTotal > expiringSoonDialogItems.length
-        ? `未来 ${EXPIRE_SOON_WITHIN_DAYS} 天内到期：${expiringSoonTotal} 条（仅展示前 ${expiringSoonDialogItems.length} 条）`
-        : `未来 ${EXPIRE_SOON_WITHIN_DAYS} 天内到期：${expiringSoonTotal} 条`;
+        ? `未来 ${withinDays} 天内到期：${expiringSoonTotal} 条（仅展示前 ${expiringSoonDialogItems.length} 条）`
+        : `未来 ${withinDays} 天内到期：${expiringSoonTotal} 条`;
 
     return [
       {
@@ -56,7 +57,7 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
         description: "草稿仅对创建者与具备管理权限的账号可见；到期提醒仅统计已发布且未过期的公告。",
         metrics: [
           { id: "draft", label: "我的草稿", value: draftTotal },
-          { id: "expireSoon", label: "7 天内到期（已发布）", value: expiringSoonTotal },
+          { id: "expireSoon", label: `${withinDays} 天内到期（已发布）`, value: expiringSoonTotal },
         ],
         actions: [
           { kind: "link", id: "drafts", label: "查看草稿", href: "/console/notices?status=draft&mine=true", variant: "outline" },
@@ -66,10 +67,10 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
             label: "查看到期清单",
             variant: "outline",
             dialog: {
-              title: `7 天内到期（已发布）`,
+              title: `${withinDays} 天内到期（已发布）`,
               description: expiringSoonDialogDescription,
               items: expiringSoonDialogItems,
-              emptyText: `未来 ${EXPIRE_SOON_WITHIN_DAYS} 天内暂无到期公告`,
+              emptyText: `未来 ${withinDays} 天内暂无到期公告`,
             },
           },
           ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建", href: "/console/notices/new" }] : []),

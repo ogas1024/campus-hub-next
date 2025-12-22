@@ -96,31 +96,76 @@ export const courseResourcesConsoleEntryPermCodes = [
   "campus:resource:major_lead_update",
 ] as const;
 
+export const noticesConsoleEntryPermCodes = ["campus:notice:list"] as const;
+
+export const materialsConsoleEntryPermCodes = [
+  "campus:material:*",
+  "campus:material:manage",
+  "campus:material:list",
+  "campus:material:read",
+  "campus:material:create",
+  "campus:material:update",
+  "campus:material:process",
+] as const;
+
+export const facilitiesConsoleEntryPermCodes = [
+  "campus:facility:*",
+  "campus:facility:review",
+  "campus:facility:config",
+  "campus:facility:ban",
+] as const;
+
+export const libraryConsoleEntryPermCodes = [
+  "campus:library:*",
+  "campus:library:list",
+  "campus:library:read",
+  "campus:library:review",
+  "campus:library:offline",
+  "campus:library:delete",
+] as const;
+
+export const surveysConsoleEntryPermCodes = [
+  "campus:survey:*",
+  "campus:survey:list",
+  "campus:survey:read",
+  "campus:survey:create",
+  "campus:survey:update",
+] as const;
+
+export const votesConsoleEntryPermCodes = [
+  "campus:vote:*",
+  "campus:vote:list",
+  "campus:vote:read",
+  "campus:vote:create",
+  "campus:vote:update",
+] as const;
+
+export const lostfoundConsoleEntryPermCodes = [
+  "campus:lostfound:*",
+  "campus:lostfound:list",
+  "campus:lostfound:review",
+  "campus:lostfound:offline",
+  "campus:lostfound:restore",
+  "campus:lostfound:delete",
+] as const;
+
 export const consoleNavGroups: ConsoleNavGroup[] = [
   {
     id: "life",
     label: "生活平台",
     items: [
-      { id: "notices", label: "通知公告", href: "/console/notices", permCodes: ["campus:notice:list"] },
+      { id: "notices", label: "通知公告", href: "/console/notices", permCodes: [...noticesConsoleEntryPermCodes] },
       {
         id: "materials",
         label: "材料收集",
         href: "/console/materials",
-        permCodes: [
-          "campus:material:*",
-          "campus:material:manage",
-          "campus:material:list",
-          "campus:material:read",
-          "campus:material:create",
-          "campus:material:update",
-          "campus:material:process",
-        ],
+        permCodes: [...materialsConsoleEntryPermCodes],
       },
       {
         id: "facilities",
         label: "功能房预约",
         href: "/console/facilities",
-        permCodes: ["campus:facility:*", "campus:facility:review", "campus:facility:config", "campus:facility:ban"],
+        permCodes: [...facilitiesConsoleEntryPermCodes],
       },
       {
         id: "resources",
@@ -132,39 +177,25 @@ export const consoleNavGroups: ConsoleNavGroup[] = [
         id: "library",
         label: "数字图书馆",
         href: "/console/library",
-        permCodes: [
-          "campus:library:*",
-          "campus:library:list",
-          "campus:library:read",
-          "campus:library:review",
-          "campus:library:offline",
-          "campus:library:delete",
-        ],
+        permCodes: [...libraryConsoleEntryPermCodes],
       },
       {
         id: "surveys",
         label: "问卷",
         href: "/console/surveys",
-        permCodes: ["campus:survey:*", "campus:survey:list", "campus:survey:read", "campus:survey:create", "campus:survey:update"],
+        permCodes: [...surveysConsoleEntryPermCodes],
       },
       {
         id: "votes",
         label: "投票",
         href: "/console/votes",
-        permCodes: ["campus:vote:*", "campus:vote:list", "campus:vote:read", "campus:vote:create", "campus:vote:update"],
+        permCodes: [...votesConsoleEntryPermCodes],
       },
       {
         id: "lostfound",
         label: "失物招领",
         href: "/console/lostfound",
-        permCodes: [
-          "campus:lostfound:*",
-          "campus:lostfound:list",
-          "campus:lostfound:review",
-          "campus:lostfound:offline",
-          "campus:lostfound:restore",
-          "campus:lostfound:delete",
-        ],
+        permCodes: [...lostfoundConsoleEntryPermCodes],
       },
     ],
   },

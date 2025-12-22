@@ -661,6 +661,70 @@ export async function listConsoleVotes(params: {
   };
 }
 
+export async function countConsolePublishedVotesEndingSoon(params: { actorUserId: string; withinDays: number }) {
+  const withinDays = Math.max(1, Math.min(365, Math.floor(params.withinDays)));
+  const now = new Date();
+  const to = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.actorUserId,
+    module: "vote",
+    targetUserIdColumn: votes.createdBy,
+  });
+
+  const where = [
+    isNull(votes.deletedAt),
+    sql`${votes.archivedAt} is null`,
+    eq(votes.status, "published"),
+    sql`${votes.endAt} > now()`,
+    sql`${votes.endAt} <= ${to.toISOString()}`,
+  ];
+  if (visibilityCondition) where.push(visibilityCondition);
+
+  const row = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(votes)
+    .where(and(...where));
+
+  return Number(row[0]?.total ?? 0);
+}
+
+export async function listConsolePublishedVotesEndingSoon(params: { actorUserId: string; withinDays: number; limit: number }) {
+  const withinDays = Math.max(1, Math.min(365, Math.floor(params.withinDays)));
+  const limit = Math.max(1, Math.min(100, Math.floor(params.limit)));
+  const now = new Date();
+  const to = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
+    actorUserId: params.actorUserId,
+    module: "vote",
+    targetUserIdColumn: votes.createdBy,
+  });
+
+  const where = [
+    isNull(votes.deletedAt),
+    sql`${votes.archivedAt} is null`,
+    eq(votes.status, "published"),
+    sql`${votes.endAt} > now()`,
+    sql`${votes.endAt} <= ${to.toISOString()}`,
+  ];
+  if (visibilityCondition) where.push(visibilityCondition);
+
+  const rows = await db
+    .select({
+      id: votes.id,
+      title: votes.title,
+      endAt: votes.endAt,
+      updatedAt: votes.updatedAt,
+    })
+    .from(votes)
+    .where(and(...where))
+    .orderBy(asc(votes.endAt), desc(votes.updatedAt), desc(votes.id))
+    .limit(limit);
+
+  return rows.map((r) => ({ id: r.id, title: r.title, endAt: r.endAt, updatedAt: r.updatedAt }));
+}
+
 async function getConsoleVoteBase(params: { actorUserId: string; voteId: string }) {
   const { condition: visibilityCondition } = await buildUserIdDataScopeCondition({
     actorUserId: params.actorUserId,
