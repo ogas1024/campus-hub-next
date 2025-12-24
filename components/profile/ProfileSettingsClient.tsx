@@ -27,6 +27,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/toast";
 
 type Props = {
   initialProfile: MyProfileResponse;
@@ -237,6 +238,7 @@ function ProfileEditDialog(props: {
     try {
       const updated = await patchMyProfile(patch);
       props.onProfileUpdated(updated);
+      toast.success("资料已保存", { description: normalizedName });
       router.refresh();
       props.onRequestClose();
     } catch (err) {
@@ -266,6 +268,7 @@ function ProfileEditDialog(props: {
       setAvatarFile(null);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
       setMessage("头像已更新。");
+      toast.success("头像已更新", { description: avatarFile.name });
       router.refresh();
     } catch (err) {
       setError(getApiErrorMessage(err, "头像上传失败"));
@@ -285,6 +288,7 @@ function ProfileEditDialog(props: {
       setAvatarFile(null);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
       setMessage("头像已移除。");
+      toast.success("头像已移除");
       router.refresh();
     } catch (err) {
       setError(getApiErrorMessage(err, "移除头像失败"));
@@ -507,6 +511,7 @@ function PasswordChangeDialog(props: { open: boolean; profile: MyProfileResponse
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
       if (updateError) throw updateError;
 
+      toast.success("密码已修改，请重新登录");
       await supabase.auth.signOut();
       router.push("/login");
       router.refresh();

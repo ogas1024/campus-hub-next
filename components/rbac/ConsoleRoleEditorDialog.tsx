@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { fetchRoleDataScopes, setRoleDataScopes, type RoleDataScopeItem, type ScopeType } from "@/lib/api/data-permission";
 import { fetchDepartments, type Department } from "@/lib/api/organization";
 import {
@@ -283,6 +284,7 @@ export function ConsoleRoleEditorDialog(props: Props) {
       }),
     );
     if (!res) return;
+    toast.success("已创建角色", { description: `${code} · ${nm}` });
     props.onCreated(res.id);
     router.refresh();
   }
@@ -316,7 +318,7 @@ export function ConsoleRoleEditorDialog(props: Props) {
     const changed = before && before !== after;
     if (!changed) return;
 
-    const ok = await runAction(async () => {
+    const res = await runAction(async () => {
       const normalizedBefore = (() => {
         if (!before) return null;
         try {
@@ -329,7 +331,11 @@ export function ConsoleRoleEditorDialog(props: Props) {
 
       const normalizedAfter = normalizeSnapshot(currentSnapshot);
 
-      if (normalizedBefore.name !== normalizedAfter.name || normalizedBefore.description !== normalizedAfter.description) {
+      const basicsChanged = normalizedBefore.name !== normalizedAfter.name || normalizedBefore.description !== normalizedAfter.description;
+      const permissionsChanged = JSON.stringify(normalizedBefore.permissionCodes) !== JSON.stringify(normalizedAfter.permissionCodes);
+      const scopesChanged = JSON.stringify(normalizedBefore.dataScopes) !== JSON.stringify(normalizedAfter.dataScopes);
+
+      if (basicsChanged) {
         await updateRole(id, {
           name: normalizedAfter.name ? normalizedAfter.name : undefined,
           description: normalizedAfter.description.trim() ? normalizedAfter.description.trim() : null,
@@ -337,19 +343,29 @@ export function ConsoleRoleEditorDialog(props: Props) {
         });
       }
 
-      if (JSON.stringify(normalizedBefore.permissionCodes) !== JSON.stringify(normalizedAfter.permissionCodes)) {
+      if (permissionsChanged) {
         await setRolePermissions(id, { permissionCodes: normalizedAfter.permissionCodes, reason: reasonValue });
       }
 
-      if (JSON.stringify(normalizedBefore.dataScopes) !== JSON.stringify(normalizedAfter.dataScopes)) {
+      if (scopesChanged) {
         await setRoleDataScopes(id, { items: payloadScopes, reason: reasonValue });
       }
+      return { basicsChanged, permissionsChanged, scopesChanged };
     }, { fallbackErrorMessage: "保存失败" });
 
-    if (!ok) return;
+    if (!res) return;
 
     setInitialSnapshot(after);
     setReason("");
+    toast.success("已保存角色配置", {
+      description: (() => {
+        const parts: string[] = [];
+        if (res.basicsChanged) parts.push("基础信息");
+        if (res.permissionsChanged) parts.push("权限");
+        if (res.scopesChanged) parts.push("数据范围");
+        return parts.length > 0 ? `已更新：${parts.join("、")}` : undefined;
+      })(),
+    });
     router.refresh();
   }
 
@@ -359,6 +375,7 @@ export function ConsoleRoleEditorDialog(props: Props) {
     resetAction();
     const ok = await runAction(() => deleteRole(id, { reason: reason.trim() ? reason.trim() : undefined }), { fallbackErrorMessage: "删除失败" });
     if (!ok) return;
+    toast.success("已删除角色", { description: roleCode.trim() ? roleCode : name.trim() ? name : id });
     setDeleteOpen(false);
     props.onRequestClose();
     router.refresh();

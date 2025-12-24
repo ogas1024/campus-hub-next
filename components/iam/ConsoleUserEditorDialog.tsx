@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import {
   createConsoleUser,
   fetchConsoleUserDetail,
@@ -295,6 +296,7 @@ export function ConsoleUserEditorDialog(props: Props) {
     }, { fallbackErrorMessage: createTab === "create" ? "创建失败" : "邀请失败" });
 
     if (!res) return;
+    toast.success(createTab === "create" ? "已创建用户" : "已发送邀请", { description: `${nameValue} · ${studentIdValue} · ${emailValue}` });
     props.onCreated(res.userId);
     router.refresh();
   }
@@ -312,7 +314,7 @@ export function ConsoleUserEditorDialog(props: Props) {
     const changed = before && before !== after;
     if (!changed) return;
 
-    const ok = await runAction(async () => {
+    const res = await runAction(async () => {
       const normalizedBefore = (() => {
         if (!before) return null;
         try {
@@ -326,7 +328,11 @@ export function ConsoleUserEditorDialog(props: Props) {
       const normalizedAfter = normalizeSnapshot(currentSnapshot);
       const reasonValue = reason.trim() ? reason.trim() : undefined;
 
-      if (props.perms.canAssignRole && JSON.stringify(normalizedBefore.roleIds) !== JSON.stringify(normalizedAfter.roleIds)) {
+      const roleChanged = JSON.stringify(normalizedBefore.roleIds) !== JSON.stringify(normalizedAfter.roleIds);
+      const deptChanged = JSON.stringify(normalizedBefore.departmentIds) !== JSON.stringify(normalizedAfter.departmentIds);
+      const posChanged = JSON.stringify(normalizedBefore.positionIds) !== JSON.stringify(normalizedAfter.positionIds);
+
+      if (props.perms.canAssignRole && roleChanged) {
         const builtinUserRoleId = roles.find((r) => r.code === "user")?.id ?? null;
         const roleIds = (() => {
           if (!builtinUserRoleId) return normalizedAfter.roleIds;
@@ -338,18 +344,28 @@ export function ConsoleUserEditorDialog(props: Props) {
         await setUserRoles(id, { roleIds, reason: reasonValue });
       }
 
-      if (props.perms.canAssignOrg && JSON.stringify(normalizedBefore.departmentIds) !== JSON.stringify(normalizedAfter.departmentIds)) {
+      if (props.perms.canAssignOrg && deptChanged) {
         await setUserDepartments(id, { departmentIds: normalizedAfter.departmentIds, reason: reasonValue });
       }
 
-      if (props.perms.canAssignOrg && JSON.stringify(normalizedBefore.positionIds) !== JSON.stringify(normalizedAfter.positionIds)) {
+      if (props.perms.canAssignOrg && posChanged) {
         await setUserPositions(id, { positionIds: normalizedAfter.positionIds, reason: reasonValue });
       }
+      return { roleChanged, deptChanged, posChanged };
     }, { fallbackErrorMessage: "保存失败" });
 
-    if (!ok) return;
+    if (!res) return;
     setInitialSnapshot(after);
     setReason("");
+    toast.success("已保存用户配置", {
+      description: (() => {
+        const parts: string[] = [];
+        if (res.roleChanged) parts.push("角色");
+        if (res.deptChanged) parts.push("部门");
+        if (res.posChanged) parts.push("岗位");
+        return parts.length > 0 ? `已更新：${parts.join("、")}` : undefined;
+      })(),
+    });
     router.refresh();
   }
 

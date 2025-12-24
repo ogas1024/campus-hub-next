@@ -265,8 +265,8 @@ export default async function ConsoleAuditPage({ searchParams }: { searchParams:
                   <span
                     className={
                       it.success
-                        ? "rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700"
-                        : "rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+                        ? "rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 whitespace-nowrap"
+                        : "rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive whitespace-nowrap"
                     }
                   >
                     {it.success ? "成功" : "失败"}

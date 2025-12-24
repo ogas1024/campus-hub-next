@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 type PositionItem = Pick<Position, "id" | "code" | "name" | "description" | "enabled" | "sort">;
@@ -52,53 +53,66 @@ export function PositionsManager(props: Props) {
   const [deleteReason, setDeleteReason] = useState("");
 
   async function submitCreate() {
+    const code = createCode.trim();
+    const name = createName.trim();
+    const description = createDescription.trim();
+    const reason = createReason.trim();
+
     const res = await action.run(
       () =>
         createPosition({
-          code: createCode.trim() ? createCode.trim() : undefined,
-          name: createName.trim(),
-          description: createDescription.trim() ? createDescription.trim() : undefined,
+          code: code ? code : undefined,
+          name,
+          description: description ? description : undefined,
           enabled: createEnabled,
           sort: createSort,
-          reason: createReason.trim() ? createReason.trim() : undefined,
+          reason: reason ? reason : undefined,
         }),
       { fallbackErrorMessage: "创建失败" },
     );
     if (!res) return;
     const next: PositionItem = {
       id: res.id,
-      code: createCode.trim() ? createCode.trim() : null,
-      name: createName.trim(),
-      description: createDescription.trim() ? createDescription.trim() : null,
+      code: code ? code : null,
+      name,
+      description: description ? description : null,
       enabled: createEnabled,
       sort: createSort,
     };
     setItems((prev) => [...prev, next]);
     setCreateOpen(false);
+    toast.success("已创建岗位", { description: name });
     router.refresh();
   }
 
   async function submitUpdate() {
     if (!editId) return;
-    const ok = await action.run(async () => {
-      await updatePosition(editId, {
-        code: editCode.trim() ? editCode.trim() : null,
-        name: editName.trim() ? editName.trim() : undefined,
-        description: editDescription.trim() ? editDescription.trim() : null,
-        enabled: editEnabled,
-        sort: editSort,
-        reason: editReason.trim() ? editReason.trim() : undefined,
-      });
-    }, { fallbackErrorMessage: "保存失败" });
+    const code = editCode.trim();
+    const name = editName.trim();
+    const description = editDescription.trim();
+    const reason = editReason.trim();
+
+    const ok = await action.run(
+      () =>
+        updatePosition(editId, {
+          code: code ? code : null,
+          name: name ? name : undefined,
+          description: description ? description : null,
+          enabled: editEnabled,
+          sort: editSort,
+          reason: reason ? reason : undefined,
+        }),
+      { fallbackErrorMessage: "保存失败" },
+    );
     if (!ok) return;
     setItems((prev) =>
       prev.map((p) =>
         p.id === editId
           ? {
               ...p,
-              code: editCode.trim() ? editCode.trim() : null,
-              name: editName.trim() ? editName.trim() : p.name,
-              description: editDescription.trim() ? editDescription.trim() : null,
+              code: code ? code : null,
+              name: name ? name : p.name,
+              description: description ? description : null,
               enabled: editEnabled,
               sort: editSort,
             }
@@ -106,18 +120,23 @@ export function PositionsManager(props: Props) {
       ),
     );
     setEditOpen(false);
+    toast.success("已保存岗位", { description: name });
     router.refresh();
   }
 
   async function submitDelete() {
     if (!deleteId) return;
+    const id = deleteId;
+    const reason = deleteReason.trim();
+    const deletedName = items.find((p) => p.id === id)?.name ?? undefined;
     const ok = await action.run(
-      () => deletePosition(deleteId, { reason: deleteReason.trim() ? deleteReason.trim() : undefined }),
+      () => deletePosition(id, { reason: reason ? reason : undefined }),
       { fallbackErrorMessage: "删除失败" },
     );
     if (!ok) return;
-    setItems((prev) => prev.filter((p) => p.id !== deleteId));
+    setItems((prev) => prev.filter((p) => p.id !== id));
     setDeleteOpen(false);
+    toast.success("已删除岗位", { description: deletedName });
     router.refresh();
   }
 

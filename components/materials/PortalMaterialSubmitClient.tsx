@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import type { PortalMaterialDetail, MaterialSubmissionStatus } from "@/lib/api/materials";
 import { deleteMyMaterialFile, fetchPortalMaterialDetail, submitMyMaterial, uploadMyMaterialFile, withdrawMyMaterial } from "@/lib/api/materials";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -125,6 +126,7 @@ export function PortalMaterialSubmitClient(props: Props) {
     setMissingItemIds(new Set());
     const res = await action.run(() => submitMyMaterial(props.materialId), { fallbackErrorMessage: "提交失败" });
     if (!res) return;
+    toast.success("已提交材料");
     await refresh();
     router.refresh();
   }
@@ -134,6 +136,7 @@ export function PortalMaterialSubmitClient(props: Props) {
     const res = await action.run(() => withdrawMyMaterial(props.materialId), { fallbackErrorMessage: "撤回失败" });
     if (!res) return;
     setMissingItemIds(new Set());
+    toast.success("已撤回材料提交");
     await refresh();
     router.refresh();
   }

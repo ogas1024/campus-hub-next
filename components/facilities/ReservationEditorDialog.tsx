@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { createMyReservation, fetchMyReservationDetail, updateMyReservation, type MyReservationDetail } from "@/lib/api/me-reservations";
 import type { UserSearchItem } from "@/lib/api/users";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -220,6 +221,7 @@ function ReservationEditorDialogInner(props: Props) {
       );
       if (!res) return;
 
+      toast.success("预约已提交", { description: `${room.buildingName} / ${room.name}` });
       props.onOpenChange(false);
       props.onSuccess?.();
       router.refresh();
@@ -240,6 +242,7 @@ function ReservationEditorDialogInner(props: Props) {
     );
     if (!ok) return;
 
+    toast.success("预约已重提", { description: `${room.buildingName} / ${room.name}` });
     props.onOpenChange(false);
     props.onSuccess?.();
     router.refresh();

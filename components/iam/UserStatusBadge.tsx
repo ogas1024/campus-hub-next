@@ -11,5 +11,5 @@ const meta: Record<UserStatus, { label: string; className: string }> = {
 };
 
 export function UserStatusBadge({ status }: { status: UserStatus }) {
-  return <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", meta[status].className)}>{meta[status].label}</span>;
+  return <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap", meta[status].className)}>{meta[status].label}</span>;
 }

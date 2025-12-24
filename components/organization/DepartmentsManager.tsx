@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 import { cn } from "@/lib/utils";
 
@@ -150,10 +151,11 @@ export function DepartmentsManager(props: Props) {
   const [deleteReason, setDeleteReason] = useState("");
 
   async function submitCreate() {
+    const name = createName.trim();
     const res = await action.run(
       () =>
         createDepartment({
-          name: createName.trim(),
+          name,
           parentId: createParentId ?? null,
           sort: createSort,
           reason: createReason.trim() ? createReason.trim() : undefined,
@@ -161,10 +163,11 @@ export function DepartmentsManager(props: Props) {
       { fallbackErrorMessage: "创建失败" },
     );
     if (!res) return;
-    const next: Department = { id: res.id, name: createName.trim(), parentId: createParentId ?? null, sort: createSort };
+    const next: Department = { id: res.id, name, parentId: createParentId ?? null, sort: createSort };
     setItems((prev) => [...prev, next]);
     setSelectedId(res.id);
     setCreateOpen(false);
+    toast.success("已创建部门", { description: name });
     router.refresh();
   }
 
@@ -190,6 +193,7 @@ export function DepartmentsManager(props: Props) {
     );
     if (!ok) return;
     setItems((prev) => prev.map((d) => (d.id === params.id ? { ...d, name: params.name, parentId: params.parentId, sort: params.sort } : d)));
+    toast.success("已保存部门", { description: params.name });
     router.refresh();
   }
 
@@ -203,6 +207,7 @@ export function DepartmentsManager(props: Props) {
     setItems((prev) => prev.filter((d) => d.id !== selected.id));
     setSelectedId(null);
     setDeleteOpen(false);
+    toast.success("已删除部门", { description: selected.name });
     router.refresh();
   }
 

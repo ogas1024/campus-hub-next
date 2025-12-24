@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { toast } from "@/components/ui/toast";
 import {
   WORKBENCH_REMINDER_WINDOW_DAYS_OPTIONS,
   mergePreferredIdOrder,
@@ -91,6 +92,7 @@ export function WorkbenchPreferencesDialog(props: Props) {
     startTransition(() => {
       saveWorkbenchPreferences(next)
         .then(() => {
+          toast.success("已保存工作台偏好");
           props.onOpenChange(false);
           router.refresh();
         })
@@ -106,6 +108,7 @@ export function WorkbenchPreferencesDialog(props: Props) {
     startTransition(() => {
       resetWorkbenchPreferences()
         .then(() => {
+          toast.success("已恢复默认工作台偏好");
           props.onOpenChange(false);
           router.refresh();
         })

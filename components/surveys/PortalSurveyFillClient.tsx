@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 import { submitSurveyResponse, type SurveyAnswerValue, type SurveySection } from "@/lib/api/surveys";
@@ -86,9 +87,11 @@ export function PortalSurveyFillClient(props: Props) {
       return;
     }
 
+    const hadSubmitted = !!submittedAt;
     const items = [...answers.entries()].map(([questionId, value]) => ({ questionId, value }));
     const res = await action.run(() => submitSurveyResponse(props.surveyId, { items }), { fallbackErrorMessage: "提交失败" });
     if (!res) return;
+    toast.success(hadSubmitted ? "已保存修改" : "已提交");
     setSubmittedAt(res.submittedAt);
     router.refresh();
   }

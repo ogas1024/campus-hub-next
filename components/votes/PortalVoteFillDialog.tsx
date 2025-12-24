@@ -12,6 +12,7 @@ import { VoteResults } from "@/components/votes/VoteResults";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 
 import { usePortalVoteFill } from "./usePortalVoteFill";
@@ -75,8 +76,10 @@ export function PortalVoteFillDialog(props: Props) {
         <Button
           disabled={loading || !detail || fill.readOnly || fill.pending || detail.questions.length === 0}
           onClick={async () => {
+            const hadSubmitted = !!fill.submittedAt;
             const ok = await fill.submit();
             if (!ok) return;
+            toast.success(hadSubmitted ? "已保存修改" : "已提交", { description: detail ? detail.title : undefined });
             router.refresh();
           }}
         >

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import type { SignedImage } from "@/lib/api/lostfound";
 import { createMyLostfound, updateMyLostfound, uploadMyLostfoundImage } from "@/lib/api/me-lostfound";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -142,6 +143,7 @@ export function LostfoundEditorClient(props: Props) {
     if (props.mode === "create") {
       const res = await action.run(() => createMyLostfound(body), { fallbackErrorMessage: "发布失败" });
       if (!res) return;
+      toast.success("已提交审核", { description: title });
       router.push(backHref);
       router.refresh();
       return;
@@ -154,6 +156,7 @@ export function LostfoundEditorClient(props: Props) {
 
     const ok = await action.run(() => updateMyLostfound(props.itemId!, body), { fallbackErrorMessage: "保存失败" });
     if (!ok) return;
+    toast.success("已保存并重新提交审核", { description: title });
     router.push(backHref);
     router.refresh();
   }

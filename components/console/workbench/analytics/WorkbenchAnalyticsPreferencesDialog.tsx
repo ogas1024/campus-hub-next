@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/toast";
 import {
   ANALYTICS_LAYOUT_TEMPLATES,
   ANALYTICS_SCENES,
@@ -119,6 +120,7 @@ export function WorkbenchAnalyticsPreferencesDialog(props: Props) {
     startTransition(() => {
       saveWorkbenchAnalyticsPreferences(next)
         .then(() => {
+          toast.success("已保存数据概览偏好");
           props.onSaved(next);
           props.onOpenChange(false);
         })
@@ -134,6 +136,7 @@ export function WorkbenchAnalyticsPreferencesDialog(props: Props) {
     startTransition(() => {
       resetWorkbenchAnalyticsPreferences()
         .then(() => {
+          toast.success("已恢复默认数据概览偏好");
           props.onSaved(defaultWorkbenchAnalyticsPreferences);
           props.onOpenChange(false);
         })

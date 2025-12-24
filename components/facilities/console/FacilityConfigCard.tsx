@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { updateConsoleFacilityConfig } from "@/lib/api/console-facilities";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
@@ -44,6 +45,7 @@ export function FacilityConfigCard(props: Props) {
         maxDurationHours: hours,
         reason: reason.trim() ? reason.trim() : undefined,
       });
+      toast.success("已保存功能房预约配置");
       router.refresh();
     });
   }

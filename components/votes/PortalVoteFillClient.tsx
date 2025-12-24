@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 import { submitVoteResponse, type VoteAnswerValue, type VoteQuestion } from "@/lib/api/votes";
@@ -78,9 +79,11 @@ export function PortalVoteFillClient(props: Props) {
       return;
     }
 
+    const hadSubmitted = !!submittedAt;
     const items = [...answers.entries()].map(([questionId, value]) => ({ questionId, value }));
     const res = await action.run(() => submitVoteResponse(props.voteId, { items }), { fallbackErrorMessage: "提交失败" });
     if (!res) return;
+    toast.success(hadSubmitted ? "已保存修改" : "已提交");
     setSubmittedAt(res.submittedAt);
     router.refresh();
   }
@@ -191,4 +194,3 @@ export function PortalVoteFillClient(props: Props) {
     </div>
   );
 }
-

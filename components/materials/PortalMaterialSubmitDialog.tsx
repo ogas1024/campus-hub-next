@@ -11,6 +11,7 @@ import { PortalMaterialSubmitFormFields } from "@/components/materials/PortalMat
 import { NoticeMarkdown } from "@/components/notices/NoticeMarkdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 
 import { usePortalMaterialSubmit } from "./usePortalMaterialSubmit";
@@ -79,8 +80,10 @@ export function PortalMaterialSubmitDialog(props: Props) {
           size="sm"
           disabled={loading || !detail || submit.readOnly || submit.pending}
           onClick={async () => {
+            const hadSubmitted = !!my?.submittedAt;
             const ok = await submit.submit();
             if (!ok) return;
+            toast.success(hadSubmitted ? "已更新提交" : "已提交", { description: detail ? detail.title : undefined });
             router.refresh();
           }}
         >
@@ -159,6 +162,7 @@ export function PortalMaterialSubmitDialog(props: Props) {
           setWithdrawAlertOpen(false);
           const ok = await submit.withdraw();
           if (!ok) return;
+          toast.success("已撤回提交", { description: detail ? detail.title : undefined });
           router.refresh();
         }}
       />
@@ -177,6 +181,7 @@ export function PortalMaterialSubmitDialog(props: Props) {
           setDeleteTarget(null);
           const ok = await submit.deleteFile(fileId);
           if (!ok) return;
+          toast.success("已删除文件", { description: deleteTarget.fileName });
           router.refresh();
         }}
       />

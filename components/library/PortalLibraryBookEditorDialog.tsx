@@ -11,6 +11,7 @@ import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { UnsavedChangesAlertDialog } from "@/components/common/UnsavedChangesAlertDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -237,6 +238,7 @@ export function PortalLibraryBookEditorDialog(props: Props) {
                   summary: createSummary.trim() ? createSummary.trim() : null,
                   keywords: createKeywords.trim() ? createKeywords.trim() : null,
                 });
+                toast.success("草稿已创建", { description: createTitle.trim() ? createTitle.trim() : undefined });
                 props.onCreated(created.id);
                 router.refresh();
               } catch (err) {
@@ -281,6 +283,7 @@ export function PortalLibraryBookEditorDialog(props: Props) {
                   });
                   setBook(next);
                   setInfo("已保存");
+                  toast.success("已保存投稿", { description: title.trim() ? title.trim() : undefined });
                   router.refresh();
                 } catch (err) {
                   if (err instanceof ApiResponseError && err.status === 409) {
@@ -309,6 +312,7 @@ export function PortalLibraryBookEditorDialog(props: Props) {
                   const next = await submitMyLibraryBook(book.id);
                   setBook(next);
                   setInfo("已提交审核");
+                  toast.success("已提交审核", { description: book.title });
                   router.refresh();
                 } catch (err) {
                   setError(getApiErrorMessage(err, "提交审核失败"));
@@ -334,6 +338,7 @@ export function PortalLibraryBookEditorDialog(props: Props) {
                   const next = await unpublishMyLibraryBook(book.id);
                   setBook(next);
                   setInfo("已下架，可编辑后重新提交审核");
+                  toast.success("已下架投稿", { description: book.title });
                   router.refresh();
                 } catch (err) {
                   setError(getApiErrorMessage(err, "下架失败"));
@@ -674,6 +679,7 @@ export function PortalLibraryBookEditorDialog(props: Props) {
           setDeletingBook(true);
           try {
             await deleteMyLibraryBook(book.id);
+            toast.success("已删除投稿", { description: book.title });
             props.onRequestClose();
             router.refresh();
           } catch (err) {

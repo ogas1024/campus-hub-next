@@ -14,6 +14,7 @@ import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { ModuleIcon } from "@/components/layout/ModuleIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { useAutoAnimate } from "@/lib/hooks/useAutoAnimate";
 import {
   defaultPortalHomePreferences,
@@ -81,6 +82,7 @@ function PortalHomeFavoritesDialog(props: DialogProps) {
     startTransition(() => {
       savePortalHomePreferences(next)
         .then(() => {
+          toast.success("已保存常用模块偏好");
           props.onOpenChange(false);
           router.refresh();
         })
@@ -96,6 +98,7 @@ function PortalHomeFavoritesDialog(props: DialogProps) {
     startTransition(() => {
       resetPortalHomePreferences()
         .then(() => {
+          toast.success("已恢复默认常用模块偏好");
           props.onOpenChange(false);
           router.refresh();
         })

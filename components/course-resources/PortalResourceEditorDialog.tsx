@@ -12,6 +12,7 @@ import { UnsavedChangesAlertDialog } from "@/components/common/UnsavedChangesAle
 import { PortalResourceEditorFormFields } from "@/components/course-resources/PortalResourceEditorFormFields";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { getCourseResourceStatusMeta, getCourseResourceTypeLabel } from "@/lib/modules/course-resources/courseResources.ui";
 
 import { usePortalResourceEditor } from "./usePortalResourceEditor";
@@ -83,14 +84,15 @@ export function PortalResourceEditorDialog(props: Props) {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button
             disabled={!editor.canCreate || editor.creating}
-            onClick={async () => {
-              const createdId = await editor.createDraft();
-              if (!createdId) return;
-              props.onCreated(createdId);
-              router.refresh();
-            }}
-          >
-            {editor.creating ? "创建中..." : "创建草稿"}
+              onClick={async () => {
+                const createdId = await editor.createDraft();
+                if (!createdId) return;
+                toast.success("草稿已创建", { description: editor.title.trim() ? editor.title.trim() : undefined });
+                props.onCreated(createdId);
+                router.refresh();
+              }}
+            >
+              {editor.creating ? "创建中..." : "创建草稿"}
           </Button>
         </div>
       </div>
@@ -117,6 +119,7 @@ export function PortalResourceEditorDialog(props: Props) {
               onClick={async () => {
                 const ok = await editor.save();
                 if (!ok) return;
+                toast.success("已保存投稿", { description: editor.title.trim() ? editor.title.trim() : undefined });
                 router.refresh();
               }}
             >
@@ -130,6 +133,7 @@ export function PortalResourceEditorDialog(props: Props) {
               onClick={async () => {
                 const ok = await editor.submit();
                 if (!ok) return;
+                toast.success("已提交审核", { description: editor.title.trim() ? editor.title.trim() : undefined });
                 router.refresh();
               }}
             >
@@ -144,6 +148,7 @@ export function PortalResourceEditorDialog(props: Props) {
               onClick={async () => {
                 const ok = await editor.unpublish();
                 if (!ok) return;
+                toast.success("已下架投稿", { description: editor.title.trim() ? editor.title.trim() : undefined });
                 router.refresh();
               }}
             >
@@ -214,7 +219,9 @@ export function PortalResourceEditorDialog(props: Props) {
             hashing={editor.hashing}
             onUploadFile={async (file) => {
               const ok = await editor.uploadFile(file);
-              if (ok) router.refresh();
+              if (!ok) return;
+              toast.success("上传完成", { description: file.name });
+              router.refresh();
             }}
             resource={editor.resource}
           />
@@ -267,6 +274,7 @@ export function PortalResourceEditorDialog(props: Props) {
           setDeleteAlertOpen(false);
           const ok = await editor.deleteResource();
           if (!ok) return;
+          toast.success("已删除投稿");
           props.onRequestClose();
           router.refresh();
         }}

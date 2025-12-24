@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 type Props = {
@@ -25,6 +26,7 @@ export function RegistrationConfigCard(props: Props) {
   async function save() {
     await action.run(async () => {
       await updateRegistrationConfig({ requiresApproval, reason: reason.trim() ? reason.trim() : undefined });
+      toast.success("已保存注册审核配置");
       router.refresh();
     });
   }
