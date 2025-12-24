@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ConsoleLostfoundActions } from "@/components/lostfound/ConsoleLostfoundActions";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,29 +47,26 @@ export default async function ConsoleLostfoundDetailPage({ params }: Params) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">{data.title}</h1>
-          <div className="text-sm text-muted-foreground">
-            创建：{formatZhDateTime(data.createdAt)} · 发布：{formatZhDateTime(data.publishedAt)} · 时间：{formatZhDateTime(data.occurredAt)}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title={data.title}
+        description={`创建：${formatZhDateTime(data.createdAt)} · 发布：${formatZhDateTime(data.publishedAt)} · 时间：${formatZhDateTime(data.occurredAt)}`}
+        meta={
+          <>
+            <Badge variant="outline">{typeLabel(data.type)}</Badge>
+            <span className={["rounded-full px-2 py-0.5 text-xs font-medium", status.className].join(" ")}>{status.label}</span>
+            {data.solvedAt ? <Badge variant="secondary">已解决</Badge> : null}
+            <Badge variant="secondary">地点：{data.location ?? "—"}</Badge>
+          </>
+        }
+        actions={
           <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/lostfound">
             ← 返回列表
           </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{typeLabel(data.type)}</Badge>
-        <span className={["rounded-full px-2 py-0.5 text-xs font-medium", status.className].join(" ")}>{status.label}</span>
-        {data.solvedAt ? <Badge variant="secondary">已解决</Badge> : null}
-        <Badge variant="secondary">地点：{data.location ?? "—"}</Badge>
-      </div>
+        }
+      />
 
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4 p-4">
           <div className="grid gap-2 md:grid-cols-2">
             <div>
               <div className="text-xs text-muted-foreground">作者</div>
@@ -109,7 +107,7 @@ export default async function ConsoleLostfoundDetailPage({ params }: Params) {
 
       {data.images.length > 0 ? (
         <Card>
-          <CardContent className="space-y-3 p-6">
+          <CardContent className="space-y-3 p-4">
             <div className="text-sm font-medium">图片</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.images.map((img) => (

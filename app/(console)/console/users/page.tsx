@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { CreateUserDialog } from "@/components/iam/CreateUserDialog";
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { ConsoleUserDialogController } from "@/components/iam/ConsoleUserDialogController";
 import { UserStatusBadge } from "@/components/iam/UserStatusBadge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -9,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
 import { parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listConsoleUsers } from "@/lib/modules/iam/users.service";
 import { buildDepartmentTree, type DepartmentNode } from "@/lib/modules/organization/departmentTree";
 import { listDepartments, listPositions } from "@/lib/modules/organization/organization.service";
@@ -87,9 +90,30 @@ export default async function ConsoleUsersPage({ searchParams }: { searchParams:
   const page = parseIntParam(pickString(sp.page) ?? null, { defaultValue: 1, min: 1 });
   const pageSize = parseIntParam(pickString(sp.pageSize) ?? null, { defaultValue: 20, min: 1, max: 50 });
 
-  const [canCreate, canInvite, rolesData, departmentsData, positionsData, data] = await Promise.all([
+  const [
+    canRead,
+    canCreate,
+    canInvite,
+    canApprove,
+    canDisable,
+    canBan,
+    canDelete,
+    canAssignRole,
+    canAssignOrg,
+    rolesData,
+    departmentsData,
+    positionsData,
+    data,
+  ] = await Promise.all([
+    hasPerm(user.id, "campus:user:read"),
     hasPerm(user.id, "campus:user:create"),
     hasPerm(user.id, "campus:user:invite"),
+    hasPerm(user.id, "campus:user:approve"),
+    hasPerm(user.id, "campus:user:disable"),
+    hasPerm(user.id, "campus:user:ban"),
+    hasPerm(user.id, "campus:user:delete"),
+    hasPerm(user.id, "campus:user:assign_role"),
+    hasPerm(user.id, "campus:user:assign_org"),
     listRoles(),
     listDepartments(),
     listPositions(),
@@ -130,21 +154,39 @@ export default async function ConsoleUsersPage({ searchParams }: { searchParams:
   }
 
   const deptOptions = flattenDeptOptions(buildDepartmentTree(departmentsData.items).roots);
+  const baseHref = buildConsoleUsersHref({
+    q,
+    status: statusValue,
+    roleId,
+    departmentId,
+    positionId,
+    sortBy,
+    sortOrder,
+    page: displayPage,
+    pageSize,
+  });
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">用户</h1>
-          <p className="text-sm text-muted-foreground">支持自助注册 + 邮箱验证；管理员可手动创建/邀请，用户生命周期由 Supabase Auth + profile.status 驱动。</p>
-          <div className="text-sm text-muted-foreground">
-            共 {data.total} 人 · 第 {displayPage} / {totalPages} 页
-          </div>
-        </div>
-        <CreateUserDialog canCreate={canCreate} canInvite={canInvite} />
-      </div>
+      <PageHeader
+        title="用户"
+        description="支持自助注册 + 邮箱验证；管理员可手动创建/邀请，用户生命周期由 Supabase Auth + profile.status 驱动。"
+        meta={
+          <>
+            <span>共 {data.total} 人</span>
+            <span>第 {displayPage} / {totalPages} 页</span>
+          </>
+        }
+        actions={
+          canCreate || canInvite ? (
+            <Link className={buttonVariants()} href={withDialogHref(baseHref, { dialog: "user-create" })} scroll={false}>
+              新增用户
+            </Link>
+          ) : null
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card p-3">
+      <FiltersPanel title="筛选">
         <form method="get" className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="page" value="1" />
           <div className="grid gap-1">
@@ -275,7 +317,7 @@ export default async function ConsoleUsersPage({ searchParams }: { searchParams:
             筛选
           </Button>
         </form>
-      </div>
+      </FiltersPanel>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">
@@ -369,12 +411,19 @@ export default async function ConsoleUsersPage({ searchParams }: { searchParams:
                   <td className="px-3 py-2 text-xs text-muted-foreground">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "—"}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(u.updatedAt).toLocaleString()}</td>
                   <td className="px-3 py-2 text-right">
-                    <Link
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                      href={`/console/users/${u.id}`}
-                    >
-                      详情
-                    </Link>
+                    {canRead ? (
+                      <Link
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                        href={withDialogHref(baseHref, { dialog: "user-edit", id: u.id })}
+                        scroll={false}
+                      >
+                        详情
+                      </Link>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled>
+                        详情
+                      </Button>
+                    )}
                   </td>
                 </tr>
               );
@@ -399,6 +448,19 @@ export default async function ConsoleUsersPage({ searchParams }: { searchParams:
             pageSize,
           })
         }
+      />
+
+      <ConsoleUserDialogController
+        perms={{
+          canCreate,
+          canInvite,
+          canApprove,
+          canDisable,
+          canBan,
+          canDelete,
+          canAssignRole,
+          canAssignOrg,
+        }}
       />
     </div>
   );

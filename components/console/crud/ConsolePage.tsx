@@ -10,6 +10,8 @@
 
 import type * as React from "react";
 
+import { PageHeader } from "@/components/common/PageHeader";
+
 type Props = {
   eyebrow?: string;
   title: string;
@@ -22,15 +24,7 @@ type Props = {
 export function ConsolePage(props: Props) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          {props.eyebrow ? <div className="text-xs font-semibold text-muted-foreground">{props.eyebrow}</div> : null}
-          <h1 className="text-xl font-semibold tracking-tight">{props.title}</h1>
-          {props.description ? <p className="text-sm text-muted-foreground">{props.description}</p> : null}
-          {props.meta ? <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">{props.meta}</div> : null}
-        </div>
-        {props.actions ? <div className="flex flex-wrap gap-2">{props.actions}</div> : null}
-      </div>
+      <PageHeader eyebrow={props.eyebrow} title={props.title} description={props.description} meta={props.meta} actions={props.actions} />
 
       {props.children}
     </div>

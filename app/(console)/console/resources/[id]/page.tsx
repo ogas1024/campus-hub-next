@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ConsoleResourceActions } from "@/components/course-resources/ConsoleResourceActions";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,19 +33,18 @@ export default async function ConsoleResourceDetailPage({ params }: { params: Pr
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold">{resource.title}</h1>
-          {resource.isBest ? <Badge>最佳</Badge> : null}
-          <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>{meta.label}</span>
-          <Badge variant="secondary">{getCourseResourceTypeLabel(resource.resourceType)}</Badge>
-        </div>
-
-        <div className="text-sm text-muted-foreground">
-          {resource.majorName} / {resource.courseName}
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">{resource.id}</div>
-      </div>
+      <PageHeader
+        title={resource.title}
+        description={`${resource.majorName} / ${resource.courseName}`}
+        meta={
+          <>
+            {resource.isBest ? <Badge>最佳</Badge> : null}
+            <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>{meta.label}</span>
+            <Badge variant="secondary">{getCourseResourceTypeLabel(resource.resourceType)}</Badge>
+            <span className="font-mono text-xs text-muted-foreground">{resource.id}</span>
+          </>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

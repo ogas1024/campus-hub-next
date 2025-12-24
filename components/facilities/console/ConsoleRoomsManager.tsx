@@ -19,6 +19,7 @@ import { buttonVariants, Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -188,8 +189,14 @@ export function ConsoleRoomsManager() {
 
   if (buildings.length === 0 && loader.pending) {
     return (
-      <ConsolePage title="房间" description="加载中…">
-        <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">加载中…</div>
+      <ConsolePage title="房间" description="楼房/楼层/房间三级管理：以 room.floorNo 表示楼层；删除要求该房间无任何预约记录。">
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-72 w-full" />
+          </div>
+        </div>
       </ConsolePage>
     );
   }
@@ -291,7 +298,17 @@ export function ConsoleRoomsManager() {
         }
         rowCount={rooms.length}
         emptyColSpan={7}
-        emptyText={loader.pending ? "加载中…" : "暂无房间"}
+        emptyText={
+          loader.pending ? (
+            <div className="mx-auto w-full max-w-sm space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          ) : (
+            "暂无房间"
+          )
+        }
       >
         {rooms.map((r) => (
           <tr key={r.id} className="border-t border-border">

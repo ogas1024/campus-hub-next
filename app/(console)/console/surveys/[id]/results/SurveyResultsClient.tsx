@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { InlineError } from "@/components/common/InlineError";
+import { PageLoadingSkeleton } from "@/components/common/PageLoadingSkeleton";
+import { PageHeader } from "@/components/common/PageHeader";
 import { NoticeMarkdown } from "@/components/notices/NoticeMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -75,7 +77,7 @@ export default function SurveyResultsClient(props: Props) {
     }
   }
 
-  if (loading) return <div className="text-sm text-muted-foreground">加载中...</div>;
+  if (loading) return <PageLoadingSkeleton variant="results" />;
   if (error) return <InlineError message={error} />;
   if (!data) return <div className="text-sm text-muted-foreground">无数据</div>;
 
@@ -84,37 +86,41 @@ export default function SurveyResultsClient(props: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">问卷结果</h1>
-          <div className="text-sm text-muted-foreground">{data.survey.title}</div>
-          <div className="text-sm text-muted-foreground">
-            {formatZhDateTime(startAt)} ~ {formatZhDateTime(endAt)}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/surveys">
-            ← 返回列表
-          </Link>
-          {props.perms.canUpdate ? (
-            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/surveys/${id}/edit`}>
-              编辑
+      <PageHeader
+        title="问卷结果"
+        description={data.survey.title}
+        meta={
+          <>
+            <span>
+              {formatZhDateTime(startAt)} ~ {formatZhDateTime(endAt)}
+            </span>
+            <Badge variant="secondary">答卷数：{data.results.totalResponses}</Badge>
+            {data.survey.anonymousResponses ? <Badge variant="outline">匿名答卷</Badge> : <Badge variant="secondary">实名答卷</Badge>}
+            {effectiveStatus === "closed" ? <Badge>已结束</Badge> : <Badge variant="outline">未结束</Badge>}
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/surveys">
+              ← 返回列表
             </Link>
-          ) : null}
-          {props.perms.canExport ? (
-            <a className={buttonVariants({ variant: "outline", size: "sm" })} href={buildConsoleSurveyExportUrl(id)}>
-              导出 CSV
-            </a>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary">答卷数：{data.results.totalResponses}</Badge>
-        {data.survey.anonymousResponses ? <Badge variant="outline">匿名答卷</Badge> : <Badge variant="secondary">实名答卷</Badge>}
-        {effectiveStatus === "closed" ? <Badge>已结束</Badge> : <Badge variant="outline">未结束</Badge>}
-      </div>
+            {props.perms.canUpdate ? (
+              <Link
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+                href={`/console/surveys?dialog=survey-edit&id=${encodeURIComponent(id)}`}
+                scroll={false}
+              >
+                编辑
+              </Link>
+            ) : null}
+            {props.perms.canExport ? (
+              <a className={buttonVariants({ variant: "outline", size: "sm" })} href={buildConsoleSurveyExportUrl(id)}>
+                导出 CSV
+              </a>
+            ) : null}
+          </>
+        }
+      />
 
       <Card>
         <CardContent className="space-y-3 p-6">

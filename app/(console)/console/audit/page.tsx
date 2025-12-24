@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,15 +105,17 @@ export default async function ConsoleAuditPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">审计日志</h1>
-        <p className="text-sm text-muted-foreground">所有管理端写操作均应记录审计；此处用于检索与追溯。</p>
-        <div className="text-sm text-muted-foreground">
-          共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
-        </div>
-      </div>
+      <PageHeader
+        title="审计日志"
+        description="所有管理端写操作均应记录审计；此处用于检索与追溯。"
+        meta={
+          <span>
+            共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
+          </span>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card p-3">
+      <FiltersPanel>
         <form method="get" className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="page" value="1" />
 
@@ -222,7 +226,7 @@ export default async function ConsoleAuditPage({ searchParams }: { searchParams:
             筛选
           </Button>
         </form>
-      </div>
+      </FiltersPanel>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">

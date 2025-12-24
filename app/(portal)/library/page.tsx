@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
@@ -72,41 +74,37 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">数字图书馆</h1>
-          <p className="text-sm text-muted-foreground">电子书/资料的检索、收藏与下载；下载会自动计数。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ size: "sm" })} href="/library/me/new">
-            新建投稿
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
-            我的投稿
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/favorites">
-            我的收藏
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/leaderboard">
-            榜单
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="数字图书馆"
+        description="电子书/资料的检索、收藏与下载；下载会自动计数。"
+        actions={
+          <>
+            <Link className={buttonVariants({ size: "sm" })} href="/library/me?dialog=library-create" scroll={false}>
+              新建投稿
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
+              我的投稿
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/favorites">
+              我的收藏
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/leaderboard">
+              榜单
+            </Link>
+          </>
+        }
+      />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">搜索与筛选</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action="/library" method="GET">
+      <FiltersPanel title="搜索与筛选">
+        <form className="grid gap-3 md:grid-cols-12" action="/library" method="GET">
             <input type="hidden" name="page" value="1" />
 
             <div className="md:col-span-5">
-              <Input name="q" placeholder="搜索标题/作者/ISBN/关键词…" defaultValue={q} />
+              <Input name="q" uiSize="sm" placeholder="搜索标题/作者/ISBN/关键词…" defaultValue={q} />
             </div>
 
             <div className="md:col-span-2">
-              <Select name="format" defaultValue={formatValue}>
+              <Select name="format" defaultValue={formatValue} uiSize="sm">
                 <option value="">全部格式</option>
                 {(["pdf", "epub", "mobi", "zip"] as const).map((f) => (
                   <option key={f} value={f}>
@@ -117,21 +115,21 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
             </div>
 
             <div className="md:col-span-2">
-              <Select name="sortBy" defaultValue={sortByValue}>
+              <Select name="sortBy" defaultValue={sortByValue} uiSize="sm">
                 <option value="publishedAt">最新发布</option>
                 <option value="downloadCount">下载最多</option>
               </Select>
             </div>
 
             <div className="md:col-span-1">
-              <Select name="sortOrder" defaultValue={sortOrderValue}>
+              <Select name="sortOrder" defaultValue={sortOrderValue} uiSize="sm">
                 <option value="desc">降序</option>
                 <option value="asc">升序</option>
               </Select>
             </div>
 
             <div className="md:col-span-2">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
+              <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm">
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
                     {n}/页
@@ -149,15 +147,14 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
               </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </FiltersPanel>
 
       {data.items.length === 0 ? (
         <Card>
           <CardContent className="space-y-3 p-10 text-center text-sm text-muted-foreground">
             <div>暂无已发布条目</div>
             <div>
-              <Link className={buttonVariants({ size: "sm" })} href="/library/me/new">
+              <Link className={buttonVariants({ size: "sm" })} href="/library/me?dialog=library-create" scroll={false}>
                 投稿第一本书
               </Link>
             </div>
@@ -166,8 +163,8 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       ) : (
         <div className="space-y-3">
           {data.items.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="space-y-2 p-5">
+            <Card key={item.id} className="transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] hover:bg-accent">
+              <CardContent className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{item.author}</Badge>
                   <Badge variant="outline">下载 {item.downloadCount}</Badge>

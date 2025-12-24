@@ -11,6 +11,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { InlineError } from "@/components/common/InlineError";
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { FacilityFloorGantt, type FacilityRoomRow, type FacilityTimelineItem } from "@/components/facilities/FacilityFloorGantt";
 import { ReservationEditorDialog } from "@/components/facilities/ReservationEditorDialog";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +20,7 @@ import { buttonVariants, Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchFacilityRoomTimeline, type RoomTimelineResponse } from "@/lib/api/facilities";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 import { useFacilityPortalConfig } from "@/lib/hooks/useFacilityPortalConfig";
@@ -117,76 +120,73 @@ export function FacilityRoomTimelineClient(props: Props) {
   }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">{data?.room.name ?? "房间时间轴"}</h1>
-          {data ? (
-            <p className="text-sm text-muted-foreground">
-              {data.room.buildingName} / {formatFacilityFloorLabel(data.room.floorNo)}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">加载中…</p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div className="space-y-4">
+      <PageHeader
+        title={data?.room.name ?? "房间时间轴"}
+        description={data ? `${data.room.buildingName} / ${formatFacilityFloorLabel(data.room.floorNo)}` : <Skeleton className="h-4 w-48" />}
+        actions={
           <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/facilities">
             ← 返回纵览
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       <InlineError message={portalConfig.error || timelineAction.error} />
 
-      <div className="grid gap-3 md:grid-cols-12">
-        <div className="md:col-span-3">
-          <Label>起始日期</Label>
-          <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+      <FiltersPanel>
+        <div className="grid gap-3 md:grid-cols-12">
+          <div className="md:col-span-3">
+            <Label>起始日期</Label>
+            <Input uiSize="sm" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>窗口</Label>
+            <Select uiSize="sm" value={String(days)} onChange={(e) => setDays(Number(e.target.value) as Days)}>
+              {FACILITY_TIMELINE_WINDOW_DAYS.map((d) => (
+                <option key={d} value={String(d)}>
+                  {d} 天
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="md:col-span-2">
+            <Label>刻度</Label>
+            <Select uiSize="sm" value={String(tickHours)} onChange={(e) => setTickHours(Number(e.target.value) as TickHours)}>
+              {FACILITY_TIMELINE_TICK_HOURS.map((h) => (
+                <option key={h} value={String(h)}>
+                  {h}h
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex items-end md:col-span-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={timelineAction.pending}
+              onClick={() => {
+                if (timelineAction.pending) return;
+                void (async () => {
+                  const res = await timelineAction.run(() =>
+                    fetchFacilityRoomTimeline({ roomId: props.roomId, from: localDayStartIso(fromDate), days }),
+                  );
+                  if (!res) return;
+                  setData(res);
+                })();
+              }}
+            >
+              刷新
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 md:col-span-3">
+            <Badge variant="secondary">
+              显示 {days} 天（{windowFrom.toLocaleDateString()} - {windowTo.toLocaleDateString()}）
+            </Badge>
+            {data && !data.room.enabled ? <Badge variant="secondary">该房间已停用（仅可查看占用）</Badge> : null}
+          </div>
         </div>
-        <div className="md:col-span-2">
-          <Label>窗口</Label>
-          <Select value={String(days)} onChange={(e) => setDays(Number(e.target.value) as Days)}>
-            {FACILITY_TIMELINE_WINDOW_DAYS.map((d) => (
-              <option key={d} value={String(d)}>
-                {d} 天
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="md:col-span-2">
-          <Label>刻度</Label>
-          <Select value={String(tickHours)} onChange={(e) => setTickHours(Number(e.target.value) as TickHours)}>
-            {FACILITY_TIMELINE_TICK_HOURS.map((h) => (
-              <option key={h} value={String(h)}>
-                {h}h
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex items-end md:col-span-2">
-          <Button
-            variant="outline"
-            className="w-full"
-            disabled={timelineAction.pending}
-            onClick={() => {
-              if (timelineAction.pending) return;
-              void (async () => {
-                const res = await timelineAction.run(() => fetchFacilityRoomTimeline({ roomId: props.roomId, from: localDayStartIso(fromDate), days }));
-                if (!res) return;
-                setData(res);
-              })();
-            }}
-          >
-            刷新
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 md:col-span-3">
-          <Badge variant="secondary">
-            显示 {days} 天（{windowFrom.toLocaleDateString()} - {windowTo.toLocaleDateString()}）
-          </Badge>
-          {data && !data.room.enabled ? <Badge variant="secondary">该房间已停用（仅可查看占用）</Badge> : null}
-        </div>
-      </div>
+      </FiltersPanel>
 
       {roomRow ? (
         <>
@@ -231,7 +231,13 @@ export function FacilityRoomTimelineClient(props: Props) {
           />
         </>
       ) : (
-        <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">加载中…</div>
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-72 w-full" />
+          </div>
+        </div>
       )}
     </div>
   );

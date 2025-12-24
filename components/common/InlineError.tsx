@@ -8,9 +8,13 @@ type Props = {
 export function InlineError(props: Props) {
   if (!props.message) return null;
   return (
-    <div className={cn("rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive", props.className)}>
+    <div
+      className={cn(
+        "ch-enter rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive",
+        props.className,
+      )}
+    >
       {props.message}
     </div>
   );
 }
-

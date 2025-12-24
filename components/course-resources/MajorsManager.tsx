@@ -13,13 +13,15 @@ import {
   updateConsoleMajor,
 } from "@/lib/api/console-course-resources";
 import type { Major, MajorLeadItem } from "@/lib/api/console-course-resources";
-import { InlineError } from "@/components/common/InlineError";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
+import { ConsoleDeleteDialog } from "@/components/console/crud/ConsoleDeleteDialog";
+import { ConsoleFormDialog } from "@/components/console/crud/ConsoleFormDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -67,7 +69,6 @@ export function MajorsManager(props: Props) {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleteReason, setDeleteReason] = useState("");
 
   const [leadsOpen, setLeadsOpen] = useState(false);
   const [leadsMajor, setLeadsMajor] = useState<MajorItem | null>(null);
@@ -129,12 +130,9 @@ export function MajorsManager(props: Props) {
     router.refresh();
   }
 
-  async function submitDelete() {
+  async function submitDelete(reason?: string) {
     if (!deleteId) return;
-    const ok = await action.run(
-      () => deleteConsoleMajor(deleteId, { reason: deleteReason.trim() ? deleteReason.trim() : undefined }),
-      { fallbackErrorMessage: "删除失败" },
-    );
+    const ok = await action.run(() => deleteConsoleMajor(deleteId, { reason }), { fallbackErrorMessage: "删除失败" });
     if (!ok) return;
     setItems((prev) => prev.filter((m) => m.id !== deleteId));
     setDeleteOpen(false);
@@ -202,66 +200,21 @@ export function MajorsManager(props: Props) {
         <div className="text-sm text-muted-foreground">{items.length} 个专业</div>
 
         {props.canCreate ? (
-          <Dialog
-            open={createOpen}
-            onOpenChange={(next) => {
-              if (next) {
-                action.reset();
-                setCreateName("");
-                setCreateEnabled(true);
-                setCreateSort(0);
-                setCreateRemark("");
-                setCreateReason("");
-              }
-              setCreateOpen(next);
+          <Button
+            size="sm"
+            disabled={action.pending}
+            onClick={() => {
+              action.reset();
+              setCreateName("");
+              setCreateEnabled(true);
+              setCreateSort(0);
+              setCreateRemark("");
+              setCreateReason("");
+              setCreateOpen(true);
             }}
           >
-            <DialogTrigger asChild>
-              <Button size="sm">新增专业</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>新增专业</DialogTitle>
-                <DialogDescription>专业为课程与资源的上层归属；删除为软删（不级联删除课程/资源）。</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label>名称</Label>
-                  <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 计算机科学与技术" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-2">
-                    <Label>排序（sort）</Label>
-                    <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-                    <div className="space-y-0.5">
-                      <div className="text-sm font-medium">启用</div>
-                      <div className="text-xs text-muted-foreground">Portal 仅展示启用的专业。</div>
-                    </div>
-                    <Switch checked={createEnabled} onCheckedChange={setCreateEnabled} />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>备注（可选）</Label>
-                  <Textarea value={createRemark} onChange={(e) => setCreateRemark(e.target.value)} placeholder="可填写专业说明、口径…" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>原因（可选，将写入审计）</Label>
-                  <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-                </div>
-                <InlineError message={action.error} />
-              </div>
-              <DialogFooter>
-                <Button variant="outline" disabled={action.pending} onClick={() => setCreateOpen(false)}>
-                  取消
-                </Button>
-                <Button disabled={action.pending || !createName.trim()} onClick={() => void submitCreate()}>
-                  {action.pending ? "提交中..." : "创建"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            新增专业
+          </Button>
         ) : null}
       </div>
 
@@ -338,7 +291,6 @@ export function MajorsManager(props: Props) {
                         onClick={() => {
                           action.reset();
                           setDeleteId(m.id);
-                          setDeleteReason("");
                           setDeleteOpen(true);
                         }}
                       >
@@ -353,202 +305,233 @@ export function MajorsManager(props: Props) {
         </table>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑专业</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label>名称</Label>
-              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>排序（sort）</Label>
-                <Input value={String(editSort)} onChange={(e) => setEditSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-                <div className="space-y-0.5">
-                  <div className="text-sm font-medium">启用</div>
-                  <div className="text-xs text-muted-foreground">Portal 仅展示启用的专业。</div>
-                </div>
-                <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>备注（可选）</Label>
-              <Textarea value={editRemark} onChange={(e) => setEditRemark(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-            </div>
-            <InlineError message={action.error} />
+      <ConsoleFormDialog
+        open={createOpen}
+        onOpenChange={(next) => {
+          if (!next && action.pending) return;
+          if (!next) action.reset();
+          setCreateOpen(next);
+        }}
+        title="新增专业"
+        description="专业为课程与资源的上层归属；删除为软删（不级联删除课程/资源）。"
+        pending={action.pending}
+        error={action.error}
+        confirmText="创建"
+        confirmDisabled={!createName.trim()}
+        onConfirm={() => void submitCreate()}
+      >
+        <div className="grid gap-2">
+          <Label>名称</Label>
+          <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 计算机科学与技术" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label>排序（sort）</Label>
+            <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
           </div>
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setEditOpen(false)}>
-              取消
-            </Button>
-            <Button disabled={action.pending || !editName.trim()} onClick={() => void submitUpdate()}>
-              {action.pending ? "保存中..." : "保存"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>删除专业</DialogTitle>
-            <DialogDescription>将执行软删（deleted_at），不会级联删除课程/资源。</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">启用</div>
+              <div className="text-xs text-muted-foreground">Portal 仅展示启用的专业。</div>
             </div>
-            <InlineError message={action.error} />
+            <Switch checked={createEnabled} onCheckedChange={setCreateEnabled} />
           </div>
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setDeleteOpen(false)}>
-              取消
-            </Button>
-            <Button variant="destructive" disabled={action.pending} onClick={() => void submitDelete()}>
-              {action.pending ? "删除中..." : "确认删除"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <div className="grid gap-2">
+          <Label>备注（可选）</Label>
+          <Textarea value={createRemark} onChange={(e) => setCreateRemark(e.target.value)} placeholder="可填写专业说明、口径…" />
+        </div>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
 
-      <Dialog
+      <ConsoleFormDialog
+        open={editOpen}
+        onOpenChange={(next) => {
+          if (!next && action.pending) return;
+          if (!next) action.reset();
+          setEditOpen(next);
+        }}
+        title="编辑专业"
+        pending={action.pending}
+        error={action.error}
+        confirmText="保存"
+        confirmDisabled={!editName.trim()}
+        onConfirm={() => void submitUpdate()}
+      >
+        <div className="grid gap-2">
+          <Label>名称</Label>
+          <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label>排序（sort）</Label>
+            <Input value={String(editSort)} onChange={(e) => setEditSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">启用</div>
+              <div className="text-xs text-muted-foreground">Portal 仅展示启用的专业。</div>
+            </div>
+            <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label>备注（可选）</Label>
+          <Textarea value={editRemark} onChange={(e) => setEditRemark(e.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
+
+      <ConsoleDeleteDialog
+        open={deleteOpen}
+        onOpenChange={(next) => {
+          if (!next && action.pending) return;
+          if (!next) action.reset();
+          setDeleteOpen(next);
+        }}
+        title="删除专业"
+        description="将执行软删（deleted_at），不会级联删除课程/资源。"
+        pending={action.pending}
+        error={action.error}
+        confirmText="确认删除"
+        onConfirm={({ reason }) => void submitDelete(reason)}
+      />
+
+      <StickyFormDialog
         open={leadsOpen}
         onOpenChange={(next) => {
-          if (!next) {
-            setLeadsOpen(false);
-            setLeadsMajor(null);
-          }
+          if (next) return;
+          if (action.pending) return;
+          action.reset();
+          setLeadsOpen(false);
+          setLeadsMajor(null);
         }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>配置专业负责人</DialogTitle>
-            <DialogDescription>
-              {leadsMajor ? (
-                <>
-                  专业：<span className="font-medium">{leadsMajor.name}</span>
-                </>
-              ) : null}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4">
-            <div className="rounded-lg border border-border bg-muted p-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-medium">当前负责人</div>
-                <Badge variant="secondary">{selectedLeadIds.size} 人</Badge>
-              </div>
-              {leadsLoading ? (
-                <div className="mt-2 text-sm text-muted-foreground">加载中...</div>
-              ) : selectedLeadIds.size === 0 ? (
-                <div className="mt-2 text-sm text-muted-foreground">暂无负责人</div>
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {leadItems.map((u) => (
-                    <span key={u.userId} className="rounded-full border border-border bg-background px-2 py-1 text-xs">
-                      {u.name ?? u.username ?? u.email ?? u.userId}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label>手动添加 userId（UUID）</Label>
-              <div className="flex gap-2">
-                <Input value={manualUserId} onChange={(e) => setManualUserId(e.target.value)} placeholder="粘贴用户 UUID" />
-                <Button
-                  variant="outline"
-                  disabled={action.pending}
-                  onClick={() => {
-                    const id = manualUserId.trim();
-                    if (!id) return;
-                    if (!isUuid(id)) {
-                      action.setError("userId 必须为 UUID");
-                      return;
-                    }
-                    setSelectedLeadIds((prev) => new Set([...prev, id]));
-                    setManualUserId("");
-                  }}
-                >
-                  添加
-                </Button>
-              </div>
-            </div>
-
-            {props.canUserList ? (
-              <div className="grid gap-2">
-                <Label>搜索用户（需 user:list 权限）</Label>
-                <div className="flex gap-2">
-                  <Input value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder="按姓名/邮箱/学号…" />
-                  <Button variant="outline" disabled={userSearching || action.pending || !userQuery.trim()} onClick={() => void searchUsers()}>
-                    {userSearching ? "搜索中..." : "搜索"}
-                  </Button>
-                </div>
-
-                {userResults.length > 0 ? (
-                  <ScrollArea className="h-56 rounded-lg border border-border bg-background">
-                    <div className="space-y-1 p-2">
-                      {userResults.map((u) => {
-                        const checked = selectedLeadIds.has(u.id);
-                        return (
-                          <label key={u.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-accent">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium">{u.name}</div>
-                              <div className="truncate font-mono text-xs text-muted-foreground">{u.email ?? u.id}</div>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                const next = new Set(selectedLeadIds);
-                                if (e.target.checked) next.add(u.id);
-                                else next.delete(u.id);
-                                setSelectedLeadIds(next);
-                              }}
-                            />
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="text-xs text-muted-foreground">输入关键词后点击搜索；仅显示 active 用户（最多 10 条）。</div>
-                )}
-              </div>
-            ) : (
-              <div className="text-xs text-muted-foreground">当前账号无 user:list 权限；如需搜索，请先授予权限或手动输入 userId。</div>
-            )}
-
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={leadsReason} onChange={(e) => setLeadsReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-            </div>
-
-            <InlineError message={action.error} />
-          </div>
-
-          <DialogFooter>
+        title="配置专业负责人"
+        description={
+          leadsMajor ? (
+            <>
+              专业：<span className="font-medium">{leadsMajor.name}</span>
+            </>
+          ) : undefined
+        }
+        error={action.error}
+        contentClassName="max-w-2xl"
+        footer={
+          <>
             <Button variant="outline" disabled={action.pending} onClick={() => setLeadsOpen(false)}>
               取消
             </Button>
             <Button disabled={action.pending || !leadsMajor} onClick={() => void submitLeads()}>
-              {action.pending ? "保存中..." : "保存"}
+              {action.pending ? "处理中..." : "保存"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="rounded-lg border border-border bg-muted p-3 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-medium">当前负责人</div>
+            <Badge variant="secondary">{selectedLeadIds.size} 人</Badge>
+          </div>
+          {leadsLoading ? (
+            <div className="mt-3 space-y-3">
+              <Skeleton className="h-4 w-28" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+              </div>
+            </div>
+          ) : selectedLeadIds.size === 0 ? (
+            <div className="mt-2 text-sm text-muted-foreground">暂无负责人</div>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {leadItems.map((u) => (
+                <span key={u.userId} className="rounded-full border border-border bg-background px-2 py-1 text-xs">
+                  {u.name ?? u.username ?? u.email ?? u.userId}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          <Label>手动添加 userId（UUID）</Label>
+          <div className="flex gap-2">
+            <Input value={manualUserId} onChange={(e) => setManualUserId(e.target.value)} placeholder="粘贴用户 UUID" />
+            <Button
+              variant="outline"
+              disabled={action.pending}
+              onClick={() => {
+                const id = manualUserId.trim();
+                if (!id) return;
+                if (!isUuid(id)) {
+                  action.setError("userId 必须为 UUID");
+                  return;
+                }
+                setSelectedLeadIds((prev) => new Set([...prev, id]));
+                setManualUserId("");
+              }}
+            >
+              添加
+            </Button>
+          </div>
+        </div>
+
+        {props.canUserList ? (
+          <div className="grid gap-2">
+            <Label>搜索用户（需 user:list 权限）</Label>
+            <div className="flex gap-2">
+              <Input value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder="按姓名/邮箱/学号…" />
+              <Button variant="outline" disabled={userSearching || action.pending || !userQuery.trim()} onClick={() => void searchUsers()}>
+                {userSearching ? "搜索中..." : "搜索"}
+              </Button>
+            </div>
+
+            {userResults.length > 0 ? (
+              <ScrollArea className="h-56 rounded-lg border border-border bg-background">
+                <div className="space-y-1 p-2">
+                  {userResults.map((u) => {
+                    const checked = selectedLeadIds.has(u.id);
+                    return (
+                      <label key={u.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-accent">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{u.name}</div>
+                          <div className="truncate font-mono text-xs text-muted-foreground">{u.email ?? u.id}</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set(selectedLeadIds);
+                            if (e.target.checked) next.add(u.id);
+                            else next.delete(u.id);
+                            setSelectedLeadIds(next);
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-xs text-muted-foreground">输入关键词后点击搜索；仅显示 active 用户（最多 10 条）。</div>
+            )}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">当前账号无 user:list 权限；如需搜索，请先授予权限或手动输入 userId。</div>
+        )}
+
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={leadsReason} onChange={(e) => setLeadsReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </StickyFormDialog>
     </div>
   );
 }
-

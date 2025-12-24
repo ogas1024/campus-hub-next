@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { ConfirmAlertDialog } from "@/components/common/ConfirmAlertDialog";
 import { ConsoleDeleteDialog } from "@/components/console/crud/ConsoleDeleteDialog";
 import { InlineError } from "@/components/common/InlineError";
 import { buttonVariants } from "@/components/ui/button";
 import { archiveConsoleMaterial, closeConsoleMaterial, deleteConsoleMaterial, publishConsoleMaterial } from "@/lib/api/console-materials";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -26,8 +28,11 @@ type Props = {
 
 export function ConsoleMaterialActions(props: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const action = useAsyncAction();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const canOperate = props.isMine || props.canManageAll;
   const viewLabel = props.status === "draft" && props.canUpdate && canOperate ? "编辑" : "查看";
@@ -46,10 +51,19 @@ export function ConsoleMaterialActions(props: Props) {
     router.refresh();
   }
 
+  function buildHref() {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap justify-end gap-2">
-        <Link className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")} href={`/console/materials/${props.materialId}/edit`}>
+        <Link
+          scroll={false}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")}
+          href={withDialogHref(buildHref(), { dialog: "material-edit", id: props.materialId })}
+        >
           {viewLabel}
         </Link>
 
@@ -90,8 +104,8 @@ export function ConsoleMaterialActions(props: Props) {
             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")}
             disabled={action.pending}
             onClick={() => {
-              if (!confirm("确认归档该任务？归档后将从学生端隐藏，并对提交做归档标记。")) return;
-              void run(() => archiveConsoleMaterial(props.materialId), "归档失败");
+              action.reset();
+              setArchiveOpen(true);
             }}
           >
             归档
@@ -114,6 +128,19 @@ export function ConsoleMaterialActions(props: Props) {
       </div>
 
       <InlineError message={action.error} />
+
+      <ConfirmAlertDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="确认归档该任务？"
+        description="归档后将从学生端隐藏，并对提交做归档标记。"
+        confirmText="确认归档"
+        confirmDisabled={action.pending}
+        onConfirm={() => {
+          setArchiveOpen(false);
+          void run(() => archiveConsoleMaterial(props.materialId), "归档失败");
+        }}
+      />
 
       <ConsoleDeleteDialog
         open={deleteOpen}

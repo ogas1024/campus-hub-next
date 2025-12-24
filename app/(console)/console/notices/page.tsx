@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/common/PageHeader";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
 import { ConsoleModuleTabs } from "@/components/console/ConsoleModuleTabs";
 import { ConsoleNoticeActions } from "@/components/notices/ConsoleNoticeActions";
+import { ConsoleNoticeDialogController } from "@/components/notices/ConsoleNoticeDialogController";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listConsoleNotices } from "@/lib/modules/notices/notices.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 
@@ -100,29 +103,45 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
     );
   }
 
+  const baseHref = buildConsoleNoticesHref({
+    status: statusValue,
+    q,
+    includeExpired,
+    mine,
+    page: displayPage,
+    pageSize,
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">通知公告</h1>
-          <p className="text-sm text-muted-foreground">草稿/撤回 → 发布；已发布可撤回；置顶仅对“已发布且未过期”生效。</p>
-          <div className="text-sm text-muted-foreground">
-            共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canAuditList ? (
-            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/audit?targetType=notice">
-              审计检索
-            </Link>
-          ) : null}
-          {canCreate ? (
-            <Link href="/console/notices/new" className={buttonVariants({ size: "sm" })}>
-              新建公告
-            </Link>
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        title="通知公告"
+        description="草稿/撤回 → 发布；已发布可撤回；置顶仅对“已发布且未过期”生效。"
+        meta={
+          <>
+            <span>共 {data.total} 条</span>
+            <span>第 {displayPage} / {totalPages} 页</span>
+          </>
+        }
+        actions={
+          <>
+            {canAuditList ? (
+              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/audit?targetType=notice">
+                审计检索
+              </Link>
+            ) : null}
+            {canCreate ? (
+              <Link
+                scroll={false}
+                href={withDialogHref(baseHref, { dialog: "notice-create" })}
+                className={buttonVariants({ size: "sm" })}
+              >
+                新建公告
+              </Link>
+            ) : null}
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="max-w-full overflow-x-auto">
@@ -235,6 +254,7 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
                 <td className="px-3 py-2">
                   <ConsoleNoticeActions
                     noticeId={n.id}
+                    openHref={withDialogHref(baseHref, { dialog: "notice-edit", id: n.id })}
                     status={n.status}
                     pinned={n.pinned}
                     isExpired={n.isExpired}
@@ -265,6 +285,11 @@ export default async function ConsoleNoticesPage({ searchParams }: { searchParam
             pageSize,
           })
         }
+      />
+
+      <ConsoleNoticeDialogController
+        currentUserId={user.id}
+        perms={{ canCreate, canUpdate, canDelete, canPin, canPublish, canManageAll, canAuditList }}
       />
     </div>
   );

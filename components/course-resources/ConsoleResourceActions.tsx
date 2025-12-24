@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { InlineError } from "@/components/common/InlineError";
+import { ConsoleFormDialog } from "@/components/console/crud/ConsoleFormDialog";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -73,7 +72,7 @@ export function ConsoleResourceActions(props: Props) {
   const canUnbest = props.canBest && props.isBest;
   const canDelete = props.canDelete;
 
-  const confirmText = useMemo(() => {
+  const confirmHint = useMemo(() => {
     if (kind === "delete") return "此操作不可恢复，仅删除数据库记录（不删除存储对象）。";
     return null;
   }, [kind]);
@@ -181,61 +180,48 @@ export function ConsoleResourceActions(props: Props) {
         ) : null}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{labelFor(kind)}</DialogTitle>
-          </DialogHeader>
+      <ConsoleFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={labelFor(kind)}
+        pending={action.pending}
+        error={action.error}
+        confirmText={kind === "delete" ? "确认删除" : "确认"}
+        confirmVariant={kind === "delete" ? "destructive" : "default"}
+        confirmDisabled={needsComment && !comment.trim()}
+        onConfirm={() => {
+          const reasonValue = reason.trim() ? reason.trim() : undefined;
+          const commentValue = comment.trim() ? comment.trim() : undefined;
 
-          <div className="grid gap-3">
-            {confirmText ? <div className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">{confirmText}</div> : null}
+          if (kind === "approve") {
+            void runAndRefresh(() => approveConsoleResource(props.resourceId, { comment: commentValue, reason: reasonValue }), "审核通过失败");
+          } else if (kind === "reject") {
+            void runAndRefresh(() => rejectConsoleResource(props.resourceId, { comment: comment.trim(), reason: reasonValue }), "驳回失败");
+          } else if (kind === "offline") {
+            void runAndRefresh(() => offlineConsoleResource(props.resourceId, { reason: reasonValue }), "下架失败");
+          } else if (kind === "best") {
+            void runAndRefresh(() => bestConsoleResource(props.resourceId, { reason: reasonValue }), "设置最佳失败");
+          } else if (kind === "unbest") {
+            void runAndRefresh(() => unbestConsoleResource(props.resourceId, { reason: reasonValue }), "取消最佳失败");
+          } else if (kind === "delete") {
+            void runAndRefresh(() => hardDeleteConsoleResource(props.resourceId, { reason: reasonValue }), "删除失败");
+          }
+        }}
+      >
+        {confirmHint ? <div className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">{confirmHint}</div> : null}
 
-            {showComment ? (
-              <div className="grid gap-2">
-                <Label>{kind === "approve" ? "备注（可选）" : "驳回原因（必填）"}</Label>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="将作为审核意见写入资源记录与审计…" />
-              </div>
-            ) : null}
-
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-            </div>
-
-            <InlineError message={action.error} />
+        {showComment ? (
+          <div className="grid gap-2">
+            <Label>{kind === "approve" ? "备注（可选）" : "驳回原因（必填）"}</Label>
+            <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="将作为审核意见写入资源记录与审计…" />
           </div>
+        ) : null}
 
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setDialogOpen(false)}>
-              取消
-            </Button>
-            <Button
-              variant={kind === "delete" ? "destructive" : "default"}
-              disabled={action.pending || (needsComment && !comment.trim())}
-              onClick={() => {
-                const reasonValue = reason.trim() ? reason.trim() : undefined;
-                const commentValue = comment.trim() ? comment.trim() : undefined;
-
-                if (kind === "approve") {
-                  void runAndRefresh(() => approveConsoleResource(props.resourceId, { comment: commentValue, reason: reasonValue }), "审核通过失败");
-                } else if (kind === "reject") {
-                  void runAndRefresh(() => rejectConsoleResource(props.resourceId, { comment: comment.trim(), reason: reasonValue }), "驳回失败");
-                } else if (kind === "offline") {
-                  void runAndRefresh(() => offlineConsoleResource(props.resourceId, { reason: reasonValue }), "下架失败");
-                } else if (kind === "best") {
-                  void runAndRefresh(() => bestConsoleResource(props.resourceId, { reason: reasonValue }), "设置最佳失败");
-                } else if (kind === "unbest") {
-                  void runAndRefresh(() => unbestConsoleResource(props.resourceId, { reason: reasonValue }), "取消最佳失败");
-                } else if (kind === "delete") {
-                  void runAndRefresh(() => hardDeleteConsoleResource(props.resourceId, { reason: reasonValue }), "删除失败");
-                }
-              }}
-            >
-              {action.pending ? "处理中..." : kind === "delete" ? "确认删除" : "确认"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
     </div>
   );
 }

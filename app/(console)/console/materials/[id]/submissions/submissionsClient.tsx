@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 
 import { ConsoleDataTable } from "@/components/console/crud/ConsoleDataTable";
 import { InlineError } from "@/components/common/InlineError";
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -143,26 +145,36 @@ export function ConsoleMaterialSubmissionsClient(props: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">提交管理</h1>
-          <div className="text-sm text-muted-foreground">
-            任务：<span className="font-medium text-foreground">{props.materialTitle}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">
+      <PageHeader
+        title="提交管理"
+        description={
+          <>
+            <span>
+              任务：<span className="font-medium text-foreground">{props.materialTitle}</span>
+            </span>
+            <span className="mx-1">·</span>
+            <span className="font-mono text-xs text-muted-foreground">{props.materialId}</span>
+          </>
+        }
+        meta={
+          <span>
             共 {props.filters.total} 条 · 第 {props.filters.page} / {props.filters.totalPages} 页
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/materials/${props.materialId}/edit`}>
-            ← 返回任务
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/materials">
-            返回列表
-          </Link>
-        </div>
-      </div>
+          </span>
+        }
+        actions={
+          <>
+            <Link
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              href={`/console/materials?dialog=material-edit&id=${encodeURIComponent(props.materialId)}`}
+            >
+              ← 返回任务
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/materials">
+              返回列表
+            </Link>
+          </>
+        }
+      />
 
       {!props.canOperate ? (
         <div className="rounded-xl border border-border bg-muted p-4 text-sm text-muted-foreground">
@@ -170,22 +182,25 @@ export function ConsoleMaterialSubmissionsClient(props: Props) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4">
-        <div className="text-sm font-medium">导出 ZIP</div>
-        <label className="ml-auto flex items-center gap-2 text-sm">
-          <Checkbox checked={includeUnsubmitted} disabled={!props.canExport} onCheckedChange={(v) => setIncludeUnsubmitted(v === true)} />
-          包含未提交（默认仅已提交）
-        </label>
-        {props.canExport ? (
-          <a className={buttonVariants({ size: "sm" })} href={exportUrl}>
-            下载 ZIP
-          </a>
-        ) : (
-          <span className={cn(buttonVariants({ size: "sm" }), "pointer-events-none opacity-50")}>下载 ZIP</span>
-        )}
-      </div>
+      <FiltersPanel title="导出 ZIP">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox checked={includeUnsubmitted} disabled={!props.canExport} onCheckedChange={(v) => setIncludeUnsubmitted(v === true)} />
+            包含未提交（默认仅已提交）
+          </label>
+          <div className="ml-auto" />
+          {props.canExport ? (
+            <a className={buttonVariants({ size: "sm" })} href={exportUrl}>
+              下载 ZIP
+            </a>
+          ) : (
+            <span className={cn(buttonVariants({ size: "sm" }), "pointer-events-none opacity-50")}>下载 ZIP</span>
+          )}
+        </div>
+      </FiltersPanel>
 
-      <form className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4" action={`/console/materials/${props.materialId}/submissions`} method="GET">
+      <FiltersPanel>
+      <form className="flex flex-wrap items-end gap-2" action={`/console/materials/${props.materialId}/submissions`} method="GET">
         <input type="hidden" name="page" value="1" />
 
         <div className="grid gap-1">
@@ -256,6 +271,7 @@ export function ConsoleMaterialSubmissionsClient(props: Props) {
           </button>
         </div>
       </form>
+      </FiltersPanel>
 
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">

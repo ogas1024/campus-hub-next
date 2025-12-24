@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/common/PageHeader";
 import { ProfileSettingsClient } from "@/components/profile/ProfileSettingsClient";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getMyProfile } from "@/lib/modules/profile/profile.service";
@@ -12,10 +13,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">个人资料</h1>
-        <p className="text-sm text-muted-foreground">维护头像与基础信息；账号安全操作在弹窗中完成。</p>
-      </div>
+      <PageHeader title="个人资料" description="维护头像与基础信息；账号安全操作在弹窗中完成。" />
 
       <ProfileSettingsClient
         initialProfile={{
@@ -34,4 +32,3 @@ export default async function ProfilePage() {
     </div>
   );
 }
-

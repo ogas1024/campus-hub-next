@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { InlineError } from "@/components/common/InlineError";
+import { PageLoadingSkeleton } from "@/components/common/PageLoadingSkeleton";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,7 +57,7 @@ export default function VoteResultsClient(props: Props) {
     return endAt.getTime() <= Date.now() ? "closed" : "published";
   }, [data]);
 
-  if (loading) return <div className="text-sm text-muted-foreground">加载中...</div>;
+  if (loading) return <PageLoadingSkeleton variant="results" />;
   if (error) return <InlineError message={error} />;
   if (!data) return <div className="text-sm text-muted-foreground">无数据</div>;
 
@@ -63,34 +65,38 @@ export default function VoteResultsClient(props: Props) {
   const endAt = new Date(data.vote.endAt);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">投票结果</h1>
-          <div className="text-sm text-muted-foreground">{data.vote.title}</div>
-          <div className="text-sm text-muted-foreground">
-            {formatZhDateTime(startAt)} ~ {formatZhDateTime(endAt)}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/votes">
-            ← 返回列表
-          </Link>
-          {props.perms.canUpdate ? (
-            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/votes/${id}/edit`}>
-              编辑
+    <div className="space-y-4">
+      <PageHeader
+        title="投票结果"
+        description={data.vote.title}
+        meta={
+          <>
+            <span>
+              {formatZhDateTime(startAt)} ~ {formatZhDateTime(endAt)}
+            </span>
+            <Badge variant="secondary">参与人数：{data.results.totalResponses}</Badge>
+            {data.vote.anonymousResponses ? <Badge variant="outline">匿名投票</Badge> : <Badge variant="secondary">实名投票</Badge>}
+            {effectiveStatus === "closed" ? <Badge>已结束</Badge> : <Badge variant="outline">未结束</Badge>}
+            {data.vote.archivedAt ? <Badge variant="secondary">已归档</Badge> : null}
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console/votes">
+              ← 返回列表
             </Link>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary">参与人数：{data.results.totalResponses}</Badge>
-        {data.vote.anonymousResponses ? <Badge variant="outline">匿名投票</Badge> : <Badge variant="secondary">实名投票</Badge>}
-        {effectiveStatus === "closed" ? <Badge>已结束</Badge> : <Badge variant="outline">未结束</Badge>}
-        {data.vote.archivedAt ? <Badge variant="secondary">已归档</Badge> : null}
-      </div>
+            {props.perms.canUpdate ? (
+              <Link
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+                href={`/console/votes?dialog=vote-edit&id=${encodeURIComponent(id)}`}
+                scroll={false}
+              >
+                编辑
+              </Link>
+            ) : null}
+          </>
+        }
+      />
 
       {data.questions.length === 0 ? (
         <Card>
@@ -102,4 +108,3 @@ export default function VoteResultsClient(props: Props) {
     </div>
   );
 }
-

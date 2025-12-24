@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { DepartmentTreeSelector } from "@/components/organization/DepartmentTreeSelector";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ScopeOptionsResponse, ScopeType } from "@/lib/api/visibility-scope";
 import type { SelectedScopes } from "@/lib/ui/visibilityScope";
 
@@ -40,7 +41,20 @@ export function VisibilityScopeSelector(props: Props) {
     <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
       <div className="text-sm font-medium">可见范围</div>
       {!props.options ? (
-        <div className="text-sm text-muted-foreground">加载中...</div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-56 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-56 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-56 w-full" />
+          </div>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
@@ -102,4 +116,3 @@ export function VisibilityScopeSelector(props: Props) {
     </div>
   );
 }
-

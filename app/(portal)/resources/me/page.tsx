@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PortalResourceDialogController } from "@/components/course-resources/PortalResourceDialogController";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam } from "@/lib/http/query";
 import { listMyResources } from "@/lib/modules/course-resources/courseResources.service";
+import { withDialogHref } from "@/lib/navigation/dialog";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -78,71 +81,72 @@ export default async function MyResourcesPage({ searchParams }: { searchParams: 
     redirect(buildMyResourcesHref({ q, status: statusValue || undefined, page: totalPages, pageSize }));
   }
 
+  const listHref = buildMyResourcesHref({ q, status: statusValue || undefined, page: displayPage, pageSize });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">我的投稿</h1>
-          <p className="text-sm text-muted-foreground">草稿/驳回/下架可编辑并重新提交；待审核不可修改；已发布可下架维护。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources">
-            ← 返回浏览
-          </Link>
-          <Link className={buttonVariants({ size: "sm" })} href="/resources/me/new">
-            新建投稿
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="我的投稿"
+        description="草稿/驳回/下架可编辑并重新提交；待审核不可修改；已发布可下架维护。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources">
+              ← 返回浏览
+            </Link>
+            <Link className={buttonVariants({ size: "sm" })} href={withDialogHref(listHref, { dialog: "resource-create" })} scroll={false}>
+              新建投稿
+            </Link>
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">共 {data.total} 条</Badge>
-        <Badge variant="secondary">
-          第 {displayPage} / {totalPages} 页
-        </Badge>
-      </div>
+      <FiltersPanel>
+        <form className="grid gap-3 md:grid-cols-12" action="/resources/me" method="GET">
+          <input type="hidden" name="page" value="1" />
 
-      <Card>
-        <CardContent className="p-4">
-          <form className="grid gap-3 md:grid-cols-12" action="/resources/me" method="GET">
-            <input type="hidden" name="page" value="1" />
+          <div className="md:col-span-6">
+            <Input uiSize="sm" name="q" placeholder="搜索标题/描述…" defaultValue={q} />
+          </div>
 
-            <div className="md:col-span-6">
-              <Input name="q" placeholder="搜索标题/描述…" defaultValue={q} />
-            </div>
+          <div className="md:col-span-3">
+            <Select uiSize="sm" name="status" defaultValue={statusValue}>
+              <option value="">全部状态</option>
+              <option value="draft">草稿</option>
+              <option value="pending">待审核</option>
+              <option value="published">已发布</option>
+              <option value="rejected">已驳回</option>
+              <option value="unpublished">已下架</option>
+            </Select>
+          </div>
 
-            <div className="md:col-span-3">
-              <Select name="status" defaultValue={statusValue}>
-                <option value="">全部状态</option>
-                <option value="draft">草稿</option>
-                <option value="pending">待审核</option>
-                <option value="published">已发布</option>
-                <option value="rejected">已驳回</option>
-                <option value="unpublished">已下架</option>
-              </Select>
-            </div>
+          <div className="md:col-span-3">
+            <Select uiSize="sm" name="pageSize" defaultValue={String(pageSize)}>
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={String(n)}>
+                  每页 {n}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-            <div className="md:col-span-3">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
-                {[10, 20, 50].map((n) => (
-                  <option key={n} value={String(n)}>
-                    每页 {n}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap gap-2 md:col-span-12">
-              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources/me">
-                清空
-              </Link>
-              <Button size="sm" type="submit">
-                应用
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="flex flex-wrap gap-2 md:col-span-12">
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources/me">
+              清空
+            </Link>
+            <Button size="sm" type="submit">
+              应用
+            </Button>
+          </div>
+        </form>
+      </FiltersPanel>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">
@@ -168,22 +172,26 @@ export default async function MyResourcesPage({ searchParams }: { searchParams: 
               const meta = statusMeta(item.status);
               return (
                 <tr key={item.id} className="border-t border-border">
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="line-clamp-1 font-medium">{item.title}</div>
                     <div className="line-clamp-1 text-xs text-muted-foreground">{item.description}</div>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <Badge variant="secondary">{typeLabel(item.resourceType)}</Badge>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>
                       {meta.label}
                     </span>
                     {item.isBest ? <Badge className="ml-2">最佳</Badge> : null}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">{item.downloadCount}</td>
-                  <td className="px-3 py-3 text-right">
-                    <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/resources/me/${item.id}`}>
+                  <td className="px-3 py-2 text-right tabular-nums">{item.downloadCount}</td>
+                  <td className="px-3 py-2 text-right">
+                    <Link
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                      href={withDialogHref(listHref, { dialog: "resource-edit", id: item.id })}
+                      scroll={false}
+                    >
                       编辑
                     </Link>
                   </td>
@@ -199,6 +207,8 @@ export default async function MyResourcesPage({ searchParams }: { searchParams: 
         totalPages={totalPages}
         hrefForPage={(nextPage) => buildMyResourcesHref({ q, status: statusValue || undefined, page: nextPage, pageSize })}
       />
+
+      <PortalResourceDialogController />
     </div>
   );
 }

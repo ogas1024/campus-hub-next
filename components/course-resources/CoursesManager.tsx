@@ -9,9 +9,9 @@ import {
   updateConsoleCourse,
 } from "@/lib/api/console-course-resources";
 import type { Course, Major } from "@/lib/api/console-course-resources";
-import { InlineError } from "@/components/common/InlineError";
+import { ConsoleDeleteDialog } from "@/components/console/crud/ConsoleDeleteDialog";
+import { ConsoleFormDialog } from "@/components/console/crud/ConsoleFormDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -67,7 +67,6 @@ export function CoursesManager(props: Props) {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleteReason, setDeleteReason] = useState("");
 
   async function submitCreate() {
     const res = await action.run(
@@ -141,12 +140,9 @@ export function CoursesManager(props: Props) {
     router.refresh();
   }
 
-  async function submitDelete() {
+  async function submitDelete(reason?: string) {
     if (!deleteId) return;
-    const ok = await action.run(
-      () => deleteConsoleCourse(deleteId, { reason: deleteReason.trim() ? deleteReason.trim() : undefined }),
-      { fallbackErrorMessage: "删除失败" },
-    );
+    const ok = await action.run(() => deleteConsoleCourse(deleteId, { reason }), { fallbackErrorMessage: "删除失败" });
     if (!ok) return;
     setItems((prev) => prev.filter((c) => c.id !== deleteId));
     setDeleteOpen(false);
@@ -159,83 +155,23 @@ export function CoursesManager(props: Props) {
         <div className="text-sm text-muted-foreground">{items.length} 门课程</div>
 
         {props.canCreate ? (
-          <Dialog
-            open={createOpen}
-            onOpenChange={(next) => {
-              if (next) {
-                action.reset();
-                setCreateMajorId(props.majors[0]?.id ?? "");
-                setCreateName("");
-                setCreateCode("");
-                setCreateEnabled(true);
-                setCreateSort(0);
-                setCreateRemark("");
-                setCreateReason("");
-              }
-              setCreateOpen(next);
+          <Button
+            size="sm"
+            disabled={action.pending}
+            onClick={() => {
+              action.reset();
+              setCreateMajorId(props.majors[0]?.id ?? "");
+              setCreateName("");
+              setCreateCode("");
+              setCreateEnabled(true);
+              setCreateSort(0);
+              setCreateRemark("");
+              setCreateReason("");
+              setCreateOpen(true);
             }}
           >
-            <DialogTrigger asChild>
-              <Button size="sm">新增课程</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>新增课程</DialogTitle>
-                <DialogDescription>课程归属于专业；Portal 仅展示启用课程。</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label>专业</Label>
-                  <Select value={createMajorId} onChange={(e) => setCreateMajorId(e.target.value)} disabled={props.majors.length === 0}>
-                    {props.majors.length === 0 ? <option value="">暂无专业</option> : null}
-                    {props.majors.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>名称</Label>
-                  <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 数据结构" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-2">
-                    <Label>课程代码（可选）</Label>
-                    <Input value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="例如 CS101" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>排序（sort）</Label>
-                    <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">启用</div>
-                    <div className="text-xs text-muted-foreground">停用后仍保留数据，仅影响 Portal 可见性。</div>
-                  </div>
-                  <Switch checked={createEnabled} onCheckedChange={setCreateEnabled} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>备注（可选）</Label>
-                  <Textarea value={createRemark} onChange={(e) => setCreateRemark(e.target.value)} placeholder="可填写课程说明、口径…" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>原因（可选，将写入审计）</Label>
-                  <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-                </div>
-                <InlineError message={action.error} />
-              </div>
-              <DialogFooter>
-                <Button variant="outline" disabled={action.pending} onClick={() => setCreateOpen(false)}>
-                  取消
-                </Button>
-                <Button disabled={action.pending || !createMajorId || !createName.trim()} onClick={() => void submitCreate()}>
-                  {action.pending ? "提交中..." : "创建"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            新增课程
+          </Button>
         ) : null}
       </div>
 
@@ -313,7 +249,6 @@ export function CoursesManager(props: Props) {
                         onClick={() => {
                           action.reset();
                           setDeleteId(c.id);
-                          setDeleteReason("");
                           setDeleteOpen(true);
                         }}
                       >
@@ -328,89 +263,133 @@ export function CoursesManager(props: Props) {
         </table>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑课程</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label>专业</Label>
-              <Select value={editMajorId} onChange={(e) => setEditMajorId(e.target.value)} disabled={props.majors.length === 0}>
-                {props.majors.length === 0 ? <option value="">暂无专业</option> : null}
-                {props.majors.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>名称</Label>
-              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>课程代码（可选）</Label>
-                <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>排序（sort）</Label>
-                <Input value={String(editSort)} onChange={(e) => setEditSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-              <div className="space-y-0.5">
-                <div className="text-sm font-medium">启用</div>
-                <div className="text-xs text-muted-foreground">停用后仍保留数据，仅影响 Portal 可见性。</div>
-              </div>
-              <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
-            </div>
-            <div className="grid gap-2">
-              <Label>备注（可选）</Label>
-              <Textarea value={editRemark} onChange={(e) => setEditRemark(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-            </div>
-            <InlineError message={action.error} />
+      <ConsoleFormDialog
+        open={createOpen}
+        onOpenChange={(next) => {
+          if (!next && action.pending) return;
+          if (!next) action.reset();
+          setCreateOpen(next);
+        }}
+        title="新增课程"
+        description="课程归属于专业；Portal 仅展示启用课程。"
+        pending={action.pending}
+        error={action.error}
+        confirmText="创建"
+        confirmDisabled={!createMajorId || !createName.trim()}
+        onConfirm={() => void submitCreate()}
+      >
+        <div className="grid gap-2">
+          <Label>专业</Label>
+          <Select value={createMajorId} onChange={(e) => setCreateMajorId(e.target.value)} disabled={props.majors.length === 0}>
+            {props.majors.length === 0 ? <option value="">暂无专业</option> : null}
+            {props.majors.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>名称</Label>
+          <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 数据结构" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label>课程代码（可选）</Label>
+            <Input value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="例如 CS101" />
           </div>
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setEditOpen(false)}>
-              取消
-            </Button>
-            <Button disabled={action.pending || !editMajorId || !editName.trim()} onClick={() => void submitUpdate()}>
-              {action.pending ? "保存中..." : "保存"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="grid gap-2">
+            <Label>排序（sort）</Label>
+            <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+          <div className="space-y-0.5">
+            <div className="text-sm font-medium">启用</div>
+            <div className="text-xs text-muted-foreground">停用后仍保留数据，仅影响 Portal 可见性。</div>
+          </div>
+          <Switch checked={createEnabled} onCheckedChange={setCreateEnabled} />
+        </div>
+        <div className="grid gap-2">
+          <Label>备注（可选）</Label>
+          <Textarea value={createRemark} onChange={(e) => setCreateRemark(e.target.value)} placeholder="可填写课程说明、口径…" />
+        </div>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>删除课程</DialogTitle>
-            <DialogDescription>将执行软删（deleted_at），不会级联删除资源。</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-            </div>
-            <InlineError message={action.error} />
+      <ConsoleFormDialog
+        open={editOpen}
+        onOpenChange={(next) => {
+          if (!next && action.pending) return;
+          if (!next) action.reset();
+          setEditOpen(next);
+        }}
+        title="编辑课程"
+        pending={action.pending}
+        error={action.error}
+        confirmText="保存"
+        confirmDisabled={!editMajorId || !editName.trim()}
+        onConfirm={() => void submitUpdate()}
+      >
+        <div className="grid gap-2">
+          <Label>专业</Label>
+          <Select value={editMajorId} onChange={(e) => setEditMajorId(e.target.value)} disabled={props.majors.length === 0}>
+            {props.majors.length === 0 ? <option value="">暂无专业</option> : null}
+            {props.majors.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>名称</Label>
+          <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label>课程代码（可选）</Label>
+            <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} />
           </div>
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setDeleteOpen(false)}>
-              取消
-            </Button>
-            <Button variant="destructive" disabled={action.pending} onClick={() => void submitDelete()}>
-              {action.pending ? "删除中..." : "确认删除"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="grid gap-2">
+            <Label>排序（sort）</Label>
+            <Input value={String(editSort)} onChange={(e) => setEditSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+          <div className="space-y-0.5">
+            <div className="text-sm font-medium">启用</div>
+            <div className="text-xs text-muted-foreground">停用后仍保留数据，仅影响 Portal 可见性。</div>
+          </div>
+          <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
+        </div>
+        <div className="grid gap-2">
+          <Label>备注（可选）</Label>
+          <Textarea value={editRemark} onChange={(e) => setEditRemark(e.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
+
+      <ConsoleDeleteDialog
+        open={deleteOpen}
+        onOpenChange={(next) => {
+          if (!next && action.pending) return;
+          if (!next) action.reset();
+          setDeleteOpen(next);
+        }}
+        title="删除课程"
+        description="将执行软删（deleted_at），不会级联删除资源。"
+        pending={action.pending}
+        error={action.error}
+        confirmText="确认删除"
+        onConfirm={({ reason }) => void submitDelete(reason)}
+      />
     </div>
   );
 }
-

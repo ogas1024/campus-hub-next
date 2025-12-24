@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { approveUser, banUser, deleteUser, disableUser, enableUser, rejectUser, unbanUser } from "@/lib/api/iam";
 import type { UserStatus } from "@/lib/api/iam";
-import { InlineError } from "@/components/common/InlineError";
+import { ConsoleFormDialog } from "@/components/console/crud/ConsoleFormDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,7 +136,7 @@ export function UserLifecycleActions(props: Props) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog
+      <ConsoleFormDialog
         open={confirmOpen}
         onOpenChange={(next) => {
           if (!next) {
@@ -147,46 +146,32 @@ export function UserLifecycleActions(props: Props) {
           }
           setConfirmOpen(next);
         }}
+        title={confirmMeta?.title ?? "确认操作"}
+        description={confirmMeta?.description}
+        pending={action.pending}
+        error={action.error}
+        confirmText={confirmMeta?.confirmLabel ?? "确认"}
+        confirmVariant={confirmMeta?.variant === "destructive" ? "destructive" : "default"}
+        confirmDisabled={!confirmAction}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          const body = reason.trim() ? { reason: reason.trim() } : {};
+
+          if (confirmAction === "approve") void run(() => approveUser(props.userId, body), "通过失败");
+          if (confirmAction === "reject") void run(() => rejectUser(props.userId, body), "驳回失败");
+          if (confirmAction === "disable") void run(() => disableUser(props.userId, body), "停用失败");
+          if (confirmAction === "enable") void run(() => enableUser(props.userId, body), "启用失败");
+          if (confirmAction === "unban") void run(() => unbanUser(props.userId, body), "解封失败");
+          if (confirmAction === "delete") void run(() => deleteUser(props.userId, { reason: reason.trim() || undefined }), "删除失败");
+        }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{confirmMeta?.title ?? "确认操作"}</DialogTitle>
-            {confirmMeta?.description ? <DialogDescription>{confirmMeta.description}</DialogDescription> : null}
-          </DialogHeader>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="可填写工单号、处理原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
 
-          <div className="grid gap-2">
-            <Label>原因（可选，将写入审计）</Label>
-            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="可填写工单号、处理原因、备注…" />
-          </div>
-
-          <InlineError message={action.error} />
-
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setConfirmOpen(false)}>
-              取消
-            </Button>
-            <Button
-              variant={confirmMeta?.variant === "destructive" ? "destructive" : "default"}
-              disabled={action.pending || !confirmAction}
-              onClick={() => {
-                if (!confirmAction) return;
-                const body = reason.trim() ? { reason: reason.trim() } : {};
-
-                if (confirmAction === "approve") void run(() => approveUser(props.userId, body), "通过失败");
-                if (confirmAction === "reject") void run(() => rejectUser(props.userId, body), "驳回失败");
-                if (confirmAction === "disable") void run(() => disableUser(props.userId, body), "停用失败");
-                if (confirmAction === "enable") void run(() => enableUser(props.userId, body), "启用失败");
-                if (confirmAction === "unban") void run(() => unbanUser(props.userId, body), "解封失败");
-                if (confirmAction === "delete") void run(() => deleteUser(props.userId, { reason: reason.trim() || undefined }), "删除失败");
-              }}
-            >
-              {action.pending ? "处理中..." : confirmMeta?.confirmLabel ?? "确认"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
+      <ConsoleFormDialog
         open={banOpen}
         onOpenChange={(next) => {
           if (!next) {
@@ -196,60 +181,44 @@ export function UserLifecycleActions(props: Props) {
           }
           setBanOpen(next);
         }}
+        title="封禁用户"
+        description="通过 Supabase Auth Admin API 执行封禁（ban_duration）。"
+        pending={action.pending}
+        error={action.error}
+        confirmText="封禁"
+        confirmVariant="destructive"
+        confirmDisabled={!banDuration.trim()}
+        onConfirm={() => {
+          void run(
+            () => banUser(props.userId, { duration: banDuration.trim(), reason: banReason.trim() ? banReason.trim() : undefined }),
+            "封禁失败",
+          );
+        }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>封禁用户</DialogTitle>
-            <DialogDescription>通过 Supabase Auth Admin API 执行封禁（ban_duration）。</DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <Label>封禁时长</Label>
-              <Input value={banDuration} onChange={(e) => setBanDuration(e.target.value)} placeholder="示例：10m / 2h / 1h30m / 24h / 100y" />
-              <div className="flex flex-wrap gap-2">
-                {["10m", "2h", "24h", "7d", "30d", "100y"].map((d) => (
-                  <Button
-                    key={d}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={action.pending}
-                    onClick={() => setBanDuration(d)}
-                  >
-                    {d}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="可填写工单号、处理原因、备注…" />
-            </div>
+        <div className="grid gap-2">
+          <Label>封禁时长</Label>
+          <Input value={banDuration} onChange={(e) => setBanDuration(e.target.value)} placeholder="示例：10m / 2h / 1h30m / 24h / 100y" />
+          <div className="flex flex-wrap gap-2">
+            {["10m", "2h", "24h", "7d", "30d", "100y"].map((d) => (
+              <Button
+                key={d}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={action.pending}
+                onClick={() => setBanDuration(d)}
+              >
+                {d}
+              </Button>
+            ))}
           </div>
+        </div>
 
-          <InlineError message={action.error} />
-
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setBanOpen(false)}>
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={action.pending || !banDuration.trim()}
-              onClick={() => {
-                void run(
-                  () => banUser(props.userId, { duration: banDuration.trim(), reason: banReason.trim() ? banReason.trim() : undefined }),
-                  "封禁失败",
-                );
-              }}
-            >
-              {action.pending ? "处理中..." : "封禁"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="可填写工单号、处理原因、备注…" />
+        </div>
+      </ConsoleFormDialog>
     </>
   );
 }

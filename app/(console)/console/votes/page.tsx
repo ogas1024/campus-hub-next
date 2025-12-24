@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { ConsoleModuleTabs } from "@/components/console/ConsoleModuleTabs";
+import { ConsoleVoteDialogController } from "@/components/votes/ConsoleVoteDialogController";
 import { ConsoleVoteActions } from "@/components/votes/ConsoleVoteActions";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/Pagination";
@@ -10,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
 import { parseBooleanParam, parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listConsoleVotes } from "@/lib/modules/votes/votes.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -96,69 +100,74 @@ export default async function ConsoleVotesPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">投票</h1>
-          <p className="text-sm text-muted-foreground">草稿可编辑结构；发布后锁定结构；支持关闭、延期（可重新开放）、置顶与归档。</p>
-          <div className="text-sm text-muted-foreground">
+      <PageHeader
+        title="投票"
+        description="草稿可编辑结构；发布后锁定结构；支持关闭、延期（可重新开放）、置顶与归档。"
+        meta={
+          <span>
             共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {canCreate ? (
-            <Link href="/console/votes/new" className={buttonVariants({ size: "sm" })}>
+          </span>
+        }
+        actions={
+          canCreate ? (
+            <Link
+              scroll={false}
+              href={withDialogHref(buildConsoleVotesHref({ status: statusValue, q, mine, archived, page: displayPage, pageSize }), { dialog: "vote-create" })}
+              className={buttonVariants({ size: "sm" })}
+            >
               新建投票
             </Link>
-          ) : null}
+          ) : null
+        }
+      />
+
+      <FiltersPanel>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="max-w-full overflow-x-auto">
+            <ConsoleModuleTabs
+              ariaLabel="投票 状态切换"
+              activeId={statusValue ?? "all"}
+              tabs={[
+                { id: "all", label: "全部", href: buildConsoleVotesHref({ status: undefined, q, mine, archived, page: 1, pageSize }) },
+                { id: "published", label: "已发布", href: buildConsoleVotesHref({ status: "published", q, mine, archived, page: 1, pageSize }) },
+                { id: "draft", label: "草稿", href: buildConsoleVotesHref({ status: "draft", q, mine, archived, page: 1, pageSize }) },
+                { id: "closed", label: "已结束", href: buildConsoleVotesHref({ status: "closed", q, mine, archived, page: 1, pageSize }) },
+              ]}
+            />
+          </div>
+
+          <div className="ml-auto" />
+
+          <form className="flex flex-wrap items-center gap-2" action="/console/votes" method="GET">
+            {statusValue ? <input type="hidden" name="status" value={statusValue} /> : null}
+            <input type="hidden" name="page" value="1" />
+
+            <Input name="q" uiSize="sm" className="w-56" placeholder="搜索标题…" defaultValue={q} />
+
+            <Select name="mine" defaultValue={mine ? "true" : "false"} uiSize="sm" className="w-28">
+              <option value="false">全部</option>
+              <option value="true">仅我创建</option>
+            </Select>
+
+            <Select name="archived" defaultValue={archived ? "true" : "false"} uiSize="sm" className="w-28">
+              <option value="false">未归档</option>
+              <option value="true">已归档</option>
+            </Select>
+
+            <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm" className="w-28">
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={String(n)}>
+                  每页 {n}
+                </option>
+              ))}
+            </Select>
+
+            <button className={buttonVariants({ size: "sm", variant: "outline" })} type="submit">
+              应用
+            </button>
+          </form>
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="max-w-full overflow-x-auto">
-          <ConsoleModuleTabs
-            ariaLabel="投票 状态切换"
-            activeId={statusValue ?? "all"}
-            tabs={[
-              { id: "all", label: "全部", href: buildConsoleVotesHref({ status: undefined, q, mine, archived, page: 1, pageSize }) },
-              { id: "published", label: "已发布", href: buildConsoleVotesHref({ status: "published", q, mine, archived, page: 1, pageSize }) },
-              { id: "draft", label: "草稿", href: buildConsoleVotesHref({ status: "draft", q, mine, archived, page: 1, pageSize }) },
-              { id: "closed", label: "已结束", href: buildConsoleVotesHref({ status: "closed", q, mine, archived, page: 1, pageSize }) },
-            ]}
-          />
-        </div>
-
-        <div className="ml-auto" />
-
-        <form className="flex flex-wrap items-center gap-2" action="/console/votes" method="GET">
-          {statusValue ? <input type="hidden" name="status" value={statusValue} /> : null}
-          <input type="hidden" name="page" value="1" />
-
-          <Input name="q" uiSize="sm" className="w-56" placeholder="搜索标题…" defaultValue={q} />
-
-          <Select name="mine" defaultValue={mine ? "true" : "false"} uiSize="sm" className="w-28">
-            <option value="false">全部</option>
-            <option value="true">仅我创建</option>
-          </Select>
-
-          <Select name="archived" defaultValue={archived ? "true" : "false"} uiSize="sm" className="w-28">
-            <option value="false">未归档</option>
-            <option value="true">已归档</option>
-          </Select>
-
-          <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm" className="w-28">
-            {[10, 20, 50].map((n) => (
-              <option key={n} value={String(n)}>
-                每页 {n}
-              </option>
-            ))}
-          </Select>
-
-          <button className={buttonVariants({ size: "sm", variant: "outline" })} type="submit">
-            应用
-          </button>
-        </form>
-      </div>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -173,7 +182,7 @@ export default async function ConsoleVotesPage({ searchParams }: { searchParams:
             <div
               key={item.id}
               className={cn(
-                "rounded-xl border border-border bg-card p-5",
+                "rounded-xl border border-border bg-card p-4 transition-colors",
                 item.effectiveStatus === "published" ? "border-primary/40" : null,
                 item.archivedAt ? "opacity-90" : null,
               )}
@@ -225,6 +234,11 @@ export default async function ConsoleVotesPage({ searchParams }: { searchParams:
           hrefForPage={(p) => buildConsoleVotesHref({ status: statusValue, q, mine, archived, page: p, pageSize })}
         />
       ) : null}
+
+      <ConsoleVoteDialogController
+        currentUserId={user.id}
+        perms={{ canCreate, canUpdate, canPublish, canClose, canExtend, canPin, canArchive, canManageAll }}
+      />
     </div>
   );
 }

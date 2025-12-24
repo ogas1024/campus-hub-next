@@ -35,7 +35,7 @@ export const materialsWorkbenchProvider: WorkbenchProvider = {
       id: t.id,
       title: t.title,
       meta: t.dueAt ? `截止：${formatZhDateTime(t.dueAt)}` : undefined,
-      href: `/console/materials/${t.id}/edit`,
+      href: `/console/materials?dialog=material-edit&id=${encodeURIComponent(t.id)}`,
     }));
 
     const dueSoonDialogDescription =
@@ -67,7 +67,9 @@ export const materialsWorkbenchProvider: WorkbenchProvider = {
               emptyText: `未来 ${withinDays} 天内暂无截止任务`,
             },
           },
-          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建任务", href: "/console/materials/new" }] : []),
+          ...(canCreate
+            ? [{ kind: "link" as const, id: "new", label: "新建任务", href: "/console/materials?dialog=material-create" }]
+            : []),
         ],
       },
     ];
@@ -80,4 +82,3 @@ export const materialsWorkbenchProvider: WorkbenchProvider = {
     return links;
   },
 };
-

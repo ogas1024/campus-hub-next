@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PortalSurveyDialogController } from "@/components/surveys/PortalSurveyDialogController";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listPortalSurveys } from "@/lib/modules/surveys/surveys.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -51,57 +55,51 @@ export default async function SurveysPage({ searchParams }: { searchParams: Prom
     redirect(buildPortalSurveysHref({ q, page: totalPages, pageSize }));
   }
 
+  const baseHref = buildPortalSurveysHref({ q, page: displayPage, pageSize });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">问卷</h1>
-          <p className="text-sm text-muted-foreground">整页/分节式填写；截止前可修改并覆盖提交。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">共 {data.total} 份</Badge>
-          <Badge variant="secondary">
-            第 {displayPage} / {totalPages} 页
-          </Badge>
-        </div>
-      </div>
+      <PageHeader
+        title="问卷"
+        description="整页/分节式填写；截止前可修改并覆盖提交。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 份</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+      />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">搜索与分页</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action="/surveys" method="GET">
-            <input type="hidden" name="page" value="1" />
+      <FiltersPanel title="搜索与分页">
+        <form className="grid gap-3 md:grid-cols-12" action="/surveys" method="GET">
+          <input type="hidden" name="page" value="1" />
 
-            <div className="md:col-span-6">
-              <Input name="q" placeholder="按标题搜索…" defaultValue={q} />
-            </div>
+          <div className="md:col-span-6">
+            <Input uiSize="sm" name="q" placeholder="按标题搜索…" defaultValue={q} />
+          </div>
 
-            <div className="md:col-span-2">
-              <Select
-                name="pageSize"
-                defaultValue={String(pageSize)}
-              >
-                {[10, 20, 50].map((n) => (
-                  <option key={n} value={String(n)}>
-                    每页 {n}
-                  </option>
-                ))}
-              </Select>
-            </div>
+          <div className="md:col-span-2">
+            <Select uiSize="sm" name="pageSize" defaultValue={String(pageSize)}>
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={String(n)}>
+                  每页 {n}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-            <div className="flex flex-wrap gap-2 md:col-span-12">
-              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/surveys">
-                清空
-              </Link>
-              <button className={buttonVariants({ size: "sm" })} type="submit">
-                应用
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="flex flex-wrap gap-2 md:col-span-12">
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/surveys">
+              清空
+            </Link>
+            <button className={buttonVariants({ size: "sm" })} type="submit">
+              应用
+            </button>
+          </div>
+        </form>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -111,9 +109,14 @@ export default async function SurveysPage({ searchParams }: { searchParams: Prom
         ) : null}
 
         {data.items.map((item) => (
-          <Link key={item.id} href={`/surveys/${item.id}`} className="block">
-            <Card className={cn("hover:bg-accent", item.phase === "active" ? "border-primary" : null)}>
-              <CardContent className="space-y-2 p-5">
+          <Link
+            key={item.id}
+            scroll={false}
+            href={withDialogHref(baseHref, { dialog: "survey-fill", id: item.id })}
+            className="block rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <Card className={cn("transition-colors hover:bg-muted/40", item.phase === "active" ? "border-primary" : null)}>
+              <CardContent className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-base font-semibold">{item.title}</div>
                   {item.phase === "active" ? <Badge>进行中</Badge> : null}
@@ -143,6 +146,8 @@ export default async function SurveysPage({ searchParams }: { searchParams: Prom
           hrefForPage={(p) => buildPortalSurveysHref({ q, page: p, pageSize })}
         />
       ) : null}
+
+      <PortalSurveyDialogController />
     </div>
   );
 }

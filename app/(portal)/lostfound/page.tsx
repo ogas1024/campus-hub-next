@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
+import { LostfoundDialogController } from "@/components/lostfound/LostfoundDialogController";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseBooleanParam, parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listPortalLostfound } from "@/lib/modules/lostfound/lostfound.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -84,40 +88,43 @@ export default async function LostfoundPage({ searchParams }: { searchParams: Pr
     redirect(buildLostfoundHref({ type: typeValue || undefined, q, solved, from: fromRaw, to: toRaw, page: totalPages, pageSize }));
   }
 
+  const baseHref = buildLostfoundHref({ type: typeValue || undefined, q, solved, from: fromRaw, to: toRaw, page: displayPage, pageSize });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">失物招领</h1>
-          <p className="text-sm text-muted-foreground">登录后可浏览；发布默认审核；不做站内私信撮合，仅展示发布者自填联系方式。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound/me">
-            我的发布
-          </Link>
-          <Link className={buttonVariants({ size: "sm" })} href="/lostfound/new">
-            发布
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="失物招领"
+        description="登录后可浏览；发布默认审核；不做站内私信撮合，仅展示发布者自填联系方式。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound/me">
+              我的发布
+            </Link>
+            <Link
+              scroll={false}
+              className={buttonVariants({ size: "sm" })}
+              href={withDialogHref(baseHref, { dialog: "lostfound-create" })}
+            >
+              发布
+            </Link>
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">共 {data.total} 条</Badge>
-        <Badge variant="secondary">
-          第 {displayPage} / {totalPages} 页
-        </Badge>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">筛选</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action="/lostfound" method="GET">
+      <FiltersPanel title="筛选">
+        <form className="grid gap-3 md:grid-cols-12" action="/lostfound" method="GET">
             <input type="hidden" name="page" value="1" />
 
             <div className="md:col-span-3">
-              <Select name="type" defaultValue={typeValue}>
+              <Select name="type" defaultValue={typeValue} uiSize="sm">
                 <option value="">全部类型</option>
                 <option value="lost">丢失</option>
                 <option value="found">拾到</option>
@@ -125,11 +132,11 @@ export default async function LostfoundPage({ searchParams }: { searchParams: Pr
             </div>
 
             <div className="md:col-span-5">
-              <Input name="q" placeholder="搜索标题/正文/地点…" defaultValue={q} />
+              <Input name="q" uiSize="sm" placeholder="搜索标题/正文/地点…" defaultValue={q} />
             </div>
 
             <div className="md:col-span-2">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
+              <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm">
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
                     每页 {n}
@@ -140,10 +147,10 @@ export default async function LostfoundPage({ searchParams }: { searchParams: Pr
 
             <div className="md:col-span-12 grid gap-3 md:grid-cols-12">
               <div className="md:col-span-3">
-                <Input name="from" type="datetime-local" defaultValue={fromRaw} placeholder="from（可选）" />
+                <Input name="from" type="datetime-local" uiSize="sm" defaultValue={fromRaw} placeholder="from（可选）" />
               </div>
               <div className="md:col-span-3">
-                <Input name="to" type="datetime-local" defaultValue={toRaw} placeholder="to（可选）" />
+                <Input name="to" type="datetime-local" uiSize="sm" defaultValue={toRaw} placeholder="to（可选）" />
               </div>
               <div className="md:col-span-3 flex items-center gap-2">
                 <input id="solved" name="solved" type="checkbox" defaultChecked={solved} value="true" />
@@ -162,8 +169,7 @@ export default async function LostfoundPage({ searchParams }: { searchParams: Pr
               </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -176,7 +182,11 @@ export default async function LostfoundPage({ searchParams }: { searchParams: Pr
           const solvedTag = item.solvedAt ? <Badge variant="secondary">已解决</Badge> : null;
           const coverUrl = item.coverImage?.signedUrl ?? null;
           return (
-            <Link key={item.id} href={`/lostfound/${item.id}`} className="block">
+            <Link
+              key={item.id}
+              href={`/lostfound/${item.id}`}
+              className="block rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
               <Card className={cn("hover:bg-accent", item.solvedAt ? "opacity-80" : null)}>
                 <CardContent className="flex gap-4 p-5">
                   <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
@@ -216,6 +226,8 @@ export default async function LostfoundPage({ searchParams }: { searchParams: Pr
           hrefForPage={(p) => buildLostfoundHref({ type: typeValue || undefined, q, solved, from: fromRaw, to: toRaw, page: p, pageSize })}
         />
       ) : null}
+
+      <LostfoundDialogController />
     </div>
   );
 }

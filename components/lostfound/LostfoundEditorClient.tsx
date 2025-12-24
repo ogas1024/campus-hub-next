@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { InlineError } from "@/components/common/InlineError";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -159,19 +160,19 @@ export function LostfoundEditorClient(props: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">{props.mode === "create" ? "发布失物招领" : "编辑失物招领"}</h1>
-          <p className="text-sm text-muted-foreground">
-            {props.mode === "create"
-              ? "提交后进入待审核，审核通过后才会公开展示。"
-              : "保存后将重新进入待审核（不支持编辑已下架/已解决条目）。"}
-          </p>
-        </div>
-        <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={backHref}>
-          ← 返回
-        </Link>
-      </div>
+      <PageHeader
+        title={props.mode === "create" ? "发布失物招领" : "编辑失物招领"}
+        description={
+          props.mode === "create"
+            ? "提交后进入待审核，审核通过后才会公开展示。"
+            : "保存后将重新进入待审核（不支持编辑已下架/已解决条目）。"
+        }
+        actions={
+          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={backHref}>
+            ← 返回
+          </Link>
+        }
+      />
 
       {action.error ? <InlineError message={action.error} /> : null}
       {uploadHint ? <div className="text-xs text-muted-foreground">{uploadHint}</div> : null}
@@ -184,7 +185,11 @@ export function LostfoundEditorClient(props: Props) {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>类型</Label>
-              <Select value={draft.type} onChange={(e) => setDraft((p) => ({ ...p, type: e.target.value as EditorDraft["type"] }))}>
+              <Select
+                uiSize="sm"
+                value={draft.type}
+                onChange={(e) => setDraft((p) => ({ ...p, type: e.target.value as EditorDraft["type"] }))}
+              >
                 <option value="lost">丢失</option>
                 <option value="found">拾到</option>
               </Select>
@@ -192,6 +197,7 @@ export function LostfoundEditorClient(props: Props) {
             <div className="grid gap-1.5">
               <Label>时间（可选）</Label>
               <Input
+                uiSize="sm"
                 type="datetime-local"
                 value={draft.occurredAtLocal}
                 onChange={(e) => setDraft((p) => ({ ...p, occurredAtLocal: e.target.value }))}
@@ -202,7 +208,13 @@ export function LostfoundEditorClient(props: Props) {
 
           <div className="grid gap-1.5">
             <Label>标题</Label>
-            <Input value={draft.title} onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))} maxLength={50} required />
+            <Input
+              uiSize="sm"
+              value={draft.title}
+              onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+              maxLength={50}
+              required
+            />
             <div className="text-xs text-muted-foreground">2~50 字</div>
           </div>
 
@@ -214,13 +226,18 @@ export function LostfoundEditorClient(props: Props) {
 
           <div className="grid gap-1.5">
             <Label>地点（可选）</Label>
-            <Input value={draft.location} onChange={(e) => setDraft((p) => ({ ...p, location: e.target.value }))} maxLength={100} />
+            <Input uiSize="sm" value={draft.location} onChange={(e) => setDraft((p) => ({ ...p, location: e.target.value }))} maxLength={100} />
             <div className="text-xs text-muted-foreground">≤100 字</div>
           </div>
 
           <div className="grid gap-1.5">
             <Label>联系方式（可选）</Label>
-            <Input value={draft.contactInfo} onChange={(e) => setDraft((p) => ({ ...p, contactInfo: e.target.value }))} maxLength={50} />
+            <Input
+              uiSize="sm"
+              value={draft.contactInfo}
+              onChange={(e) => setDraft((p) => ({ ...p, contactInfo: e.target.value }))}
+              maxLength={50}
+            />
             <div className="text-xs text-muted-foreground">{LOSTFOUND_CONTACT_INFO_HINT}</div>
           </div>
         </CardContent>
@@ -292,4 +309,3 @@ export function LostfoundEditorClient(props: Props) {
     </div>
   );
 }
-

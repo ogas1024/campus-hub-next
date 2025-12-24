@@ -35,7 +35,7 @@ export const votesWorkbenchProvider: WorkbenchProvider = {
       id: v.id,
       title: v.title,
       meta: `截止：${formatZhDateTime(v.endAt)}`,
-      href: `/console/votes/${v.id}/edit`,
+      href: `/console/votes?dialog=vote-edit&id=${encodeURIComponent(v.id)}`,
     }));
 
     const dialogDescription =
@@ -67,7 +67,7 @@ export const votesWorkbenchProvider: WorkbenchProvider = {
               emptyText: `未来 ${withinDays} 天内暂无截止投票`,
             },
           },
-          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建投票", href: "/console/votes/new" }] : []),
+          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建投票", href: "/console/votes?dialog=vote-create" }] : []),
         ],
       },
     ];
@@ -79,4 +79,3 @@ export const votesWorkbenchProvider: WorkbenchProvider = {
     return links;
   },
 };
-

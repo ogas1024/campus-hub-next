@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LibraryFavoriteButton } from "@/components/library/LibraryFavoriteButton";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,27 +45,28 @@ export default async function MyFavoriteLibraryBooksPage({ searchParams }: { sea
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">我的收藏</h1>
-          <p className="text-sm text-muted-foreground">仅展示已发布条目；取消收藏会立即生效。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library">
-            ← 返回浏览
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
-            我的投稿
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">共 {data.total} 条</Badge>
-        <Badge variant="secondary">
-          第 {displayPage} / {totalPages} 页
-        </Badge>
-      </div>
+      <PageHeader
+        title="我的收藏"
+        description="仅展示已发布条目；取消收藏会立即生效。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library">
+              ← 返回浏览
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
+              我的投稿
+            </Link>
+          </>
+        }
+      />
 
       {data.items.length === 0 ? (
         <Card>
@@ -73,8 +75,13 @@ export default async function MyFavoriteLibraryBooksPage({ searchParams }: { sea
       ) : (
         <div className="space-y-3">
           {data.items.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="space-y-2 p-5">
+            <Link
+              key={item.id}
+              href={`/library/${item.id}`}
+              className="block rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Card className="transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] hover:bg-accent">
+                <CardContent className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{item.author}</Badge>
                   <Badge variant="outline">下载 {item.downloadCount}</Badge>
@@ -88,21 +95,17 @@ export default async function MyFavoriteLibraryBooksPage({ searchParams }: { sea
 
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0">
-                    <Link href={`/library/${item.id}`} className="line-clamp-1 font-medium hover:underline">
-                      {item.title}
-                    </Link>
+                    <div className="line-clamp-1 font-medium">{item.title}</div>
                     <div className="line-clamp-2 text-sm text-muted-foreground">{item.summary ?? "—"}</div>
                   </div>
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <LibraryFavoriteButton bookId={item.id} initialFavorite />
-                    <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/library/${item.id}`}>
-                      查看
-                    </Link>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
@@ -111,4 +114,3 @@ export default async function MyFavoriteLibraryBooksPage({ searchParams }: { sea
     </div>
   );
 }
-

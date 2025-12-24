@@ -1,16 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { NoticeMarkdown } from "@/components/notices/NoticeMarkdown";
-import { NoticeReadMarker } from "@/components/notices/NoticeReadMarker";
 import { getCurrentUser } from "@/lib/auth/session";
-import { findPortalMaterialByNoticeId } from "@/lib/modules/materials/materials.service";
-import { getPortalNoticeDetail } from "@/lib/modules/notices/notices.service";
-import { formatZhDateTime } from "@/lib/ui/datetime";
-import { cn } from "@/lib/utils";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,98 +9,5 @@ export default async function NoticeDetailPage({ params }: Params) {
   if (!user) redirect("/login");
 
   const { id } = await params;
-  const notice = await getPortalNoticeDetail({ userId: user.id, noticeId: id });
-  const material = await findPortalMaterialByNoticeId({ userId: user.id, noticeId: id }).catch(() => null);
-
-  return (
-    <div className="space-y-6">
-      <NoticeReadMarker noticeId={id} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/notices">
-          ← 返回列表
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          {notice.pinned ? <Badge variant="outline">置顶</Badge> : null}
-          {notice.isExpired ? (
-            <Badge variant="outline" className="text-muted-foreground">
-              已过期
-            </Badge>
-          ) : null}
-          {notice.read ? <Badge variant="secondary">已读</Badge> : <Badge>未读</Badge>}
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">{notice.title}</CardTitle>
-          <div className="text-sm text-muted-foreground">
-            发布：{formatZhDateTime(notice.publishAt)} · 阅读数：{notice.readCount}
-            {notice.expireAt ? ` · 有效至：${formatZhDateTime(notice.expireAt)}` : ""}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <NoticeMarkdown contentMd={notice.contentMd} />
-        </CardContent>
-      </Card>
-
-      {material ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle className="text-base">材料提交</CardTitle>
-              <div className="flex flex-wrap items-center gap-2">
-                {material.canSubmit ? <Badge>可提交</Badge> : <Badge variant="secondary">不可提交</Badge>}
-                {material.dueAt ? <Badge variant="outline">截止：{formatZhDateTime(material.dueAt)}</Badge> : null}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-sm text-muted-foreground">本公告已关联材料收集任务：{material.title}</div>
-            <Link className={buttonVariants({ size: "sm" })} href={`/materials/${material.id}`}>
-              前往提交
-            </Link>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {notice.attachments.length > 0 ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base">附件</CardTitle>
-              <div className="text-sm text-muted-foreground">{notice.attachments.length} 个</div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {notice.attachments.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm">{a.fileName}</div>
-                    <div className="text-xs text-muted-foreground">{Math.ceil(a.size / 1024)} KB</div>
-                  </div>
-                  {a.downloadUrl ? (
-                    <a
-                      className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                      href={a.downloadUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      下载
-                    </a>
-                  ) : (
-                    <span className="shrink-0 text-xs text-muted-foreground">不可用</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
-  );
+  redirect(`/notices?dialog=notice-view&id=${encodeURIComponent(id)}`);
 }

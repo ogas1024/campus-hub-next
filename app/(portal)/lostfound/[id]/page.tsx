@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,29 +24,26 @@ export default async function LostfoundDetailPage({ params }: Params) {
   const data = await getPortalLostfoundDetail({ itemId: id });
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">{data.title}</h1>
-          <div className="text-sm text-muted-foreground">
-            发布：{formatZhDateTime(data.publishedAt)} · 时间：{formatZhDateTime(data.occurredAt)}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      <PageHeader
+        title={data.title}
+        description={`发布：${formatZhDateTime(data.publishedAt)} · 时间：${formatZhDateTime(data.occurredAt)}`}
+        meta={
+          <>
+            <Badge variant="outline">{typeLabel(data.type)}</Badge>
+            {data.solvedAt ? <Badge variant="secondary">已解决</Badge> : null}
+            <Badge variant="secondary">地点：{data.location ?? "—"}</Badge>
+          </>
+        }
+        actions={
           <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound">
             ← 返回列表
           </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="outline">{typeLabel(data.type)}</Badge>
-        {data.solvedAt ? <Badge variant="secondary">已解决</Badge> : null}
-        <Badge variant="secondary">地点：{data.location ?? "—"}</Badge>
-      </div>
+        }
+      />
 
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4 p-4">
           <div className="space-y-1">
             <div className="text-sm font-medium">正文</div>
             <div className="text-sm leading-7 whitespace-pre-wrap">{data.content}</div>
@@ -61,7 +59,7 @@ export default async function LostfoundDetailPage({ params }: Params) {
 
       {data.images.length > 0 ? (
         <Card>
-          <CardContent className="space-y-3 p-6">
+          <CardContent className="space-y-3 p-4">
             <div className="text-sm font-medium">图片</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.images.map((img) => (
@@ -77,4 +75,3 @@ export default async function LostfoundDetailPage({ params }: Params) {
     </div>
   );
 }
-

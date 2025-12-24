@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { InlineError } from "@/components/common/InlineError";
+import { InlineMessage } from "@/components/common/InlineMessage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,11 +67,7 @@ export default function ResetPasswordClient() {
 
       {!ready ? (
         <div className="space-y-3">
-          {error ? (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-          ) : (
-            <div className="rounded-lg border border-border bg-muted p-3 text-sm">正在验证重置链接...</div>
-          )}
+          {error ? <InlineError message={error} /> : <InlineMessage message="正在验证重置链接..." />}
           <div className="text-sm text-muted-foreground">
             你可以{" "}
             <Link className="font-medium underline underline-offset-2" href="/forgot-password">
@@ -128,10 +126,8 @@ export default function ResetPasswordClient() {
             />
           </div>
 
-          {error ? (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-          ) : null}
-          {message ? <div className="rounded-lg border border-border bg-muted p-3 text-sm">{message}</div> : null}
+          <InlineError message={error} />
+          <InlineMessage message={message} />
 
           <Button className="w-full" type="submit" disabled={loading}>
             {loading ? "更新中..." : "更新密码"}
@@ -147,4 +143,3 @@ export default function ResetPasswordClient() {
     </div>
   );
 }
-

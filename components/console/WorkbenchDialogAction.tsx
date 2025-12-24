@@ -1,28 +1,42 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
+import { Button } from "@/components/ui/button";
 import type { WorkbenchActionVariant, WorkbenchDialog } from "@/lib/workbench/types";
 
 export function WorkbenchDialogAction(props: { label: string; variant?: WorkbenchActionVariant; dialog: WorkbenchDialog }) {
   const variant = props.variant ?? "default";
+  const [open, setOpen] = useState(false);
+
+  const hintClickable = props.dialog.items.length > 0 && props.dialog.items.every((i) => i.href);
+  const footer = (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      {hintClickable ? <div className="text-xs text-muted-foreground">点击条目可进入详情。</div> : null}
+      <div className="flex-1" />
+      <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+        关闭
+      </Button>
+    </div>
+  );
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" variant={variant}>
-          {props.label}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{props.dialog.title}</DialogTitle>
-          {props.dialog.description ? <DialogDescription>{props.dialog.description}</DialogDescription> : null}
-        </DialogHeader>
+    <>
+      <Button size="sm" variant={variant} onClick={() => setOpen(true)}>
+        {props.label}
+      </Button>
 
-        <div className="mt-4 max-h-[60vh] overflow-auto rounded-lg border border-border">
+      <StickyFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={props.dialog.title}
+        description={props.dialog.description ?? undefined}
+        footer={footer}
+        contentClassName="max-w-xl"
+      >
+        <div className="rounded-lg border border-border">
           {props.dialog.items.length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground">{props.dialog.emptyText ?? "暂无数据"}</div>
           ) : (
@@ -44,17 +58,7 @@ export function WorkbenchDialogAction(props: { label: string; variant?: Workbenc
             </ul>
           )}
         </div>
-
-        <DialogFooter>
-          {props.dialog.items.length > 0 && props.dialog.items.every((i) => i.href) ? (
-            <div className="mr-auto text-xs text-muted-foreground">点击条目可进入详情。</div>
-          ) : null}
-          <DialogClose asChild>
-            <button className={buttonVariants({ size: "sm", variant: "outline" })}>关闭</button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </StickyFormDialog>
+    </>
   );
 }
-

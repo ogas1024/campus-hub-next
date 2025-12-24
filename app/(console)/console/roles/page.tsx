@@ -1,24 +1,30 @@
 import Link from "next/link";
 
-import { CreateRoleDialog } from "@/components/rbac/CreateRoleDialog";
+import { PageHeader } from "@/components/common/PageHeader";
+import { ConsoleRoleDialogController } from "@/components/rbac/ConsoleRoleDialogController";
 import { buttonVariants } from "@/components/ui/button";
 import { requirePerm } from "@/lib/auth/permissions";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listRoles } from "@/lib/modules/rbac/rbac.service";
 
 export default async function ConsoleRolesPage() {
   await requirePerm("campus:role:*");
   const data = await listRoles();
 
+  const baseHref = "/console/roles";
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">角色</h1>
-          <p className="text-sm text-muted-foreground">角色用于聚合权限与数据范围；权限码支持 `*` 通配符。</p>
-          <div className="text-sm text-muted-foreground">共 {data.items.length} 个角色</div>
-        </div>
-        <CreateRoleDialog />
-      </div>
+      <PageHeader
+        title="角色"
+        description="角色用于聚合权限与数据范围；权限码支持 `*` 通配符。"
+        meta={<span>共 {data.items.length} 个角色</span>}
+        actions={
+          <Link className={buttonVariants()} href={withDialogHref(baseHref, { dialog: "role-create" })} scroll={false}>
+            新增角色
+          </Link>
+        }
+      />
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">
@@ -49,9 +55,10 @@ export default async function ConsoleRolesPage() {
                 <td className="px-3 py-2 text-right">
                   <Link
                     className={buttonVariants({ variant: "outline", size: "sm" })}
-                    href={`/console/roles/${r.id}`}
+                    href={withDialogHref(baseHref, { dialog: "role-edit", id: r.id })}
+                    scroll={false}
                   >
-                    详情
+                    编辑
                   </Link>
                 </td>
               </tr>
@@ -59,6 +66,8 @@ export default async function ConsoleRolesPage() {
           </tbody>
         </table>
       </div>
+
+      <ConsoleRoleDialogController />
     </div>
   );
 }

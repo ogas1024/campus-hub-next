@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,39 +44,34 @@ export default async function LibraryLeaderboardPage({ searchParams }: { searchP
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">数字图书馆榜单</h1>
-          <p className="text-sm text-muted-foreground">支持总榜与近 7/30/365 天窗口；下载榜基于下载事件统计。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library">
-            ← 返回浏览
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
-            我的投稿
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="数字图书馆榜单"
+        description="支持总榜与近 7/30/365 天窗口；下载榜基于下载事件统计。"
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library">
+              ← 返回浏览
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
+              我的投稿
+            </Link>
+          </>
+        }
+      />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">时间窗口</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-wrap items-center gap-2" action="/library/leaderboard" method="GET">
-            <Select name="days" defaultValue={selectValue} className="w-56">
-              <option value="0">总榜</option>
-              <option value="7">近 7 天</option>
-              <option value="30">近 30 天</option>
-              <option value="365">近 365 天</option>
-            </Select>
-            <button className={buttonVariants({ size: "sm" })} type="submit">
-              应用
-            </button>
-          </form>
-        </CardContent>
-      </Card>
+      <FiltersPanel title="时间窗口">
+        <form className="flex flex-wrap items-center gap-2" action="/library/leaderboard" method="GET">
+          <Select name="days" defaultValue={selectValue} uiSize="sm" className="w-56">
+            <option value="0">总榜</option>
+            <option value="7">近 7 天</option>
+            <option value="30">近 30 天</option>
+            <option value="365">近 365 天</option>
+          </Select>
+          <button className={buttonVariants({ size: "sm" })} type="submit">
+            应用
+          </button>
+        </form>
+      </FiltersPanel>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -146,4 +143,3 @@ export default async function LibraryLeaderboardPage({ searchParams }: { searchP
     </div>
   );
 }
-

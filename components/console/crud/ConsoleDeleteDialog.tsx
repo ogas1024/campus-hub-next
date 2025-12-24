@@ -17,8 +17,8 @@
 import { useState } from "react";
 
 import { InlineError } from "@/components/common/InlineError";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -41,22 +41,14 @@ function ConsoleDeleteDialogInner(props: Props) {
   const [reason, setReason] = useState("");
 
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{props.title}</DialogTitle>
-          {props.description ? <DialogDescription>{props.description}</DialogDescription> : null}
-        </DialogHeader>
-
-        <div className="grid gap-3">
-          <div className="grid gap-2">
-            <Label>原因（可选，将写入审计）</Label>
-            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-          </div>
-          <InlineError message={props.error ?? null} />
-        </div>
-
-        <DialogFooter>
+    <StickyFormDialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title={props.title}
+      description={props.description}
+      contentClassName="max-w-xl"
+      footer={
+        <>
           <Button variant="outline" disabled={props.pending} onClick={() => props.onOpenChange(false)}>
             取消
           </Button>
@@ -67,8 +59,16 @@ function ConsoleDeleteDialogInner(props: Props) {
           >
             {props.pending ? "处理中..." : props.confirmText ?? "确认"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <div className="grid gap-3">
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+        <InlineError message={props.error ?? null} />
+      </div>
+    </StickyFormDialog>
   );
 }

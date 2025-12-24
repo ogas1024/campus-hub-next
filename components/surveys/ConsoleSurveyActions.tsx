@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
+import { ConfirmAlertDialog } from "@/components/common/ConfirmAlertDialog";
 import { InlineError } from "@/components/common/InlineError";
 import { buttonVariants } from "@/components/ui/button";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { cn } from "@/lib/utils";
 import { closeConsoleSurvey, deleteConsoleSurvey, publishConsoleSurvey } from "@/lib/api/console-surveys";
 import type { SurveyStatus } from "@/lib/api/surveys";
@@ -24,7 +27,10 @@ type Props = {
 
 export function ConsoleSurveyActions(props: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const action = useAsyncAction();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const canOperate = props.isMine || props.canManageAll;
   const viewLabel = props.canUpdate && canOperate ? "编辑" : "查看";
@@ -35,12 +41,18 @@ export function ConsoleSurveyActions(props: Props) {
     router.refresh();
   }
 
+  function buildHref() {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap justify-end gap-2">
         <Link
+          scroll={false}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")}
-          href={`/console/surveys/${props.surveyId}/edit`}
+          href={withDialogHref(buildHref(), { dialog: "survey-edit", id: props.surveyId })}
         >
           {viewLabel}
         </Link>
@@ -80,8 +92,8 @@ export function ConsoleSurveyActions(props: Props) {
             className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "h-8 px-2 text-xs")}
             disabled={action.pending}
             onClick={() => {
-              if (!confirm("确认删除该问卷（软删）？此操作不可恢复。")) return;
-              void run(() => deleteConsoleSurvey(props.surveyId), "删除失败");
+              action.reset();
+              setDeleteOpen(true);
             }}
           >
             删除
@@ -90,7 +102,20 @@ export function ConsoleSurveyActions(props: Props) {
       </div>
 
       <InlineError message={action.error} />
+
+      <ConfirmAlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="确认删除该问卷（软删）？"
+        description="此操作不可恢复。"
+        confirmText="删除"
+        cancelText="取消"
+        confirmDisabled={action.pending}
+        onConfirm={() => {
+          setDeleteOpen(false);
+          void run(() => deleteConsoleSurvey(props.surveyId), "删除失败");
+        }}
+      />
     </div>
   );
 }
-

@@ -14,7 +14,10 @@ export const DialogClose = DialogPrimitive.Close;
 export function DialogOverlay({ className, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>) {
   return (
     <DialogPrimitive.Overlay
-      className={cn("fixed inset-0 z-50 bg-black/60 backdrop-blur-[1px]", className)}
+      className={cn(
+        "fixed inset-0 z-50 bg-black/60 backdrop-blur-[1px] transition-opacity duration-[var(--motion-duration-enter)] ease-[var(--motion-ease-standard)] data-[state=closed]:opacity-0 data-[state=open]:opacity-100",
+        className,
+      )}
       {...props}
     />
   );
@@ -26,7 +29,7 @@ export function DialogContent({ className, ...props }: React.ComponentPropsWitho
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background p-6 shadow-xl outline-none",
+          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background p-6 shadow-xl outline-none will-change-transform transition-[transform,opacity] duration-[var(--motion-duration-enter)] ease-[var(--motion-ease-standard)] data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=closed]:scale-[0.98] data-[state=open]:scale-100 data-[state=closed]:translate-y-[calc(-50%+var(--motion-distance-1))]",
           className,
         )}
         {...props}

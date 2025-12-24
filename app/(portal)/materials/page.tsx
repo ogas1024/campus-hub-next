@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PortalMaterialDialogController } from "@/components/materials/PortalMaterialDialogController";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam } from "@/lib/http/query";
 import { listPortalMaterials } from "@/lib/modules/materials/materials.service";
@@ -48,33 +52,31 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">材料收集</h1>
-          <p className="text-sm text-muted-foreground">下载模板、上传文件并提交；支持撤回（将物理删除已上传文件）。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">共 {data.total} 项</Badge>
-          <Badge variant="secondary">
-            第 {displayPage} / {totalPages} 页
-          </Badge>
-        </div>
-      </div>
+      <PortalMaterialDialogController />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">搜索与分页</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action="/materials" method="GET">
+      <PageHeader
+        title="材料收集"
+        description="下载模板、上传文件并提交；支持撤回（将物理删除已上传文件）。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 项</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+      />
+
+      <FiltersPanel title="搜索与分页">
+        <form className="grid gap-3 md:grid-cols-12" action="/materials" method="GET">
             <input type="hidden" name="page" value="1" />
 
             <div className="md:col-span-6">
-              <Input name="q" placeholder="按标题搜索…" defaultValue={q} />
+              <Input name="q" uiSize="sm" placeholder="按标题搜索…" defaultValue={q} />
             </div>
 
             <div className="md:col-span-2">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
+              <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm">
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
                     每页 {n}
@@ -92,8 +94,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
               </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -105,9 +106,14 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
         {data.items.map((item) => {
           const active = item.canSubmit;
           return (
-            <Link key={item.id} href={`/materials/${item.id}`} className="block">
+            <Link
+              key={item.id}
+              href={withDialogHref(buildPortalMaterialsHref({ q, page: displayPage, pageSize }), { dialog: "material-submit", id: item.id })}
+              scroll={false}
+              className="block rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
               <Card className={cn("hover:bg-accent", active ? "border-primary" : null)}>
-                <CardContent className="space-y-2 p-5">
+                <CardContent className="space-y-2 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-base font-semibold">{item.title}</div>
                     {item.canSubmit ? <Badge>可提交</Badge> : <Badge variant="secondary">不可提交</Badge>}

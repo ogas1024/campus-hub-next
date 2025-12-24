@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PortalNoticeDialogController } from "@/components/notices/PortalNoticeDialogController";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam, parseTriStateBooleanParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listPortalNotices } from "@/lib/modules/notices/notices.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -90,38 +94,37 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">通知公告</h1>
-          <p className="text-sm text-muted-foreground">置顶优先；支持搜索、筛选与分页。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">共 {data.total} 条</Badge>
-          <Badge variant="secondary">
-            第 {displayPage} / {totalPages} 页
-          </Badge>
-          {read === false ? <Badge>只看未读</Badge> : null}
-          {read === true ? <Badge variant="outline">只看已读</Badge> : null}
-          {includeExpired ? <Badge variant="outline">包含已过期</Badge> : null}
-        </div>
-      </div>
+      <PortalNoticeDialogController />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">筛选与排序</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action="/notices" method="GET">
+      <PageHeader
+        title="通知公告"
+        description="置顶优先；支持搜索、筛选与分页。"
+        actions={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+            {read === false ? <Badge>只看未读</Badge> : null}
+            {read === true ? <Badge variant="outline">只看已读</Badge> : null}
+            {includeExpired ? <Badge variant="outline">包含已过期</Badge> : null}
+          </>
+        }
+      />
+
+      <FiltersPanel title="筛选与排序">
+        <form className="grid gap-3 md:grid-cols-12" action="/notices" method="GET">
             <input type="hidden" name="page" value="1" />
 
             <div className="md:col-span-4">
-              <Input name="q" placeholder="按标题搜索…" defaultValue={q} />
+              <Input name="q" uiSize="sm" placeholder="按标题搜索…" defaultValue={q} />
             </div>
 
             <div className="md:col-span-2">
               <Select
                 name="read"
                 defaultValue={read === true ? "true" : read === false ? "false" : ""}
+                uiSize="sm"
               >
                 <option value="">全部已读</option>
                 <option value="false">未读</option>
@@ -133,6 +136,7 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
               <Select
                 name="includeExpired"
                 defaultValue={includeExpired ? "true" : "false"}
+                uiSize="sm"
               >
                 <option value="false">排除过期</option>
                 <option value="true">包含过期</option>
@@ -143,6 +147,7 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
               <Select
                 name="sortBy"
                 defaultValue={sortBy}
+                uiSize="sm"
               >
                 <option value="publishAt">发布时间</option>
                 <option value="updatedAt">更新时间</option>
@@ -154,6 +159,7 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
               <Select
                 name="sortOrder"
                 defaultValue={sortOrder}
+                uiSize="sm"
               >
                 <option value="desc">降序</option>
                 <option value="asc">升序</option>
@@ -164,6 +170,7 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
               <Select
                 name="pageSize"
                 defaultValue={String(pageSize)}
+                uiSize="sm"
               >
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
@@ -182,8 +189,7 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
               </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -193,7 +199,23 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
         ) : null}
 
         {data.items.map((item) => (
-          <Link key={item.id} href={`/notices/${item.id}`} className="block">
+          <Link
+            key={item.id}
+            href={withDialogHref(
+              buildPortalNoticesHref({
+                q,
+                read: read === true ? "true" : read === false ? "false" : undefined,
+                includeExpired,
+                sortBy,
+                sortOrder,
+                page: displayPage,
+                pageSize,
+              }),
+              { dialog: "notice-view", id: item.id },
+            )}
+            scroll={false}
+            className="block"
+          >
             <Card className={cn("hover:bg-accent", item.read ? null : "border-primary")}>
               <CardContent className="space-y-2 p-5">
                 <div className="flex flex-wrap items-center gap-2">

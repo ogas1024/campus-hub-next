@@ -27,7 +27,7 @@ export function PortalNav({ items }: { items: Item[] }) {
         const active = isActive(pathname, item.href);
 
         const className = cn(
-          "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+          "flex items-center gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] focus-visible:ring-1 focus-visible:ring-ring",
           active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         );
 

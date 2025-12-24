@@ -9,9 +9,9 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, RotateCcw, Save } from "lucide-react";
 
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import {
@@ -116,158 +116,150 @@ export function WorkbenchPreferencesDialog(props: Props) {
     });
   }
 
+  const footer = (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <Button variant="outline" size="sm" onClick={onReset} disabled={isPending}>
+        <RotateCcw className="h-4 w-4" />
+        恢复默认
+      </Button>
+      <div className="flex-1" />
+      <Button variant="outline" size="sm" disabled={isPending} onClick={() => props.onOpenChange(false)}>
+        取消
+      </Button>
+      <Button size="sm" onClick={onSave} disabled={isPending}>
+        <Save className="h-4 w-4" />
+        {isPending ? "保存中…" : "保存"}
+      </Button>
+    </div>
+  );
+
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>自定义工作台</DialogTitle>
-          <DialogDescription>偏好仅对当前浏览器生效；可随时恢复默认。</DialogDescription>
-        </DialogHeader>
-
-        <div className="mt-4 grid gap-6 md:grid-cols-2">
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="reminderWindowDays">到期提醒窗口</Label>
-              <div className="text-xs text-muted-foreground">影响“到期/截止提醒”类卡片（不影响审核类卡片）。</div>
-            </div>
-            <Select
-              id="reminderWindowDays"
-              value={String(reminderWindowDays)}
-              onChange={(e) => setReminderWindowDays(Number(e.target.value))}
-              disabled={isPending}
-            >
-              {WORKBENCH_REMINDER_WINDOW_DAYS_OPTIONS.map((d) => (
-                <option key={d} value={String(d)}>
-                  {d} 天
-                </option>
-              ))}
-            </Select>
+    <StickyFormDialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title="自定义工作台"
+      description="偏好仅对当前浏览器生效；可随时恢复默认。"
+      error={error || null}
+      contentClassName="max-w-3xl"
+      footer={footer}
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="reminderWindowDays">到期提醒窗口</Label>
+            <div className="text-xs text-muted-foreground">影响“到期/截止提醒”类卡片（不影响审核类卡片）。</div>
           </div>
-
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <div className="text-sm font-medium">说明</div>
-              <div className="text-xs text-muted-foreground">“上移/下移”用于排序；取消勾选表示隐藏。</div>
-            </div>
-            {error ? <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</div> : null}
-          </div>
+          <Select
+            id="reminderWindowDays"
+            value={String(reminderWindowDays)}
+            onChange={(e) => setReminderWindowDays(Number(e.target.value))}
+            disabled={isPending}
+          >
+            {WORKBENCH_REMINDER_WINDOW_DAYS_OPTIONS.map((d) => (
+              <option key={d} value={String(d)}>
+                {d} 天
+              </option>
+            ))}
+          </Select>
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-medium">卡片</div>
-              <div className="text-xs text-muted-foreground">{cardOrder.length} 项</div>
-            </div>
-            <div className="max-h-[45vh] overflow-auto rounded-xl border border-border">
-              <ul className="divide-y divide-border/50">
-                {cardOrder.map((id) => {
-                  const title = cardTitleById.get(id) ?? id;
-                  const visible = !hiddenCardIds.has(id);
-                  return (
-                    <li key={id} className="flex items-center justify-between gap-3 p-3">
-                      <label className="flex min-w-0 items-center gap-3">
-                        <Checkbox
-                          checked={visible}
-                          onCheckedChange={(v) => setHiddenCardIds((prev) => toggleSet(prev, id, v === true))}
-                          disabled={isPending}
-                        />
-                        <span className="min-w-0 truncate text-sm">{title}</span>
-                      </label>
-
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2"
-                          onClick={() => setCardOrder((prev) => moveByDelta(prev, id, -1))}
-                          disabled={isPending || cardOrder[0] === id}
-                        >
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2"
-                          onClick={() => setCardOrder((prev) => moveByDelta(prev, id, 1))}
-                          disabled={isPending || cardOrder[cardOrder.length - 1] === id}
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-medium">快捷入口</div>
-              <div className="text-xs text-muted-foreground">{quickLinkOrder.length} 项</div>
-            </div>
-            <div className="max-h-[45vh] overflow-auto rounded-xl border border-border">
-              <ul className="divide-y divide-border/50">
-                {quickLinkOrder.map((id) => {
-                  const label = quickLinkLabelById.get(id) ?? id;
-                  const visible = !hiddenQuickLinkIds.has(id);
-                  return (
-                    <li key={id} className="flex items-center justify-between gap-3 p-3">
-                      <label className="flex min-w-0 items-center gap-3">
-                        <Checkbox
-                          checked={visible}
-                          onCheckedChange={(v) => setHiddenQuickLinkIds((prev) => toggleSet(prev, id, v === true))}
-                          disabled={isPending}
-                        />
-                        <span className="min-w-0 truncate text-sm">{label}</span>
-                      </label>
-
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2"
-                          onClick={() => setQuickLinkOrder((prev) => moveByDelta(prev, id, -1))}
-                          disabled={isPending || quickLinkOrder[0] === id}
-                        >
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2"
-                          onClick={() => setQuickLinkOrder((prev) => moveByDelta(prev, id, 1))}
-                          disabled={isPending || quickLinkOrder[quickLinkOrder.length - 1] === id}
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </section>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <div className="text-sm font-medium">说明</div>
+            <div className="text-xs text-muted-foreground">“上移/下移”用于排序；取消勾选表示隐藏。</div>
+          </div>
         </div>
+      </div>
 
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onReset} disabled={isPending}>
-            <RotateCcw className="h-4 w-4" />
-            恢复默认
-          </Button>
-          <div className="flex-1" />
-          <DialogClose asChild>
-            <Button variant="outline" size="sm" disabled={isPending}>
-              取消
-            </Button>
-          </DialogClose>
-          <Button size="sm" onClick={onSave} disabled={isPending}>
-            <Save className="h-4 w-4" />
-            {isPending ? "保存中…" : "保存"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-medium">卡片</div>
+            <div className="text-xs text-muted-foreground">{cardOrder.length} 项</div>
+          </div>
+          <div className="rounded-xl border border-border">
+            <ul className="divide-y divide-border/50">
+              {cardOrder.map((id) => {
+                const title = cardTitleById.get(id) ?? id;
+                const visible = !hiddenCardIds.has(id);
+                return (
+                  <li key={id} className="flex items-center justify-between gap-3 p-3">
+                    <label className="flex min-w-0 items-center gap-3">
+                      <Checkbox checked={visible} onCheckedChange={(v) => setHiddenCardIds((prev) => toggleSet(prev, id, v === true))} disabled={isPending} />
+                      <span className="min-w-0 truncate text-sm">{title}</span>
+                    </label>
+
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => setCardOrder((prev) => moveByDelta(prev, id, -1))}
+                        disabled={isPending || cardOrder[0] === id}
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => setCardOrder((prev) => moveByDelta(prev, id, 1))}
+                        disabled={isPending || cardOrder[cardOrder.length - 1] === id}
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-medium">快捷入口</div>
+            <div className="text-xs text-muted-foreground">{quickLinkOrder.length} 项</div>
+          </div>
+          <div className="rounded-xl border border-border">
+            <ul className="divide-y divide-border/50">
+              {quickLinkOrder.map((id) => {
+                const label = quickLinkLabelById.get(id) ?? id;
+                const visible = !hiddenQuickLinkIds.has(id);
+                return (
+                  <li key={id} className="flex items-center justify-between gap-3 p-3">
+                    <label className="flex min-w-0 items-center gap-3">
+                      <Checkbox checked={visible} onCheckedChange={(v) => setHiddenQuickLinkIds((prev) => toggleSet(prev, id, v === true))} disabled={isPending} />
+                      <span className="min-w-0 truncate text-sm">{label}</span>
+                    </label>
+
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => setQuickLinkOrder((prev) => moveByDelta(prev, id, -1))}
+                        disabled={isPending || quickLinkOrder[0] === id}
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => setQuickLinkOrder((prev) => moveByDelta(prev, id, 1))}
+                        disabled={isPending || quickLinkOrder[quickLinkOrder.length - 1] === id}
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+      </div>
+    </StickyFormDialog>
   );
 }

@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 import { WorkbenchDialogAction } from "@/components/console/WorkbenchDialogAction";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,17 +46,16 @@ export function WorkbenchClient({ cards, quickLinks, initialPreferences }: Props
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">工作台</h1>
-          <p className="text-sm text-muted-foreground">专注模式：默认聚焦近期需要处理的事项，其余折叠以降低信息压力。</p>
-        </div>
-
-        <Button size="sm" variant="outline" onClick={() => setPrefsOpen(true)}>
-          <SlidersHorizontal className="mr-2 h-4 w-4" />
-          自定义
-        </Button>
-      </div>
+      <PageHeader
+        title="工作台"
+        description="专注模式：默认聚焦近期需要处理的事项，其余折叠以降低信息压力。"
+        actions={
+          <Button size="sm" variant="outline" onClick={() => setPrefsOpen(true)}>
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+            自定义
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader className="pb-3">
@@ -89,7 +89,7 @@ export function WorkbenchClient({ cards, quickLinks, initialPreferences }: Props
 
         {focusCards.length === 0 ? (
           <Card>
-            <CardContent className="p-5">
+            <CardContent className="p-4">
               <div className="space-y-1">
                 <div className="text-sm font-medium">当前没有待处理事项</div>
                 <div className="text-sm text-muted-foreground">你可以通过上方快捷入口进入模块，或展开“显示全部”查看所有卡片。</div>

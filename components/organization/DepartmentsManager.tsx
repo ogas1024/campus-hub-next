@@ -7,9 +7,9 @@ import { createDepartment, deleteDepartment, updateDepartment } from "@/lib/api/
 import type { Department } from "@/lib/api/organization";
 import { buildDepartmentTree, collectDescendantIds } from "@/lib/modules/organization/departmentTree";
 import { InlineError } from "@/components/common/InlineError";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -231,140 +231,55 @@ export function DepartmentsManager(props: Props) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-12">
-      <Card className="lg:col-span-4">
-        <div className="border-b border-border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-medium">组织树</div>
-            <Dialog
-              open={createOpen}
-              onOpenChange={(next) => {
-                if (next) {
-                  setCreateName("");
-                  setCreateSort(0);
-                  setCreateParentId(effectiveSelectedId ?? null);
-                  setCreateReason("");
-                  action.reset();
-                }
-                setCreateOpen(next);
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  新增
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-xl">
-                <DialogHeader>
-                  <DialogTitle>新增部门</DialogTitle>
-                  <DialogDescription>支持树形组织；sort 越小越靠前。</DialogDescription>
-                </DialogHeader>
-
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label>名称</Label>
-                    <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 计科2023-1班" />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>父部门（可选）</Label>
-                    <Select
-                      value={createParentId ?? ""}
-                      onChange={(e) => setCreateParentId(e.target.value ? e.target.value : null)}
-                    >
-                      <option value="">无（根部门）</option>
-                      {parentOptions.map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>排序（sort）</Label>
-                    <Input
-                      value={String(createSort)}
-                      onChange={(e) => setCreateSort(Number(e.target.value))}
-                      inputMode="numeric"
-                      type="number"
-                      min={0}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>原因（可选，将写入审计）</Label>
-                    <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-                  </div>
-
-                  <InlineError message={action.error} />
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" disabled={action.pending} onClick={() => setCreateOpen(false)}>
-                    取消
-                  </Button>
-                  <Button disabled={action.pending || !createName.trim()} onClick={() => void submitCreate()}>
-                    {action.pending ? "提交中..." : "创建"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">{items.length} 个部门</div>
-        </div>
+	    <div className="grid gap-4 lg:grid-cols-12">
+	      <Card className="lg:col-span-4">
+	        <div className="border-b border-border p-3">
+	          <div className="flex items-center justify-between gap-2">
+	            <div className="text-sm font-medium">组织树</div>
+	            <Button
+	              size="sm"
+	              variant="outline"
+	              disabled={action.pending}
+	              onClick={() => {
+	                setCreateName("");
+	                setCreateSort(0);
+	                setCreateParentId(effectiveSelectedId ?? null);
+	                setCreateReason("");
+	                action.reset();
+	                setCreateOpen(true);
+	              }}
+	            >
+	              新增
+	            </Button>
+	          </div>
+	          <div className="mt-2 text-xs text-muted-foreground">{items.length} 个部门</div>
+	        </div>
 
         <ScrollArea className="h-[520px]">
           <div className="space-y-0.5 p-2">{roots.map((n) => renderTreeNode(n, 0))}</div>
         </ScrollArea>
       </Card>
 
-      <Card className="lg:col-span-8">
-        <div className="border-b border-border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-medium">详情</div>
-            {selected ? (
-              <Dialog
-                open={deleteOpen}
-                onOpenChange={(next) => {
-                  if (next) {
-                    setDeleteReason("");
-                    action.reset();
-                  }
-                  setDeleteOpen(next);
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    删除
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>删除部门</DialogTitle>
-                    <DialogDescription>存在子部门或用户绑定会被拒绝（409）。后续可再扩展“级联迁移”。</DialogDescription>
-                  </DialogHeader>
-
-                  <div className="grid gap-2">
-                    <Label>原因（可选，将写入审计）</Label>
-                    <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="可填写工单号、删除原因、备注…" />
-                  </div>
-
-                  <InlineError message={action.error} />
-
-                  <DialogFooter>
-                    <Button variant="outline" disabled={action.pending} onClick={() => setDeleteOpen(false)}>
-                      取消
-                    </Button>
-                    <Button variant="destructive" disabled={action.pending} onClick={() => void submitDelete()}>
-                      {action.pending ? "删除中..." : "确认删除"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            ) : null}
-          </div>
-        </div>
+	      <Card className="lg:col-span-8">
+	        <div className="border-b border-border p-3">
+	          <div className="flex items-center justify-between gap-2">
+	            <div className="text-sm font-medium">详情</div>
+	            {selected ? (
+	              <Button
+	                variant="destructive"
+	                size="sm"
+	                disabled={action.pending}
+	                onClick={() => {
+	                  setDeleteReason("");
+	                  action.reset();
+	                  setDeleteOpen(true);
+	                }}
+	              >
+	                删除
+	              </Button>
+	            ) : null}
+	          </div>
+	        </div>
 
         <div className="p-4">
           {!selected ? <div className="text-sm text-muted-foreground">请选择一个部门进行编辑</div> : null}
@@ -380,7 +295,89 @@ export function DepartmentsManager(props: Props) {
             />
           ) : null}
         </div>
-      </Card>
-    </div>
-  );
-}
+	      </Card>
+
+	      <StickyFormDialog
+	        open={createOpen}
+	        onOpenChange={(open) => {
+	          if (open) return;
+	          if (action.pending) return;
+	          setCreateOpen(false);
+	        }}
+	        title="新增部门"
+	        description="支持树形组织；sort 越小越靠前。"
+	        error={action.error}
+	        footer={
+	          <div className="flex w-full flex-wrap items-center gap-2">
+	            <Button variant="outline" disabled={action.pending} onClick={() => setCreateOpen(false)}>
+	              取消
+	            </Button>
+	            <div className="ml-auto flex flex-wrap items-center gap-2">
+	              <Button disabled={action.pending || !createName.trim()} onClick={() => void submitCreate()}>
+	                {action.pending ? "提交中..." : "创建"}
+	              </Button>
+	            </div>
+	          </div>
+	        }
+	        contentClassName="max-w-xl"
+	      >
+	        <div className="grid gap-2">
+	          <Label>名称</Label>
+	          <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 计科2023-1班" />
+	        </div>
+
+	        <div className="grid gap-2">
+	          <Label>父部门（可选）</Label>
+	          <Select value={createParentId ?? ""} onChange={(e) => setCreateParentId(e.target.value ? e.target.value : null)}>
+	            <option value="">无（根部门）</option>
+	            {parentOptions.map((opt) => (
+	              <option key={opt.id} value={opt.id}>
+	                {opt.label}
+	              </option>
+	            ))}
+	          </Select>
+	        </div>
+
+	        <div className="grid gap-2">
+	          <Label>排序（sort）</Label>
+	          <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
+	        </div>
+
+	        <div className="grid gap-2">
+	          <Label>原因（可选，将写入审计）</Label>
+	          <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+	        </div>
+	      </StickyFormDialog>
+
+	      <StickyFormDialog
+	        open={deleteOpen}
+	        onOpenChange={(open) => {
+	          if (open) return;
+	          if (action.pending) return;
+	          setDeleteOpen(false);
+	        }}
+	        title="删除部门"
+	        description="存在子部门或用户绑定会被拒绝（409）。后续可再扩展“级联迁移”。"
+	        error={action.error}
+	        footer={
+	          <div className="flex w-full flex-wrap items-center gap-2">
+	            <Button variant="outline" disabled={action.pending} onClick={() => setDeleteOpen(false)}>
+	              取消
+	            </Button>
+	            <div className="ml-auto flex flex-wrap items-center gap-2">
+	              <Button variant="destructive" disabled={action.pending} onClick={() => void submitDelete()}>
+	                {action.pending ? "删除中..." : "确认删除"}
+	              </Button>
+	            </div>
+	          </div>
+	        }
+	        contentClassName="max-w-xl"
+	      >
+	        <div className="grid gap-2">
+	          <Label>原因（可选，将写入审计）</Label>
+	          <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="可填写工单号、删除原因、备注…" />
+	        </div>
+	      </StickyFormDialog>
+	    </div>
+	  );
+	}

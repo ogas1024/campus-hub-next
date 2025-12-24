@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
 import { getConsoleMaterialDetail, getConsoleMaterialSubmissionDetail, type MaterialSubmissionStatus } from "@/lib/modules/materials/materials.service";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,39 +57,48 @@ export default async function ConsoleMaterialSubmissionDetailPage({ params }: Pa
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">提交详情</h1>
-          <div className="text-sm text-muted-foreground">
-            任务：<span className="font-medium text-foreground">{material.title}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            学号：<span className="font-mono text-xs text-foreground">{submission.studentId || "—"}</span> · 姓名：
-            <span className="ml-1 text-foreground">{submission.name || "—"}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">部门：{submission.departments.join(" / ") || "—"}</div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/materials/${materialId}/submissions`}>
-            ← 返回提交管理
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/materials/${materialId}/edit`}>
-            返回任务
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">提交时间：{submission.submittedAt ? formatZhDateTime(submission.submittedAt) : "未提交"}</Badge>
-        <Badge variant="outline">状态：{statusLabel(submission.status)}</Badge>
-        <Badge variant="outline">缺材料：{submission.missingRequired ? "是" : "否"}</Badge>
-        <Badge variant="outline">经办：{assignee}</Badge>
-        <Badge variant="outline">
-          文件：{submission.fileCount} · {bytesToText(submission.totalBytes)}
-        </Badge>
-        {!canOperate ? <Badge variant="secondary">只读（无下载权限）</Badge> : null}
-      </div>
+      <PageHeader
+        title="提交详情"
+        description={
+          <>
+            <span>
+              任务：<span className="font-medium text-foreground">{material.title}</span>
+            </span>
+            <span className="mx-1">·</span>
+            <span className="font-mono text-xs text-muted-foreground">{materialId}</span>
+          </>
+        }
+        meta={
+          <>
+            <span>
+              学号：<span className="font-mono text-xs text-muted-foreground">{submission.studentId || "—"}</span> · 姓名：
+              <span className="ml-1">{submission.name || "—"}</span>
+            </span>
+            <span>部门：{submission.departments.join(" / ") || "—"}</span>
+            <Badge variant="outline">提交时间：{submission.submittedAt ? formatZhDateTime(submission.submittedAt) : "未提交"}</Badge>
+            <Badge variant="outline">状态：{statusLabel(submission.status)}</Badge>
+            <Badge variant="outline">缺材料：{submission.missingRequired ? "是" : "否"}</Badge>
+            <Badge variant="outline">经办：{assignee}</Badge>
+            <Badge variant="outline">
+              文件：{submission.fileCount} · {bytesToText(submission.totalBytes)}
+            </Badge>
+            {!canOperate ? <Badge variant="secondary">只读（无下载权限）</Badge> : null}
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/console/materials/${materialId}/submissions`}>
+              ← 返回提交管理
+            </Link>
+            <Link
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              href={`/console/materials?dialog=material-edit&id=${encodeURIComponent(materialId)}`}
+            >
+              返回任务
+            </Link>
+          </>
+        }
+      />
 
       {submission.studentMessage ? (
         <Card>
@@ -116,7 +126,7 @@ export default async function ConsoleMaterialSubmissionDetailPage({ params }: Pa
             const missing = item.required && item.files.length === 0;
             return (
               <Card key={item.id} className={cn(missing ? "border-destructive ring-1 ring-destructive/40" : null)}>
-                <CardContent className="space-y-3 p-5">
+                <CardContent className="space-y-3 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="text-base font-semibold">
@@ -161,4 +171,3 @@ export default async function ConsoleMaterialSubmissionDetailPage({ params }: Pa
     </div>
   );
 }
-

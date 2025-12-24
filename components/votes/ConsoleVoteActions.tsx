@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { ConfirmAlertDialog } from "@/components/common/ConfirmAlertDialog";
 import { ConsoleFormDialog } from "@/components/console/crud/ConsoleFormDialog";
 import { InlineError } from "@/components/common/InlineError";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { archiveConsoleVote, closeConsoleVote, extendConsoleVote, pinConsoleVote, publishConsoleVote } from "@/lib/api/console-votes";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -47,12 +49,15 @@ function toIso(local: string, name: string) {
 
 export function ConsoleVoteActions(props: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const action = useAsyncAction();
 
   const canOperate = props.isMine || props.canManageAll;
   const viewLabel = props.status === "draft" && props.canUpdate && canOperate ? "编辑" : "查看";
 
   const [extendOpen, setExtendOpen] = useState(false);
+  const [archiveAlertOpen, setArchiveAlertOpen] = useState(false);
   const [extendEndAtLocal, setExtendEndAtLocal] = useState(() => {
     const current = new Date(props.endAt);
     current.setDate(current.getDate() + 7);
@@ -83,10 +88,19 @@ export function ConsoleVoteActions(props: Props) {
     }
   }
 
+  function buildHref() {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap justify-end gap-2">
-        <Link className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")} href={`/console/votes/${props.voteId}/edit`}>
+        <Link
+          scroll={false}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")}
+          href={withDialogHref(buildHref(), { dialog: "vote-edit", id: props.voteId })}
+        >
           {viewLabel}
         </Link>
 
@@ -147,8 +161,8 @@ export function ConsoleVoteActions(props: Props) {
             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")}
             disabled={action.pending}
             onClick={() => {
-              if (!confirm("确认归档该投票？归档后将从学生端公共列表隐藏，但已参与用户仍可在“我的投票”中查看。")) return;
-              void run(() => archiveConsoleVote(props.voteId), "归档失败");
+              action.reset();
+              setArchiveAlertOpen(true);
             }}
           >
             归档
@@ -157,6 +171,18 @@ export function ConsoleVoteActions(props: Props) {
       </div>
 
       <InlineError message={action.error} />
+
+      <ConfirmAlertDialog
+        open={archiveAlertOpen}
+        onOpenChange={setArchiveAlertOpen}
+        title="确认归档该投票？"
+        description="归档后将从学生端公共列表隐藏，但已参与用户仍可在“我的投票”中查看。"
+        confirmText="确认归档"
+        onConfirm={() => {
+          setArchiveAlertOpen(false);
+          void run(() => archiveConsoleVote(props.voteId), "归档失败");
+        }}
+      />
 
       <ConsoleFormDialog
         open={extendOpen}
@@ -179,4 +205,3 @@ export function ConsoleVoteActions(props: Props) {
     </div>
   );
 }
-

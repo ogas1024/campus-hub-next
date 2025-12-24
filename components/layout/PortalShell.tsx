@@ -58,7 +58,7 @@ export function PortalShell({ user, canEnterConsole, navItems, children }: Props
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-7xl px-4 py-6">{children}</main>
     </div>
   );
 }

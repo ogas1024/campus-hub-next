@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { CoursesManager } from "@/components/course-resources/CoursesManager";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
@@ -39,10 +41,7 @@ export default async function ConsoleResourceCoursesPage({ searchParams }: { sea
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">课程管理</h1>
-        <p className="text-sm text-muted-foreground">维护课程字典；major_lead 仅能操作本专业范围。</p>
-      </div>
+      <PageHeader title="课程管理" description="维护课程字典；major_lead 仅能操作本专业范围。" />
 
       {majors.length === 0 ? (
         <Card>
@@ -50,38 +49,33 @@ export default async function ConsoleResourceCoursesPage({ searchParams }: { sea
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">筛选</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action="/console/resources/courses" method="GET" className="flex flex-wrap items-end gap-2">
-            <div className="grid gap-1">
-              <label className="text-xs text-muted-foreground">专业</label>
-              <Select name="majorId" defaultValue={majorId ?? ""} className="w-64">
-                <option value="">全部专业</option>
-                {majors.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
+      <FiltersPanel>
+        <form action="/console/resources/courses" method="GET" className="flex flex-wrap items-end gap-2">
+          <div className="grid gap-1">
+            <label className="text-xs text-muted-foreground">专业</label>
+            <Select uiSize="sm" name="majorId" defaultValue={majorId ?? ""} className="w-64">
+              <option value="">全部专业</option>
+              {majors.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-            <div className="flex gap-2">
-              <Link href="/console/resources/courses" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                清空
-              </Link>
-              <button className={buttonVariants({ size: "sm" })} type="submit">
-                应用
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="flex gap-2">
+            <Link href="/console/resources/courses" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              清空
+            </Link>
+            <button className={buttonVariants({ size: "sm" })} type="submit">
+              应用
+            </button>
+          </div>
+        </form>
+      </FiltersPanel>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           <CoursesManager
             courses={courses.map((c) => ({ ...c, majorName: c.majorName ?? "—" }))}
             majors={majors}

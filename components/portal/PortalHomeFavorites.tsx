@@ -10,10 +10,11 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
 
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { ModuleIcon } from "@/components/layout/ModuleIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAutoAnimate } from "@/lib/hooks/useAutoAnimate";
 import {
   defaultPortalHomePreferences,
   normalizePortalHomePreferences,
@@ -50,6 +51,7 @@ function PortalHomeFavoritesDialog(props: DialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const listRef = useAutoAnimate<HTMLUListElement>({ duration: 180 });
 
   const allModuleIds = useMemo(() => props.modules.map((m) => m.id), [props.modules]);
   const moduleById = useMemo(() => new Map(props.modules.map((m) => [m.id, m] as const)), [props.modules]);
@@ -100,79 +102,78 @@ function PortalHomeFavoritesDialog(props: DialogProps) {
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : "恢复默认失败";
           setError(msg);
-        });
+      });
     });
   }
 
+  const footer = (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <Button variant="outline" size="sm" onClick={onReset} disabled={isPending}>
+        <RotateCcw className="h-4 w-4" />
+        恢复默认
+      </Button>
+      <div className="flex-1" />
+      <Button variant="outline" size="sm" disabled={isPending} onClick={() => props.onOpenChange(false)}>
+        取消
+      </Button>
+      <Button size="sm" onClick={onSave} disabled={isPending}>
+        <Save className="h-4 w-4" />
+        {isPending ? "保存中…" : "保存"}
+      </Button>
+    </div>
+  );
+
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>自定义常用模块</DialogTitle>
-          <DialogDescription>“上移/下移”用于排序；取消勾选表示从常用区移除。</DialogDescription>
-        </DialogHeader>
+    <StickyFormDialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title="自定义常用模块"
+      description="“上移/下移”用于排序；取消勾选表示从常用区移除。"
+      error={error || null}
+      footer={footer}
+      contentClassName="max-w-2xl"
+    >
+      <div className="rounded-xl border border-border">
+        <ul ref={listRef} className="divide-y divide-border/50">
+          {dialogDisplayIds.map((id) => {
+            const m = moduleById.get(id);
+            if (!m) return null;
+            const enabled = favoriteSet.has(id);
+            const isFirst = enabled && favoriteIds[0] === id;
+            const isLast = enabled && favoriteIds[favoriteIds.length - 1] === id;
+            return (
+              <li key={id} className="flex items-center justify-between gap-3 p-3">
+                <label className="flex min-w-0 items-center gap-3">
+                  <Checkbox checked={enabled} onCheckedChange={(v) => toggleFavorite(id, v === true)} disabled={isPending} />
+                  <span className="min-w-0 truncate text-sm">{m.label}</span>
+                </label>
 
-        {error ? <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</div> : null}
-
-        <div className="mt-4 rounded-xl border border-border">
-          <ul className="divide-y divide-border/50">
-            {dialogDisplayIds.map((id) => {
-              const m = moduleById.get(id);
-              if (!m) return null;
-              const enabled = favoriteSet.has(id);
-              const isFirst = enabled && favoriteIds[0] === id;
-              const isLast = enabled && favoriteIds[favoriteIds.length - 1] === id;
-              return (
-                <li key={id} className="flex items-center justify-between gap-3 p-3">
-                  <label className="flex min-w-0 items-center gap-3">
-                    <Checkbox checked={enabled} onCheckedChange={(v) => toggleFavorite(id, v === true)} disabled={isPending} />
-                    <span className="min-w-0 truncate text-sm">{m.label}</span>
-                  </label>
-
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-2"
-                      onClick={() => setFavoriteIds((prev) => moveByDelta(prev, id, -1))}
-                      disabled={isPending || !enabled || isFirst}
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-2"
-                      onClick={() => setFavoriteIds((prev) => moveByDelta(prev, id, 1))}
-                      disabled={isPending || !enabled || isLast}
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onReset} disabled={isPending}>
-            <RotateCcw className="h-4 w-4" />
-            恢复默认
-          </Button>
-          <div className="flex-1" />
-          <DialogClose asChild>
-            <Button variant="outline" size="sm" disabled={isPending}>
-              取消
-            </Button>
-          </DialogClose>
-          <Button size="sm" onClick={onSave} disabled={isPending}>
-            <Save className="h-4 w-4" />
-            {isPending ? "保存中…" : "保存"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2"
+                    onClick={() => setFavoriteIds((prev) => moveByDelta(prev, id, -1))}
+                    disabled={isPending || !enabled || isFirst}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2"
+                    onClick={() => setFavoriteIds((prev) => moveByDelta(prev, id, 1))}
+                    disabled={isPending || !enabled || isLast}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </StickyFormDialog>
   );
 }
 
@@ -208,7 +209,13 @@ export function PortalHomeFavorites({ modules, initialPreferences }: Props) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {favorites.map((m) => (
-            <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-border bg-card hover:bg-accent")}>
+            <Link
+              key={m.id}
+              href={m.href}
+              className={cn(
+                "block rounded-lg border border-border bg-card transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              )}
+            >
               <div className="flex items-start justify-between gap-4 p-4">
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="mt-0.5 text-muted-foreground">

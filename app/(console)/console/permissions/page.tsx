@@ -1,3 +1,5 @@
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requirePerm } from "@/lib/auth/permissions";
@@ -22,15 +24,18 @@ export default async function ConsolePermissionsPage({ searchParams }: { searchP
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">权限字典</h1>
-        <p className="text-sm text-muted-foreground">只读；权限码由迁移/代码声明式注册（支持 `*` 通配）。</p>
-        <div className="text-sm text-muted-foreground">
-          共 {data.items.length} 条 · 当前 {items.length} 条
-        </div>
-      </div>
+      <PageHeader
+        title="权限字典"
+        description="只读；权限码由迁移/代码声明式注册（支持 `*` 通配）。"
+        meta={
+          <>
+            <span>共 {data.items.length} 条</span>
+            <span>当前 {items.length} 条</span>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card p-3">
+      <FiltersPanel title="筛选">
         <form method="get" className="flex flex-wrap items-end gap-2">
           <div className="grid gap-1">
             <label className="text-xs text-muted-foreground">搜索</label>
@@ -46,7 +51,7 @@ export default async function ConsolePermissionsPage({ searchParams }: { searchP
             筛选
           </Button>
         </form>
-      </div>
+      </FiltersPanel>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">

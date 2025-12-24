@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { createPosition, deletePosition, updatePosition } from "@/lib/api/organization";
 import type { Position } from "@/lib/api/organization";
-import { InlineError } from "@/components/common/InlineError";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -56,12 +55,12 @@ export function PositionsManager(props: Props) {
     const res = await action.run(
       () =>
         createPosition({
-        code: createCode.trim() ? createCode.trim() : undefined,
-        name: createName.trim(),
-        description: createDescription.trim() ? createDescription.trim() : undefined,
-        enabled: createEnabled,
-        sort: createSort,
-        reason: createReason.trim() ? createReason.trim() : undefined,
+          code: createCode.trim() ? createCode.trim() : undefined,
+          name: createName.trim(),
+          description: createDescription.trim() ? createDescription.trim() : undefined,
+          enabled: createEnabled,
+          sort: createSort,
+          reason: createReason.trim() ? createReason.trim() : undefined,
         }),
       { fallbackErrorMessage: "创建失败" },
     );
@@ -127,78 +126,21 @@ export function PositionsManager(props: Props) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-muted-foreground">{items.length} 个岗位</div>
 
-        <Dialog
-          open={createOpen}
-          onOpenChange={(next) => {
-            if (next) {
-              setCreateCode("");
-              setCreateName("");
-              setCreateDescription("");
-              setCreateEnabled(true);
-              setCreateSort(0);
-              setCreateReason("");
-              action.reset();
-            }
-            setCreateOpen(next);
+        <Button
+          disabled={action.pending}
+          onClick={() => {
+            setCreateCode("");
+            setCreateName("");
+            setCreateDescription("");
+            setCreateEnabled(true);
+            setCreateSort(0);
+            setCreateReason("");
+            action.reset();
+            setCreateOpen(true);
           }}
         >
-          <DialogTrigger asChild>
-            <Button>新增岗位</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle>新增岗位</DialogTitle>
-              <DialogDescription>code 可用于业务规则/筛选（可选）；enabled 为停用/启用开关。</DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
-                  <Label>code（可选）</Label>
-                  <Input value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="例如 librarian" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>排序（sort）</Label>
-                  <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label>名称</Label>
-                <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 图书管理员" />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>描述（可选）</Label>
-                <Textarea value={createDescription} onChange={(e) => setCreateDescription(e.target.value)} placeholder="简要说明岗位职责…" />
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-                <div className="space-y-0.5">
-                  <div className="text-sm font-medium">启用</div>
-                  <div className="text-xs text-muted-foreground">停用后不影响已有绑定，仅用于业务判断。</div>
-                </div>
-                <Switch checked={createEnabled} onCheckedChange={setCreateEnabled} />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>原因（可选，将写入审计）</Label>
-                <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-              </div>
-
-              <InlineError message={action.error} />
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" disabled={action.pending} onClick={() => setCreateOpen(false)}>
-                取消
-              </Button>
-              <Button disabled={action.pending || !createName.trim()} onClick={() => void submitCreate()}>
-                {action.pending ? "提交中..." : "创建"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          新增岗位
+        </Button>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -280,98 +222,155 @@ export function PositionsManager(props: Props) {
         </table>
       </div>
 
-      <Dialog
-        open={editOpen}
-        onOpenChange={(next) => {
-          if (!next) setEditId(null);
-          setEditOpen(next);
+      <StickyFormDialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (action.pending) return;
+          setCreateOpen(false);
         }}
-      >
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>编辑岗位</DialogTitle>
-            <DialogDescription>覆盖式更新；删除岗位会自动解绑用户。</DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>code（可选）</Label>
-                <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>排序（sort）</Label>
-                <Input value={String(editSort)} onChange={(e) => setEditSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
-              </div>
+        title="新增岗位"
+        description="code 可用于业务规则/筛选（可选）；enabled 为停用/启用开关。"
+        error={action.error}
+        footer={
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <Button variant="outline" disabled={action.pending} onClick={() => setCreateOpen(false)}>
+              取消
+            </Button>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button disabled={action.pending || !createName.trim()} onClick={() => void submitCreate()}>
+                {action.pending ? "提交中..." : "创建"}
+              </Button>
             </div>
-
-            <div className="grid gap-2">
-              <Label>名称</Label>
-              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>描述（可选）</Label>
-              <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-              <div className="space-y-0.5">
-                <div className="text-sm font-medium">启用</div>
-                <div className="text-xs text-muted-foreground">停用后不影响已有绑定，仅用于业务判断。</div>
-              </div>
-              <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>原因（可选，将写入审计）</Label>
-              <Textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
-            </div>
-
-            <InlineError message={action.error} />
           </div>
+        }
+        contentClassName="max-w-xl"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label>code（可选）</Label>
+            <Input value={createCode} onChange={(e) => setCreateCode(e.target.value)} placeholder="例如 librarian" />
+          </div>
+          <div className="grid gap-2">
+            <Label>排序（sort）</Label>
+            <Input value={String(createSort)} onChange={(e) => setCreateSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
+          </div>
+        </div>
 
-          <DialogFooter>
+        <div className="grid gap-2">
+          <Label>名称</Label>
+          <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="例如 图书管理员" />
+        </div>
+
+        <div className="grid gap-2">
+          <Label>描述（可选）</Label>
+          <Textarea value={createDescription} onChange={(e) => setCreateDescription(e.target.value)} placeholder="简要说明岗位职责…" />
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+          <div className="space-y-0.5">
+            <div className="text-sm font-medium">启用</div>
+            <div className="text-xs text-muted-foreground">停用后不影响已有绑定，仅用于业务判断。</div>
+          </div>
+          <Switch checked={createEnabled} onCheckedChange={setCreateEnabled} />
+        </div>
+
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={createReason} onChange={(e) => setCreateReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </StickyFormDialog>
+
+      <StickyFormDialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (action.pending) return;
+          setEditId(null);
+          setEditOpen(false);
+        }}
+        title="编辑岗位"
+        description="覆盖式更新；删除岗位会自动解绑用户。"
+        error={action.error}
+        footer={
+          <div className="flex w-full flex-wrap items-center gap-2">
             <Button variant="outline" disabled={action.pending} onClick={() => setEditOpen(false)}>
               取消
             </Button>
-            <Button disabled={action.pending || !editName.trim()} onClick={() => void submitUpdate()}>
-              {action.pending ? "保存中..." : "保存"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={deleteOpen}
-        onOpenChange={(next) => {
-          if (!next) setDeleteId(null);
-          setDeleteOpen(next);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>删除岗位</DialogTitle>
-            <DialogDescription>若存在用户绑定，将自动解绑（MVP 行为）。</DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-2">
-            <Label>原因（可选，将写入审计）</Label>
-            <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="可填写工单号、删除原因、备注…" />
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button disabled={action.pending || !editName.trim()} onClick={() => void submitUpdate()}>
+                {action.pending ? "保存中..." : "保存"}
+              </Button>
+            </div>
           </div>
+        }
+        contentClassName="max-w-xl"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label>code（可选）</Label>
+            <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} />
+          </div>
+          <div className="grid gap-2">
+            <Label>排序（sort）</Label>
+            <Input value={String(editSort)} onChange={(e) => setEditSort(Number(e.target.value))} inputMode="numeric" type="number" min={0} />
+          </div>
+        </div>
 
-          <InlineError message={action.error} />
+        <div className="grid gap-2">
+          <Label>名称</Label>
+          <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+        </div>
 
-          <DialogFooter>
+        <div className="grid gap-2">
+          <Label>描述（可选）</Label>
+          <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+          <div className="space-y-0.5">
+            <div className="text-sm font-medium">启用</div>
+            <div className="text-xs text-muted-foreground">停用后不影响已有绑定，仅用于业务判断。</div>
+          </div>
+          <Switch checked={editEnabled} onCheckedChange={setEditEnabled} />
+        </div>
+
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="可填写工单号、变更原因、备注…" />
+        </div>
+      </StickyFormDialog>
+
+      <StickyFormDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (action.pending) return;
+          setDeleteId(null);
+          setDeleteOpen(false);
+        }}
+        title="删除岗位"
+        description="若存在用户绑定，将自动解绑（MVP 行为）。"
+        error={action.error}
+        footer={
+          <div className="flex w-full flex-wrap items-center gap-2">
             <Button variant="outline" disabled={action.pending} onClick={() => setDeleteOpen(false)}>
               取消
             </Button>
-            <Button variant="destructive" disabled={action.pending} onClick={() => void submitDelete()}>
-              {action.pending ? "删除中..." : "确认删除"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button variant="destructive" disabled={action.pending} onClick={() => void submitDelete()}>
+                {action.pending ? "删除中..." : "确认删除"}
+              </Button>
+            </div>
+          </div>
+        }
+        contentClassName="max-w-xl"
+      >
+        <div className="grid gap-2">
+          <Label>原因（可选，将写入审计）</Label>
+          <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="可填写工单号、删除原因、备注…" />
+        </div>
+      </StickyFormDialog>
     </div>
   );
 }

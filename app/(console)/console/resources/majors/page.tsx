@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/common/PageHeader";
 import { MajorsManager } from "@/components/course-resources/MajorsManager";
 import { Card, CardContent } from "@/components/ui/card";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
@@ -17,13 +18,10 @@ export default async function ConsoleResourceMajorsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">专业管理</h1>
-        <p className="text-sm text-muted-foreground">维护专业字典与负责人映射（major_lead）。专业为软删，不级联删除课程/资源。</p>
-      </div>
+      <PageHeader title="专业管理" description="维护专业字典与负责人映射（major_lead）。专业为软删，不级联删除课程/资源。" />
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           <MajorsManager
             majors={majors}
             canCreate={canCreate}

@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PortalResourceDialogController } from "@/components/course-resources/PortalResourceDialogController";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
@@ -11,6 +14,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam } from "@/lib/http/query";
 import { listPortalCourses, listPortalMajors, listPortalResources } from "@/lib/modules/course-resources/courseResources.service";
 import { getCourseResourceTypeLabel } from "@/lib/modules/course-resources/courseResources.ui";
+import { withDialogHref } from "@/lib/navigation/dialog";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -68,30 +72,30 @@ export default async function CourseResourcesPage({
     redirect(buildHref({ majorId, courseId, q, page: totalPages, pageSize }));
   }
 
-  const shareHref = `/resources/majors/${majorId}/courses/${courseId}/share`;
+  const listHref = buildHref({ majorId, courseId, q, page: displayPage, pageSize });
+  const shareHref = withDialogHref(listHref, { dialog: "resource-create" });
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Link className="hover:text-foreground" href="/resources">
-            专业
-          </Link>
-          <span aria-hidden>/</span>
-          <Link className="hover:text-foreground" href={`/resources/majors/${majorId}`}>
-            {major.name}
-          </Link>
-          <span aria-hidden>/</span>
-          <span className="text-foreground">{course.name}</span>
-        </div>
-
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">{course.name}</h1>
-            <p className="text-sm text-muted-foreground">仅展示已发布资源；下载会自动计数。</p>
+    <div className="space-y-4">
+      <PageHeader
+        eyebrow={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link className="hover:text-foreground" href="/resources">
+              专业
+            </Link>
+            <span aria-hidden>/</span>
+            <Link className="hover:text-foreground" href={`/resources/majors/${majorId}`}>
+              {major.name}
+            </Link>
+            <span aria-hidden>/</span>
+            <span className="text-foreground">{course.name}</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link className={buttonVariants({ size: "sm" })} href={shareHref}>
+        }
+        title={course.name}
+        description="仅展示已发布资源；下载会自动计数。"
+        actions={
+          <>
+            <Link className={buttonVariants({ size: "sm" })} href={shareHref} scroll={false}>
               分享资源
             </Link>
             <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources/me">
@@ -100,50 +104,45 @@ export default async function CourseResourcesPage({
             <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources/leaderboard">
               榜单
             </Link>
+          </>
+        }
+      />
+
+      <FiltersPanel title="搜索与分页">
+        <form className="grid gap-3 md:grid-cols-12" action={buildHref({ majorId, courseId })} method="GET">
+          <input type="hidden" name="page" value="1" />
+
+          <div className="md:col-span-8">
+            <Input uiSize="sm" name="q" placeholder="搜索标题/描述…" defaultValue={q} />
           </div>
-        </div>
-      </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">搜索与分页</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action={buildHref({ majorId, courseId })} method="GET">
-            <input type="hidden" name="page" value="1" />
+          <div className="md:col-span-2">
+            <Select uiSize="sm" name="pageSize" defaultValue={String(pageSize)}>
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={String(n)}>
+                  {n}/页
+                </option>
+              ))}
+            </Select>
+          </div>
 
-            <div className="md:col-span-8">
-              <Input name="q" placeholder="搜索标题/描述…" defaultValue={q} />
-            </div>
-
-            <div className="md:col-span-2">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
-                {[10, 20, 50].map((n) => (
-                  <option key={n} value={String(n)}>
-                    {n}/页
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap gap-2 md:col-span-2">
-              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={buildHref({ majorId, courseId })}>
-                清空
-              </Link>
-              <button className={buttonVariants({ size: "sm" })} type="submit">
-                应用
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="flex flex-wrap gap-2 md:col-span-2">
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={buildHref({ majorId, courseId })}>
+              清空
+            </Link>
+            <button className={buttonVariants({ size: "sm" })} type="submit">
+              应用
+            </button>
+          </div>
+        </form>
+      </FiltersPanel>
 
       {data.items.length === 0 ? (
         <Card>
           <CardContent className="space-y-3 p-10 text-center text-sm text-muted-foreground">
             <div>暂无已发布资源</div>
             <div>
-              <Link className={buttonVariants({ size: "sm" })} href={shareHref}>
+              <Link className={buttonVariants({ size: "sm" })} href={shareHref} scroll={false}>
                 分享第一个资源
               </Link>
             </div>
@@ -153,7 +152,7 @@ export default async function CourseResourcesPage({
         <div className="space-y-3">
           {data.items.map((item) => (
             <Card key={item.id}>
-              <CardContent className="space-y-2 p-5">
+              <CardContent className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   {item.isBest ? <Badge>最佳</Badge> : null}
                   <Badge variant="secondary">{getCourseResourceTypeLabel(item.resourceType)}</Badge>
@@ -190,7 +189,8 @@ export default async function CourseResourcesPage({
         totalPages={totalPages}
         hrefForPage={(nextPage) => buildHref({ majorId, courseId, q, page: nextPage, pageSize })}
       />
+
+      <PortalResourceDialogController fixedContext={{ major: { id: major.id, name: major.name }, course: { id: course.id, name: course.name } }} />
     </div>
   );
 }
-

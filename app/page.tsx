@@ -70,7 +70,13 @@ export default async function Home() {
 
           <div className="grid gap-3 md:grid-cols-2">
             {availableModules.map((m) => (
-              <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-border bg-card hover:bg-accent")}>
+              <Link
+                key={m.id}
+                href={m.href}
+                className={cn(
+                  "block rounded-lg border border-border bg-card transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                )}
+              >
                 <div className="flex items-start justify-between gap-4 p-5">
                   <div className="flex min-w-0 items-start gap-3">
                     <div className="mt-0.5 text-muted-foreground">
@@ -100,7 +106,13 @@ export default async function Home() {
 
             <div className="grid gap-3 md:grid-cols-2">
               {comingSoonModules.map((m) => (
-                <Link key={m.id} href={m.href} className={cn("block rounded-lg border border-dashed border-border bg-card hover:bg-accent")}>
+                <Link
+                  key={m.id}
+                  href={m.href}
+                  className={cn(
+                    "block rounded-lg border border-dashed border-border bg-card transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  )}
+                >
                   <div className="flex items-start justify-between gap-4 p-5">
                     <div className="flex min-w-0 items-start gap-3">
                       <div className="mt-0.5 text-muted-foreground">

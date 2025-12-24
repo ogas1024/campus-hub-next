@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/common/PageHeader";
+import { ConsoleFiltersCard } from "@/components/console/crud/ConsoleFiltersCard";
 import { ConsoleLibraryBookActions } from "@/components/library/ConsoleLibraryBookActions";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
@@ -62,32 +63,29 @@ export async function ConsoleLibraryBooksList(props: ConsoleLibraryBooksListProp
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">{props.title}</h1>
-        <div className="text-sm text-muted-foreground">{props.description}</div>
-      </div>
+      <PageHeader
+        title={props.title}
+        description={props.description}
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">共 {data.total} 条</Badge>
-        <Badge variant="secondary">
-          第 {displayPage} / {totalPages} 页
-        </Badge>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">搜索</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action={props.basePath} method="GET">
+      <ConsoleFiltersCard title="搜索">
+        <form className="grid gap-3 md:grid-cols-12" action={props.basePath} method="GET">
             <input type="hidden" name="page" value="1" />
 
             <div className="md:col-span-8">
-              <Input name="q" placeholder="搜索标题/作者/ISBN/关键词…" defaultValue={q} />
+              <Input name="q" uiSize="sm" placeholder="搜索标题/作者/ISBN/关键词…" defaultValue={q} />
             </div>
 
             <div className="md:col-span-4">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
+              <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm">
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
                     每页 {n}
@@ -105,8 +103,7 @@ export async function ConsoleLibraryBooksList(props: ConsoleLibraryBooksListProp
               </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </ConsoleFiltersCard>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">
@@ -133,7 +130,7 @@ export async function ConsoleLibraryBooksList(props: ConsoleLibraryBooksListProp
               const canDownload = item.assetFormats.length > 0 || item.hasLinkAssets;
               return (
                 <tr key={item.id} className="border-t border-border align-top">
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex flex-col gap-1">
                       <Link href={`/console/library/${item.id}`} className="line-clamp-1 font-medium hover:underline">
                         {item.title}
@@ -146,10 +143,10 @@ export async function ConsoleLibraryBooksList(props: ConsoleLibraryBooksListProp
                       <div className="line-clamp-2 text-xs text-muted-foreground">{item.summary ?? "—"}</div>
                     </div>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <span className={["rounded-full px-2 py-0.5 text-xs font-medium", statusMeta.className].join(" ")}>{statusMeta.label}</span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       {item.assetFormats.map((f) => (
                         <Badge key={f} variant="secondary">
@@ -159,8 +156,8 @@ export async function ConsoleLibraryBooksList(props: ConsoleLibraryBooksListProp
                       {item.hasLinkAssets ? <Badge variant="secondary">外链</Badge> : null}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">{item.downloadCount}</td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-3 py-2 text-right tabular-nums">{item.downloadCount}</td>
+                  <td className="px-3 py-2 text-right">
                     <div className="flex flex-col items-end gap-2">
                       <ConsoleLibraryBookActions
                         bookId={item.id}

@@ -6,6 +6,29 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/components/ui/dialog",
+              importNames: ["DialogContent"],
+              message: "请使用 StickyFormDialog / ConsoleFormDialog 等统一弹窗壳（滚动内容 + 底部操作栏）。",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["components/common/StickyFormDialog.tsx"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
     files: ["components/notices/NoticeMarkdown.tsx"],
     rules: {
       "@next/next/no-img-element": "off",

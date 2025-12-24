@@ -10,7 +10,7 @@
 
 import type * as React from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FiltersPanel } from "@/components/common/FiltersPanel";
 
 type Props = {
   title?: string;
@@ -19,13 +19,5 @@ type Props = {
 };
 
 export function ConsoleFiltersCard({ title = "筛选", description, children }: Props) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
+  return <FiltersPanel title={title} description={description}>{children}</FiltersPanel>;
 }

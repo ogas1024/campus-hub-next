@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ConsoleLibraryBookActions } from "@/components/library/ConsoleLibraryBookActions";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,18 +33,18 @@ export default async function ConsoleLibraryBookDetailPage({ params }: { params:
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold">{book.title}</h1>
-          <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>{meta.label}</span>
-          <Badge variant="secondary">{book.author}</Badge>
-          <Badge variant="outline">下载 {book.downloadCount}</Badge>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span className="font-mono text-xs">{book.isbn13}</span>
-          <span className="font-mono text-xs">{book.id}</span>
-        </div>
-      </div>
+      <PageHeader
+        title={book.title}
+        meta={
+          <>
+            <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>{meta.label}</span>
+            <Badge variant="secondary">{book.author}</Badge>
+            <Badge variant="outline">下载 {book.downloadCount}</Badge>
+            <span className="font-mono text-xs">{book.isbn13}</span>
+            <span className="font-mono text-xs">{book.id}</span>
+          </>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -212,4 +213,3 @@ export default async function ConsoleLibraryBookDetailPage({ params }: { params:
     </div>
   );
 }
-

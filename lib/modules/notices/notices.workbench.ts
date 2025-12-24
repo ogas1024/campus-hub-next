@@ -41,7 +41,7 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
       id: n.id,
       title: n.title,
       meta: `到期：${formatZhDateTime(n.expireAt)}`,
-      href: `/console/notices/${n.id}/edit`,
+      href: `/console/notices?dialog=notice-edit&id=${n.id}`,
     }));
 
     const expiringSoonDialogDescription =
@@ -73,7 +73,7 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
               emptyText: `未来 ${withinDays} 天内暂无到期公告`,
             },
           },
-          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建", href: "/console/notices/new" }] : []),
+          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建", href: "/console/notices?dialog=notice-create" }] : []),
         ],
       },
     ];
@@ -86,7 +86,7 @@ export const noticesWorkbenchProvider: WorkbenchProvider = {
     const links: WorkbenchQuickLink[] = [
       { id: "console.notices", order: 20, label: "通知公告", href: "/console/notices", variant: "default" },
     ];
-    if (canCreate) links.push({ id: "console.notices.new", order: 21, label: "新建公告", href: "/console/notices/new", variant: "outline" });
+    if (canCreate) links.push({ id: "console.notices.new", order: 21, label: "新建公告", href: "/console/notices?dialog=notice-create", variant: "outline" });
 
     return links;
   },

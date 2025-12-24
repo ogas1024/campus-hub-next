@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requirePerm } from "@/lib/auth/permissions";
 import { getAuditLogDetail } from "@/lib/modules/audit/audit.service";
@@ -19,12 +20,15 @@ export default async function ConsoleAuditDetailPage({ params }: { params: Promi
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <Link href="/console/audit" className="text-sm text-muted-foreground hover:text-foreground">
-          ← 返回审计列表
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold">审计详情</h1>
+      <PageHeader
+        eyebrow={
+          <Link href="/console/audit" className="text-sm text-muted-foreground hover:text-foreground">
+            ← 返回审计列表
+          </Link>
+        }
+        title="审计详情"
+        description={<span className="font-mono text-xs text-muted-foreground">{log.id}</span>}
+        meta={
           <span
             className={
               log.success
@@ -34,9 +38,8 @@ export default async function ConsoleAuditDetailPage({ params }: { params: Promi
           >
             {log.success ? "成功" : "失败"}
           </span>
-        </div>
-        <div className="font-mono text-sm text-muted-foreground">{log.id}</div>
-      </div>
+        }
+      />
 
       <div className="grid gap-4">
         <Card>

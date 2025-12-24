@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@campus-hub/db": "workspace:*",
+    "@formkit/auto-animate": "^0.9.0",
     "@radix-ui/react-alert-dialog": "*",
     "@radix-ui/react-checkbox": "*",
     "@radix-ui/react-collapsible": "*",

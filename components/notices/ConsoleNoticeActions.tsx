@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { deleteConsoleNotice, publishConsoleNotice, retractConsoleNotice, setConsoleNoticePinned } from "@/lib/api/notices";
 import type { NoticeStatus } from "@/lib/api/notices";
+import { ConfirmAlertDialog } from "@/components/common/ConfirmAlertDialog";
 import { InlineError } from "@/components/common/InlineError";
 import { buttonVariants } from "@/components/ui/button";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -12,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   noticeId: string;
+  openHref: string;
   status: NoticeStatus;
   pinned: boolean;
   isExpired: boolean;
@@ -26,6 +29,7 @@ type Props = {
 export function ConsoleNoticeActions(props: Props) {
   const router = useRouter();
   const action = useAsyncAction();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const canOperate = props.isMine || props.canManageAll;
 
@@ -41,8 +45,9 @@ export function ConsoleNoticeActions(props: Props) {
     <div className="space-y-2">
       <div className="flex flex-wrap justify-end gap-2">
         <Link
+          scroll={false}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2 text-xs")}
-          href={`/console/notices/${props.noticeId}/edit`}
+          href={props.openHref}
         >
           {viewLabel}
         </Link>
@@ -92,10 +97,7 @@ export function ConsoleNoticeActions(props: Props) {
             type="button"
             className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "h-8 px-2 text-xs")}
             disabled={action.pending}
-            onClick={() => {
-              if (!confirm("确认删除该公告（软删）？")) return;
-              void run(() => deleteConsoleNotice(props.noticeId), "删除失败");
-            }}
+            onClick={() => setDeleteOpen(true)}
           >
             删除
           </button>
@@ -103,6 +105,17 @@ export function ConsoleNoticeActions(props: Props) {
       </div>
 
       <InlineError message={action.error} />
+
+      <ConfirmAlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="确认删除该公告（软删）？"
+        description="删除后对所有人不可见（保留审计记录）。"
+        confirmText="删除"
+        cancelText="取消"
+        confirmDisabled={action.pending}
+        onConfirm={() => void run(() => deleteConsoleNotice(props.noticeId), "删除失败")}
+      />
     </div>
   );
 }

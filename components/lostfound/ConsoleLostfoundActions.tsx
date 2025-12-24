@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { InlineError } from "@/components/common/InlineError";
+import { ConsoleFormDialog } from "@/components/console/crud/ConsoleFormDialog";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -130,46 +129,33 @@ export function ConsoleLostfoundActions(props: Props) {
         ) : null}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{labelFor(kind)}</DialogTitle>
-          </DialogHeader>
+      <ConsoleFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={labelFor(kind)}
+        pending={action.pending}
+        error={action.error}
+        confirmText="确认"
+        confirmVariant={kind === "delete" ? "destructive" : "default"}
+        confirmDisabled={needsReason && !reason.trim()}
+        onConfirm={() => {
+          const r = reason.trim();
+          if (kind === "approve") void runAndRefresh(() => approveConsoleLostfound(props.itemId), "审核通过失败");
+          if (kind === "reject") void runAndRefresh(() => rejectConsoleLostfound(props.itemId, { reason: r }), "驳回失败");
+          if (kind === "offline") void runAndRefresh(() => offlineConsoleLostfound(props.itemId, { reason: r }), "下架失败");
+          if (kind === "restore") void runAndRefresh(() => restoreConsoleLostfound(props.itemId), "恢复失败");
+          if (kind === "delete") void runAndRefresh(() => deleteConsoleLostfound(props.itemId), "删除失败");
+        }}
+      >
+        {confirmText ? <div className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">{confirmText}</div> : null}
 
-          <div className="grid gap-3">
-            {confirmText ? <div className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">{confirmText}</div> : null}
-
-            {needsReason ? (
-              <div className="grid gap-2">
-                <Label>{kind === "reject" ? "驳回理由（必填）" : "下架理由（必填）"}</Label>
-                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="将写入条目原因字段与审计…" />
-              </div>
-            ) : null}
-
-            <InlineError message={action.error} />
+        {needsReason ? (
+          <div className="grid gap-2">
+            <Label>{kind === "reject" ? "驳回理由（必填）" : "下架理由（必填）"}</Label>
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="将写入条目原因字段与审计…" />
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" disabled={action.pending} onClick={() => setDialogOpen(false)}>
-              取消
-            </Button>
-            <Button
-              variant={kind === "delete" ? "destructive" : "default"}
-              disabled={action.pending || (needsReason && !reason.trim())}
-              onClick={() => {
-                const r = reason.trim();
-                if (kind === "approve") void runAndRefresh(() => approveConsoleLostfound(props.itemId), "审核通过失败");
-                if (kind === "reject") void runAndRefresh(() => rejectConsoleLostfound(props.itemId, { reason: r }), "驳回失败");
-                if (kind === "offline") void runAndRefresh(() => offlineConsoleLostfound(props.itemId, { reason: r }), "下架失败");
-                if (kind === "restore") void runAndRefresh(() => restoreConsoleLostfound(props.itemId), "恢复失败");
-                if (kind === "delete") void runAndRefresh(() => deleteConsoleLostfound(props.itemId), "删除失败");
-              }}
-            >
-              确认
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        ) : null}
+      </ConsoleFormDialog>
     </div>
   );
 }

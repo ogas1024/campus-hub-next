@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LibraryFavoriteButton } from "@/components/library/LibraryFavoriteButton";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,25 +26,27 @@ export default async function LibraryBookDetailPage({ params }: { params: Promis
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">{book.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <PageHeader
+        title={book.title}
+        meta={
+          <>
             <Badge variant="secondary">{book.author}</Badge>
             <Badge variant="outline">下载 {book.downloadCount}</Badge>
             <span className="font-mono text-xs">{book.isbn13}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <LibraryFavoriteButton bookId={book.id} initialFavorite={book.isFavorite} />
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library">
-            ← 返回列表
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
-            我的投稿
-          </Link>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <LibraryFavoriteButton bookId={book.id} initialFavorite={book.isFavorite} />
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library">
+              ← 返回列表
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/library/me">
+              我的投稿
+            </Link>
+          </>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -130,17 +133,17 @@ export default async function LibraryBookDetailPage({ params }: { params: Promis
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">投稿入口</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <div>你也可以投稿电子书/资料，经图书管理员审核后对全站可见。</div>
-              <Link className={buttonVariants({ size: "sm" })} href="/library/me/new">
+            <CardTitle className="text-base">投稿入口</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <div>你也可以投稿电子书/资料，经图书管理员审核后对全站可见。</div>
+              <Link className={buttonVariants({ size: "sm" })} href="/library/me?dialog=library-create" scroll={false}>
                 新建投稿
               </Link>
-            </CardContent>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
       </div>
+    </div>
     </div>
   );
 }

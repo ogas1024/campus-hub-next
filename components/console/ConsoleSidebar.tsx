@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ChevronDown } from "lucide-react";
 
@@ -26,6 +26,8 @@ export function ConsoleSidebar({ groups }: Props) {
     return groups.map((g) => ({ ...g, hasActive: g.items.some((it) => isActive(pathname, it.href)) }));
   }, [groups, pathname]);
 
+  const touchedRef = useRef<Set<string>>(new Set());
+
   const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => {
     const preferOpenId = groupsWithActive.some((g) => g.id === "life") ? "life" : (groupsWithActive.find((g) => g.id !== "workbench")?.id ?? "");
 
@@ -34,16 +36,32 @@ export function ConsoleSidebar({ groups }: Props) {
     return initial;
   });
 
+  useEffect(() => {
+    setOpenMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const g of groupsWithActive) {
+        if (!g.hasActive) continue;
+        if (touchedRef.current.has(g.id)) continue;
+        if (next[g.id]) continue;
+        next[g.id] = true;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [groupsWithActive]);
+
   return (
     <nav className="space-y-2" aria-label="Console 导航">
       {groupsWithActive.map((group) => {
-        const isOpen = group.hasActive ? true : (openMap[group.id] ?? false);
+        const isOpen = openMap[group.id] ?? false;
 
         return (
           <Collapsible
             key={group.id}
             open={isOpen}
             onOpenChange={(nextOpen) => {
+              touchedRef.current.add(group.id);
               setOpenMap((prev) => ({ ...prev, [group.id]: nextOpen }));
             }}
           >
@@ -60,7 +78,7 @@ export function ConsoleSidebar({ groups }: Props) {
               </button>
             </CollapsibleTrigger>
 
-            <CollapsibleContent className="mt-1 space-y-1 px-1 pb-1">
+            <CollapsibleContent className="ch-collapsible-content mt-1 space-y-1 px-1 pb-1">
               {group.items.map((item) => {
                 const active = isActive(pathname, item.href);
                 return (

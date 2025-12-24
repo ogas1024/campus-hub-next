@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { InlineError } from "@/components/common/InlineError";
+import { InlineMessage } from "@/components/common/InlineMessage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -100,8 +102,8 @@ export default function RegisterPage() {
           ) : null}
         </div>
 
-        {error ? <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
-        {message ? <div className="rounded-lg border border-border bg-muted p-3 text-sm">{message}</div> : null}
+        <InlineError message={error} />
+        <InlineMessage message={message} />
 
         <Button className="w-full" type="submit" disabled={loading}>
           {loading ? "注册中..." : "注册"}

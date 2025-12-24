@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { LostfoundMyActions } from "@/components/lostfound/LostfoundMyActions";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
+import { LostfoundDialogController } from "@/components/lostfound/LostfoundDialogController";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listMyLostfoundItems } from "@/lib/modules/lostfound/lostfound.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 
@@ -76,70 +79,75 @@ export default async function LostfoundMePage({ searchParams }: { searchParams: 
     redirect(buildMyLostfoundHref({ q, status: statusValue || undefined, page: totalPages, pageSize }));
   }
 
+  const baseHref = buildMyLostfoundHref({ q, status: statusValue || undefined, page: displayPage, pageSize });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">我的发布</h1>
-          <p className="text-sm text-muted-foreground">发布/编辑提交后进入待审核；仅已发布条目可标记已解决；已下架需管理端恢复为待审后才可修改。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound">
-            ← 返回浏览
-          </Link>
-          <Link className={buttonVariants({ size: "sm" })} href="/lostfound/new">
-            新建发布
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="我的发布"
+        description="发布/编辑提交后进入待审核；仅已发布条目可标记已解决；已下架需管理端恢复为待审后才可修改。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound">
+              ← 返回浏览
+            </Link>
+            <Link
+              scroll={false}
+              className={buttonVariants({ size: "sm" })}
+              href={withDialogHref(baseHref, { dialog: "lostfound-create" })}
+            >
+              新建发布
+            </Link>
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">共 {data.total} 条</Badge>
-        <Badge variant="secondary">
-          第 {displayPage} / {totalPages} 页
-        </Badge>
-      </div>
+      <FiltersPanel>
+        <form className="grid gap-3 md:grid-cols-12" action="/lostfound/me" method="GET">
+          <input type="hidden" name="page" value="1" />
 
-      <Card>
-        <CardContent className="p-4">
-          <form className="grid gap-3 md:grid-cols-12" action="/lostfound/me" method="GET">
-            <input type="hidden" name="page" value="1" />
+          <div className="md:col-span-6">
+            <Input uiSize="sm" name="q" placeholder="搜索标题/正文/地点…" defaultValue={q} />
+          </div>
 
-            <div className="md:col-span-6">
-              <Input name="q" placeholder="搜索标题/正文/地点…" defaultValue={q} />
-            </div>
+          <div className="md:col-span-3">
+            <Select uiSize="sm" name="status" defaultValue={statusValue}>
+              <option value="">全部状态</option>
+              <option value="pending">待审核</option>
+              <option value="published">已发布</option>
+              <option value="rejected">已驳回</option>
+              <option value="offline">已下架</option>
+            </Select>
+          </div>
 
-            <div className="md:col-span-3">
-              <Select name="status" defaultValue={statusValue}>
-                <option value="">全部状态</option>
-                <option value="pending">待审核</option>
-                <option value="published">已发布</option>
-                <option value="rejected">已驳回</option>
-                <option value="offline">已下架</option>
-              </Select>
-            </div>
+          <div className="md:col-span-3">
+            <Select uiSize="sm" name="pageSize" defaultValue={String(pageSize)}>
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={String(n)}>
+                  每页 {n}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-            <div className="md:col-span-3">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
-                {[10, 20, 50].map((n) => (
-                  <option key={n} value={String(n)}>
-                    每页 {n}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap gap-2 md:col-span-12">
-              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound/me">
-                清空
-              </Link>
-              <Button size="sm" type="submit">
-                应用
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="flex flex-wrap gap-2 md:col-span-12">
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/lostfound/me">
+              清空
+            </Link>
+            <Button size="sm" type="submit">
+              应用
+            </Button>
+          </div>
+        </form>
+      </FiltersPanel>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full table-auto">
@@ -167,25 +175,30 @@ export default async function LostfoundMePage({ searchParams }: { searchParams: 
               const reason = item.status === "rejected" ? item.rejectReason : item.status === "offline" ? item.offlineReason : null;
               return (
                 <tr key={item.id} className="border-t border-border">
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="line-clamp-1 font-medium">{item.title}</div>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {item.solvedAt ? <Badge variant="secondary">已解决</Badge> : null}
                       {item.publishedAt ? <Badge variant="outline">发布：{formatZhDateTime(item.publishedAt)}</Badge> : null}
                     </div>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <Badge variant="secondary">{typeLabel(item.type)}</Badge>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>{meta.label}</span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="max-w-[22rem] truncate text-xs text-muted-foreground">{reason ?? "—"}</div>
                   </td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground">{formatZhDateTime(item.createdAt)}</td>
-                  <td className="px-3 py-3 text-right">
-                    <LostfoundMyActions id={item.id} status={item.status} solvedAt={item.solvedAt ? item.solvedAt.toISOString() : null} />
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{formatZhDateTime(item.createdAt)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <LostfoundMyActions
+                      id={item.id}
+                      editHref={withDialogHref(baseHref, { dialog: "lostfound-edit", id: item.id })}
+                      status={item.status}
+                      solvedAt={item.solvedAt ? item.solvedAt.toISOString() : null}
+                    />
                   </td>
                 </tr>
               );
@@ -199,7 +212,8 @@ export default async function LostfoundMePage({ searchParams }: { searchParams: 
         totalPages={totalPages}
         hrefForPage={(nextPage) => buildMyLostfoundHref({ q, status: statusValue || undefined, page: nextPage, pageSize })}
       />
+
+      <LostfoundDialogController />
     </div>
   );
 }
-

@@ -20,9 +20,8 @@
 
 import type * as React from "react";
 
-import { InlineError } from "@/components/common/InlineError";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
 
 type Props = {
   open: boolean;
@@ -40,32 +39,32 @@ type Props = {
 };
 
 export function ConsoleFormDialog(props: Props) {
+  const footer = (
+    <>
+      <Button variant="outline" disabled={props.pending} onClick={() => props.onOpenChange(false)}>
+        {props.cancelText ?? "取消"}
+      </Button>
+      <Button
+        variant={props.confirmVariant ?? "default"}
+        disabled={props.pending || props.confirmDisabled}
+        onClick={() => props.onConfirm()}
+      >
+        {props.pending ? "处理中..." : props.confirmText ?? "保存"}
+      </Button>
+    </>
+  );
+
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{props.title}</DialogTitle>
-          {props.description ? <DialogDescription>{props.description}</DialogDescription> : null}
-        </DialogHeader>
-
-        <InlineError message={props.error ?? null} />
-
-        <div className="grid gap-4">{props.children}</div>
-
-        <DialogFooter>
-          <Button variant="outline" disabled={props.pending} onClick={() => props.onOpenChange(false)}>
-            {props.cancelText ?? "取消"}
-          </Button>
-          <Button
-            variant={props.confirmVariant ?? "default"}
-            disabled={props.pending || props.confirmDisabled}
-            onClick={() => props.onConfirm()}
-          >
-            {props.pending ? "处理中..." : props.confirmText ?? "保存"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <StickyFormDialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title={props.title}
+      description={props.description}
+      error={props.error ?? null}
+      footer={footer}
+      contentClassName="max-w-xl"
+    >
+      {props.children}
+    </StickyFormDialog>
   );
 }
-

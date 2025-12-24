@@ -19,7 +19,7 @@ type Props = {
   headers: React.ReactNode;
   children: React.ReactNode;
   rowCount: number;
-  emptyText?: string;
+  emptyText?: React.ReactNode;
   emptyColSpan?: number;
 };
 

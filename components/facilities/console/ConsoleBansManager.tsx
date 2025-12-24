@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createConsoleFacilityBan,
@@ -162,7 +163,17 @@ export function ConsoleBansManager() {
         }
         rowCount={items.length}
         emptyColSpan={5}
-        emptyText={loader.pending ? "加载中…" : "暂无封禁"}
+        emptyText={
+          loader.pending ? (
+            <div className="mx-auto w-full max-w-sm space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          ) : (
+            "暂无封禁"
+          )
+        }
       >
         {items.map((it) => (
           <tr key={it.id} className="border-t border-border">

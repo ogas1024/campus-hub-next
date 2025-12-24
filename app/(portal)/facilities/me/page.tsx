@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { MyReservationRowActions } from "@/components/facilities/MyReservationRowActions";
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,49 +75,46 @@ export default async function FacilitiesMePage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">我的预约</h1>
-          <p className="text-sm text-muted-foreground">开始前可取消；被驳回可修改并重提。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="我的预约"
+        description="开始前可取消；被驳回可修改并重提。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+        actions={
           <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/facilities">
             ← 返回纵览
           </Link>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">共 {data.total} 条</Badge>
-        <Badge variant="secondary">
-          第 {displayPage} / {totalPages} 页
-        </Badge>
-      </div>
-
-      <Card>
-        <CardContent className="p-4">
-          <form className="flex flex-wrap gap-2" action="/facilities/me" method="GET">
-            <input type="hidden" name="page" value="1" />
-            <Select name="status" defaultValue={statusValue}>
-              <option value="">全部状态</option>
-              <option value="pending">待审核</option>
-              <option value="approved">已批准</option>
-              <option value="rejected">已驳回</option>
-              <option value="cancelled">已取消</option>
-            </Select>
-            <Select name="pageSize" defaultValue={String(pageSize)}>
-              {[10, 20, 30, 50].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n} / 页
-                </option>
-              ))}
-            </Select>
-            <button className={buttonVariants({ variant: "outline", size: "sm" })} type="submit">
-              应用筛选
-            </button>
-          </form>
-        </CardContent>
-      </Card>
+      <FiltersPanel>
+        <form className="flex flex-wrap gap-2" action="/facilities/me" method="GET">
+          <input type="hidden" name="page" value="1" />
+          <Select uiSize="sm" name="status" defaultValue={statusValue}>
+            <option value="">全部状态</option>
+            <option value="pending">待审核</option>
+            <option value="approved">已批准</option>
+            <option value="rejected">已驳回</option>
+            <option value="cancelled">已取消</option>
+          </Select>
+          <Select uiSize="sm" name="pageSize" defaultValue={String(pageSize)}>
+            {[10, 20, 30, 50].map((n) => (
+              <option key={n} value={String(n)}>
+                {n} / 页
+              </option>
+            ))}
+          </Select>
+          <button className={buttonVariants({ variant: "outline", size: "sm" })} type="submit">
+            应用筛选
+          </button>
+        </form>
+      </FiltersPanel>
 
       {data.total === 0 ? (
         <Card>
@@ -128,12 +127,12 @@ export default async function FacilitiesMePage({ searchParams }: { searchParams:
               <table className="w-full min-w-[900px]">
                 <thead className="bg-muted/40">
                   <tr className="text-left text-xs text-muted-foreground">
-                    <th className="px-3 py-3">状态</th>
-                    <th className="px-3 py-3">房间</th>
-                    <th className="px-3 py-3">时间</th>
-                    <th className="px-3 py-3">参与人</th>
-                    <th className="px-3 py-3">创建时间</th>
-                    <th className="px-3 py-3 text-right">操作</th>
+                    <th className="px-3 py-2">状态</th>
+                    <th className="px-3 py-2">房间</th>
+                    <th className="px-3 py-2">时间</th>
+                    <th className="px-3 py-2">参与人</th>
+                    <th className="px-3 py-2">创建时间</th>
+                    <th className="px-3 py-2 text-right">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,26 +140,26 @@ export default async function FacilitiesMePage({ searchParams }: { searchParams:
                     const meta = statusMeta(it.status);
                     return (
                       <tr key={it.id} className="border-t border-border">
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-2">
                           <span className={["rounded-full px-2 py-0.5 text-xs font-medium", meta.className].join(" ")}>{meta.label}</span>
                           {it.status === "rejected" && it.rejectReason ? (
                             <div className="mt-2 text-xs text-rose-700/90">原因：{it.rejectReason}</div>
                           ) : null}
                         </td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-2">
                           <div className="text-sm font-medium">{it.room.name}</div>
                           <div className="mt-1 text-xs text-muted-foreground">
                             {it.building.name} / {formatFacilityFloorLabel(it.room.floorNo)}
                           </div>
                           <div className="mt-1 font-mono text-xs text-muted-foreground">{it.id}</div>
                         </td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground">
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
                           <div>开始：{formatZhDateTime(new Date(it.startAt))}</div>
                           <div>结束：{formatZhDateTime(new Date(it.endAt))}</div>
                         </td>
-                        <td className="px-3 py-3 text-sm">{it.participantCount} 人</td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground">{formatZhDateTime(new Date(it.createdAt))}</td>
-                        <td className="px-3 py-3 text-right">
+                        <td className="px-3 py-2 text-sm">{it.participantCount} 人</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{formatZhDateTime(new Date(it.createdAt))}</td>
+                        <td className="px-3 py-2 text-right">
                           <MyReservationRowActions
                             userId={user.id}
                             reservationId={it.id}

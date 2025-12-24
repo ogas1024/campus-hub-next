@@ -31,12 +31,21 @@ export type ConsoleNoticeDetail = {
   attachments: { id: string; fileKey: string; fileName: string; contentType: string; size: number; sort: number }[];
 };
 
+export type ConsoleNoticeMaterialResponse = {
+  perms: { canCreate: boolean; canRead: boolean; canProcess: boolean };
+  linked: null | { id: string; title: string; status: "draft" | "published" | "closed"; dueAt: string | null; archivedAt: string | null };
+};
+
 export function fetchNoticeScopeOptions() {
   return apiGetJson<NoticeScopeOptionsResponse>("/api/console/notices/scope-options");
 }
 
 export function fetchConsoleNoticeDetail(noticeId: string) {
   return apiGetJson<ConsoleNoticeDetail>(`/api/console/notices/${noticeId}`);
+}
+
+export function fetchConsoleNoticeMaterial(noticeId: string) {
+  return apiGetJson<ConsoleNoticeMaterialResponse>(`/api/console/notices/${noticeId}/material`);
 }
 
 export function createConsoleNotice(body: {
@@ -87,4 +96,37 @@ export function uploadConsoleNoticeAttachment(noticeId: string, file: File) {
     `/api/console/notices/${noticeId}/attachments`,
     formData,
   );
+}
+
+export type PortalNoticeDetail = {
+  id: string;
+  title: string;
+  contentMd: string;
+  status: NoticeStatus;
+  pinned: boolean;
+  isExpired: boolean;
+  read: boolean;
+  readCount: number;
+  publishAt: string;
+  expireAt: string | null;
+  attachments: Array<{ id: string; fileName: string; contentType: string; size: number; downloadUrl: string | null }>;
+};
+
+export type PortalNoticeMaterialResponse =
+  | null
+  | {
+      id: string;
+      title: string;
+      status: "draft" | "published" | "closed";
+      dueAt: string | null;
+      canSubmit: boolean;
+      updatedAt: string;
+    };
+
+export function fetchPortalNoticeDetail(noticeId: string) {
+  return apiGetJson<PortalNoticeDetail>(`/api/notices/${noticeId}`);
+}
+
+export function fetchPortalNoticeMaterial(noticeId: string) {
+  return apiGetJson<PortalNoticeMaterialResponse>(`/api/notices/${noticeId}/material`);
 }

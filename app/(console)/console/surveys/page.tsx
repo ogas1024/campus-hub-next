@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { ConsoleModuleTabs } from "@/components/console/ConsoleModuleTabs";
+import { ConsoleSurveyDialogController } from "@/components/surveys/ConsoleSurveyDialogController";
 import { ConsoleSurveyActions } from "@/components/surveys/ConsoleSurveyActions";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/Pagination";
@@ -10,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { hasPerm, requirePerm } from "@/lib/auth/permissions";
 import { parseIntParam, parseBooleanParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listConsoleSurveys } from "@/lib/modules/surveys/surveys.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -90,80 +94,69 @@ export default async function ConsoleSurveysPage({ searchParams }: { searchParam
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">问卷</h1>
-          <p className="text-sm text-muted-foreground">草稿可编辑结构；发布后锁定结构；到期后视为已结束（closed）。</p>
-          <div className="text-sm text-muted-foreground">
+      <PageHeader
+        title="问卷"
+        description="草稿可编辑结构；发布后锁定结构；到期后视为已结束（closed）。"
+        meta={
+          <span>
             共 {data.total} 条 · 第 {displayPage} / {totalPages} 页
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {canCreate ? (
-            <Link href="/console/surveys/new" className={buttonVariants({ size: "sm" })}>
+          </span>
+        }
+        actions={
+          canCreate ? (
+            <Link
+              scroll={false}
+              href={withDialogHref(buildConsoleSurveysHref({ status: statusValue, q, mine, page: displayPage, pageSize }), { dialog: "survey-create" })}
+              className={buttonVariants({ size: "sm" })}
+            >
               新建问卷
             </Link>
-          ) : null}
+          ) : null
+        }
+      />
+
+      <FiltersPanel>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="max-w-full overflow-x-auto">
+            <ConsoleModuleTabs
+              ariaLabel="问卷 状态切换"
+              activeId={statusValue ?? "all"}
+              tabs={[
+                { id: "all", label: "全部", href: buildConsoleSurveysHref({ status: undefined, q, mine, page: 1, pageSize }) },
+                { id: "published", label: "已发布", href: buildConsoleSurveysHref({ status: "published", q, mine, page: 1, pageSize }) },
+                { id: "draft", label: "草稿", href: buildConsoleSurveysHref({ status: "draft", q, mine, page: 1, pageSize }) },
+                { id: "closed", label: "已结束", href: buildConsoleSurveysHref({ status: "closed", q, mine, page: 1, pageSize }) },
+              ]}
+            />
+          </div>
+
+          <div className="ml-auto" />
+
+          <form className="flex flex-wrap items-center gap-2" action="/console/surveys" method="GET">
+            {statusValue ? <input type="hidden" name="status" value={statusValue} /> : null}
+            <input type="hidden" name="page" value="1" />
+
+            <Input name="q" uiSize="sm" className="w-56" placeholder="搜索标题…" defaultValue={q} />
+
+            <Select name="mine" defaultValue={mine ? "true" : "false"} uiSize="sm" className="w-28">
+              <option value="false">全部</option>
+              <option value="true">仅我创建</option>
+            </Select>
+
+            <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm" className="w-28">
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={String(n)}>
+                  每页 {n}
+                </option>
+              ))}
+            </Select>
+
+            <button className={buttonVariants({ size: "sm", variant: "outline" })} type="submit">
+              应用
+            </button>
+          </form>
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="max-w-full overflow-x-auto">
-          <ConsoleModuleTabs
-            ariaLabel="问卷 状态切换"
-            activeId={statusValue ?? "all"}
-            tabs={[
-              { id: "all", label: "全部", href: buildConsoleSurveysHref({ status: undefined, q, mine, page: 1, pageSize }) },
-              { id: "published", label: "已发布", href: buildConsoleSurveysHref({ status: "published", q, mine, page: 1, pageSize }) },
-              { id: "draft", label: "草稿", href: buildConsoleSurveysHref({ status: "draft", q, mine, page: 1, pageSize }) },
-              { id: "closed", label: "已结束", href: buildConsoleSurveysHref({ status: "closed", q, mine, page: 1, pageSize }) },
-            ]}
-          />
-        </div>
-
-        <div className="ml-auto" />
-
-        <form className="flex flex-wrap items-center gap-2" action="/console/surveys" method="GET">
-          {statusValue ? <input type="hidden" name="status" value={statusValue} /> : null}
-          <input type="hidden" name="page" value="1" />
-
-          <Input
-            name="q"
-            uiSize="sm"
-            className="w-56"
-            placeholder="搜索标题…"
-            defaultValue={q}
-          />
-
-          <Select
-            name="mine"
-            defaultValue={mine ? "true" : "false"}
-            uiSize="sm"
-            className="w-28"
-          >
-            <option value="false">全部</option>
-            <option value="true">仅我创建</option>
-          </Select>
-
-          <Select
-            name="pageSize"
-            defaultValue={String(pageSize)}
-            uiSize="sm"
-            className="w-28"
-          >
-            {[10, 20, 50].map((n) => (
-              <option key={n} value={String(n)}>
-                每页 {n}
-              </option>
-            ))}
-          </Select>
-
-          <button className={buttonVariants({ size: "sm", variant: "outline" })} type="submit">
-            应用
-          </button>
-        </form>
-      </div>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -175,7 +168,13 @@ export default async function ConsoleSurveysPage({ searchParams }: { searchParam
           const isMine = item.createdBy === user.id;
 
           return (
-            <div key={item.id} className={cn("rounded-xl border border-border bg-card p-5", item.effectiveStatus === "published" ? "border-primary/40" : null)}>
+            <div
+              key={item.id}
+              className={cn(
+                "rounded-xl border border-border bg-card p-4 transition-colors",
+                item.effectiveStatus === "published" ? "border-primary/40" : null,
+              )}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -215,6 +214,11 @@ export default async function ConsoleSurveysPage({ searchParams }: { searchParam
           hrefForPage={(p) => buildConsoleSurveysHref({ status: statusValue, q, mine, page: p, pageSize })}
         />
       ) : null}
+
+      <ConsoleSurveyDialogController
+        currentUserId={user.id}
+        perms={{ canCreate, canUpdate, canPublish, canClose, canDelete, canManageAll }}
+      />
     </div>
   );
 }

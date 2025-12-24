@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { InlineError } from "@/components/common/InlineError";
+import { StickyFormDialog } from "@/components/common/StickyFormDialog";
+import { UnsavedChangesAlertDialog } from "@/components/common/UnsavedChangesAlertDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { createMyReservation, fetchMyReservationDetail, updateMyReservation, type MyReservationDetail } from "@/lib/api/me-reservations";
 import type { UserSearchItem } from "@/lib/api/users";
@@ -53,6 +54,38 @@ function toDatetimeLocalValue(date: Date) {
 
 const DEFAULT_DURATION_HOURS = 2;
 
+type DraftSnapshot = {
+  purpose: string;
+  startLocal: string;
+  endLocal: string;
+  participantIds: string[];
+};
+
+function normalizeSnapshot(snapshot: DraftSnapshot) {
+  const participantIds = snapshot.participantIds.slice().sort();
+  return {
+    purpose: snapshot.purpose.trim(),
+    startLocal: snapshot.startLocal,
+    endLocal: snapshot.endLocal,
+    participantIds,
+  };
+}
+
+function snapshotKey(snapshot: DraftSnapshot) {
+  return JSON.stringify(normalizeSnapshot(snapshot));
+}
+
+function buildInitialCreateTimes(initialStartAt: Date, initialEndAt?: Date) {
+  const start = new Date(initialStartAt);
+  const initialEnd = initialEndAt ? new Date(initialEndAt) : null;
+  const end =
+    initialEnd && Number.isFinite(initialEnd.getTime()) && initialEnd.getTime() > start.getTime()
+      ? initialEnd
+      : new Date(start.getTime() + DEFAULT_DURATION_HOURS * 60 * 60 * 1000);
+
+  return { startLocal: toDatetimeLocalValue(start), endLocal: toDatetimeLocalValue(end) };
+}
+
 export function ReservationEditorDialog(props: Props) {
   const key =
     props.mode === "create"
@@ -70,21 +103,9 @@ function ReservationEditorDialogInner(props: Props) {
   const [reservation, setReservation] = useState<MyReservationDetail | null>(null);
 
   const [purpose, setPurpose] = useState("");
-  const [startLocal, setStartLocal] = useState(() => {
-    if (props.mode !== "create") return "";
-    const start = new Date(props.initialStartAt);
-    return toDatetimeLocalValue(start);
-  });
-  const [endLocal, setEndLocal] = useState(() => {
-    if (props.mode !== "create") return "";
-    const start = new Date(props.initialStartAt);
-    const initialEnd = props.initialEndAt ? new Date(props.initialEndAt) : null;
-    const end =
-      initialEnd && Number.isFinite(initialEnd.getTime()) && initialEnd.getTime() > start.getTime()
-        ? initialEnd
-        : new Date(start.getTime() + DEFAULT_DURATION_HOURS * 60 * 60 * 1000);
-    return toDatetimeLocalValue(end);
-  });
+  const createTimes = props.mode === "create" ? buildInitialCreateTimes(props.initialStartAt, props.initialEndAt) : { startLocal: "", endLocal: "" };
+  const [startLocal, setStartLocal] = useState(() => createTimes.startLocal);
+  const [endLocal, setEndLocal] = useState(() => createTimes.endLocal);
   const [selected, setSelected] = useState<UserSearchItem[]>([]);
 
   const totalCount = selected.length + 1;
@@ -101,6 +122,37 @@ function ReservationEditorDialogInner(props: Props) {
     if (props.mode === "resubmit" && reservation?.status !== "rejected") return false;
     return true;
   }, [endLocal, props.mode, purpose, reservation?.status, room, startLocal, totalCount]);
+
+  const [initialSnapshot, setInitialSnapshot] = useState<DraftSnapshot | null>(() => {
+    if (props.mode !== "create") return null;
+    return { purpose: "", startLocal: createTimes.startLocal, endLocal: createTimes.endLocal, participantIds: [] };
+  });
+
+  const currentSnapshot = useMemo<DraftSnapshot>(
+    () => ({
+      purpose,
+      startLocal,
+      endLocal,
+      participantIds: selected.map((u) => u.id),
+    }),
+    [endLocal, purpose, selected, startLocal],
+  );
+
+  const dirty = useMemo(() => {
+    if (!props.open) return false;
+    if (!initialSnapshot) return false;
+    return snapshotKey(currentSnapshot) !== snapshotKey(initialSnapshot);
+  }, [currentSnapshot, initialSnapshot, props.open]);
+
+  const [unsavedAlertOpen, setUnsavedAlertOpen] = useState(false);
+
+  function requestClose() {
+    if (dirty) {
+      setUnsavedAlertOpen(true);
+      return;
+    }
+    props.onOpenChange(false);
+  }
 
   async function loadResubmit(reservationId: string) {
     const detail = await loader.run(() => fetchMyReservationDetail(reservationId));
@@ -121,7 +173,15 @@ function ReservationEditorDialogInner(props: Props) {
     setStartLocal(toDatetimeLocalValue(start));
     setEndLocal(toDatetimeLocalValue(end));
 
-    setSelected(detail.participants.filter((p) => !p.isApplicant).map((p) => ({ id: p.id, name: p.name, studentId: p.studentId })));
+    const nextParticipants = detail.participants.filter((p) => !p.isApplicant).map((p) => ({ id: p.id, name: p.name, studentId: p.studentId }));
+    setSelected(nextParticipants);
+
+    setInitialSnapshot({
+      purpose: detail.purpose,
+      startLocal: toDatetimeLocalValue(start),
+      endLocal: toDatetimeLocalValue(end),
+      participantIds: nextParticipants.map((p) => p.id),
+    });
   }
 
   useEffect(() => {
@@ -193,23 +253,38 @@ function ReservationEditorDialogInner(props: Props) {
   }
 
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{props.mode === "create" ? "提交预约" : "修改并重提"}</DialogTitle>
-          <DialogDescription>
-            {room ? (
-              <>
-                {room.buildingName} / {formatFacilityFloorLabel(room.floorNo)} / {room.name}
-              </>
-            ) : (
-              "加载中…"
-            )}
-          </DialogDescription>
-        </DialogHeader>
-
-        <InlineError message={loader.error || action.error} />
-
+    <>
+      <StickyFormDialog
+        open={props.open}
+        onOpenChange={(open) => {
+          if (open) return;
+          requestClose();
+        }}
+        title={props.mode === "create" ? "提交预约" : "修改并重提"}
+        description={
+          room ? (
+            <>
+              {room.buildingName} / {formatFacilityFloorLabel(room.floorNo)} / {room.name}
+            </>
+          ) : (
+            <Skeleton className="h-4 w-44" />
+          )
+        }
+        error={loader.error || action.error}
+        footer={
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => requestClose()} disabled={action.pending}>
+              取消
+            </Button>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button onClick={() => void submit()} disabled={!canSubmit || action.pending}>
+                {props.mode === "create" ? "提交" : "重提"}
+              </Button>
+            </div>
+          </div>
+        }
+        contentClassName="max-w-xl"
+      >
         {reservation?.status === "rejected" && reservation.rejectReason ? (
           <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-sm">
             <div className="font-medium text-rose-700">驳回原因</div>
@@ -220,65 +295,65 @@ function ReservationEditorDialogInner(props: Props) {
           </div>
         ) : null}
 
-        <div className="grid gap-4">
+        {props.mode === "resubmit" && loader.pending ? <Skeleton className="h-4 w-24" /> : null}
+
+        <div className="grid gap-2">
+          <Label>使用目的</Label>
+          <Textarea value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="请输入用途（1~200 字）" />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="grid gap-2">
-            <Label>使用目的</Label>
-            <Textarea value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="请输入用途（1~200 字）" />
+            <Label>开始时间</Label>
+            <Input
+              type="datetime-local"
+              value={startLocal}
+              onChange={(e) => {
+                const nextStartLocal = e.target.value;
+                setStartLocal(nextStartLocal);
+
+                const start = new Date(nextStartLocal);
+                if (!Number.isFinite(start.getTime())) return;
+
+                const end = new Date(endLocal);
+                if (!Number.isFinite(end.getTime()) || end.getTime() <= start.getTime()) {
+                  const nextEnd = new Date(start.getTime() + DEFAULT_DURATION_HOURS * 60 * 60 * 1000);
+                  setEndLocal(toDatetimeLocalValue(nextEnd));
+                }
+              }}
+            />
           </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>开始时间</Label>
-              <Input
-                type="datetime-local"
-                value={startLocal}
-                onChange={(e) => {
-                  const nextStartLocal = e.target.value;
-                  setStartLocal(nextStartLocal);
-
-                  const start = new Date(nextStartLocal);
-                  if (!Number.isFinite(start.getTime())) return;
-
-                  const end = new Date(endLocal);
-                  if (!Number.isFinite(end.getTime()) || end.getTime() <= start.getTime()) {
-                    const nextEnd = new Date(start.getTime() + DEFAULT_DURATION_HOURS * 60 * 60 * 1000);
-                    setEndLocal(toDatetimeLocalValue(nextEnd));
-                  }
-                }}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>结束时间</Label>
-              <Input type="datetime-local" value={endLocal} onChange={(e) => setEndLocal(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 4, 8, 24].map((h) => (
-              <Button key={h} type="button" variant="outline" size="sm" onClick={() => applyDuration(h)}>
-                {h}h
-              </Button>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => applyDuration(72)}>
-              72h
-            </Button>
-          </div>
-
           <div className="grid gap-2">
-            <Label>使用人（含申请人不少于 3 人）</Label>
-            <ParticipantPicker userId={props.userId} value={selected} onChange={setSelected} />
+            <Label>结束时间</Label>
+            <Input type="datetime-local" value={endLocal} onChange={(e) => setEndLocal(e.target.value)} />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={action.pending}>
-            取消
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 4, 8, 24].map((h) => (
+            <Button key={h} type="button" variant="outline" size="sm" onClick={() => applyDuration(h)}>
+              {h}h
+            </Button>
+          ))}
+          <Button type="button" variant="outline" size="sm" onClick={() => applyDuration(72)}>
+            72h
           </Button>
-          <Button onClick={() => void submit()} disabled={!canSubmit || action.pending}>
-            {props.mode === "create" ? "提交" : "重提"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+
+        <div className="grid gap-2">
+          <Label>使用人（含申请人不少于 3 人）</Label>
+          <ParticipantPicker userId={props.userId} value={selected} onChange={setSelected} />
+        </div>
+      </StickyFormDialog>
+
+      <UnsavedChangesAlertDialog
+        open={unsavedAlertOpen}
+        onOpenChange={setUnsavedAlertOpen}
+        onDiscard={() => {
+          setUnsavedAlertOpen(false);
+          props.onOpenChange(false);
+        }}
+      />
+    </>
   );
 }

@@ -34,7 +34,7 @@ export const surveysWorkbenchProvider: WorkbenchProvider = {
       id: s.id,
       title: s.title,
       meta: `截止：${formatZhDateTime(s.endAt)}`,
-      href: `/console/surveys/${s.id}/edit`,
+      href: `/console/surveys?dialog=survey-edit&id=${encodeURIComponent(s.id)}`,
     }));
 
     const dialogDescription =
@@ -66,7 +66,7 @@ export const surveysWorkbenchProvider: WorkbenchProvider = {
               emptyText: `未来 ${withinDays} 天内暂无截止问卷`,
             },
           },
-          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建问卷", href: "/console/surveys/new" }] : []),
+          ...(canCreate ? [{ kind: "link" as const, id: "new", label: "新建问卷", href: "/console/surveys?dialog=survey-create" }] : []),
         ],
       },
     ];
@@ -78,4 +78,3 @@ export const surveysWorkbenchProvider: WorkbenchProvider = {
     return links;
   },
 };
-

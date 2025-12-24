@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PortalVoteDialogController } from "@/components/votes/PortalVoteDialogController";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/select";
 import { getCurrentUser } from "@/lib/auth/session";
 import { parseIntParam } from "@/lib/http/query";
+import { withDialogHref } from "@/lib/navigation/dialog";
 import { listPortalVotes } from "@/lib/modules/votes/votes.service";
 import { formatZhDateTime } from "@/lib/ui/datetime";
 import { cn } from "@/lib/utils";
@@ -51,38 +55,38 @@ export default async function VotesPage({ searchParams }: { searchParams: Promis
     redirect(buildPortalVotesHref({ q, page: totalPages, pageSize }));
   }
 
+  const baseHref = buildPortalVotesHref({ q, page: displayPage, pageSize });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">投票</h1>
-          <p className="text-sm text-muted-foreground">截止前可覆盖提交；结束后可查看结果。</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title="投票"
+        description="截止前可覆盖提交；结束后可查看结果。"
+        meta={
+          <>
+            <Badge variant="secondary">共 {data.total} 条</Badge>
+            <Badge variant="secondary">
+              第 {displayPage} / {totalPages} 页
+            </Badge>
+          </>
+        }
+        actions={
           <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/votes/my">
             我的投票
           </Link>
-          <Badge variant="secondary">共 {data.total} 条</Badge>
-          <Badge variant="secondary">
-            第 {displayPage} / {totalPages} 页
-          </Badge>
-        </div>
-      </div>
+        }
+      />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">搜索与分页</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-12" action="/votes" method="GET">
+      <FiltersPanel title="搜索与分页">
+        <form className="grid gap-3 md:grid-cols-12" action="/votes" method="GET">
             <input type="hidden" name="page" value="1" />
 
             <div className="md:col-span-6">
-              <Input name="q" placeholder="按标题搜索…" defaultValue={q} />
+              <Input name="q" uiSize="sm" placeholder="按标题搜索…" defaultValue={q} />
             </div>
 
             <div className="md:col-span-2">
-              <Select name="pageSize" defaultValue={String(pageSize)}>
+              <Select name="pageSize" defaultValue={String(pageSize)} uiSize="sm">
                 {[10, 20, 50].map((n) => (
                   <option key={n} value={String(n)}>
                     每页 {n}
@@ -100,8 +104,7 @@ export default async function VotesPage({ searchParams }: { searchParams: Promis
               </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </FiltersPanel>
 
       <div className="space-y-3">
         {data.items.length === 0 ? (
@@ -111,9 +114,14 @@ export default async function VotesPage({ searchParams }: { searchParams: Promis
         ) : null}
 
         {data.items.map((item) => (
-          <Link key={item.id} href={`/votes/${item.id}`} className="block">
-            <Card className={cn("hover:bg-accent", item.phase === "active" ? "border-primary" : null)}>
-              <CardContent className="space-y-2 p-5">
+          <Link
+            key={item.id}
+            scroll={false}
+            href={withDialogHref(baseHref, { dialog: "vote-fill", id: item.id })}
+            className="block rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <Card className={cn("transition-colors duration-[var(--motion-duration-hover)] ease-[var(--motion-ease-standard)] hover:bg-accent", item.phase === "active" ? "border-primary" : null)}>
+              <CardContent className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-base font-semibold">{item.title}</div>
                   {item.pinned ? <Badge>置顶</Badge> : null}
@@ -144,6 +152,8 @@ export default async function VotesPage({ searchParams }: { searchParams: Promis
           hrefForPage={(p) => buildPortalVotesHref({ q, page: p, pageSize })}
         />
       ) : null}
+
+      <PortalVoteDialogController />
     </div>
   );
 }

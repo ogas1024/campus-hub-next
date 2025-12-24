@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FiltersPanel } from "@/components/common/FiltersPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,41 +32,36 @@ export default async function ResourcesLeaderboardPage({ searchParams }: { searc
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">课程资源榜单</h1>
-          <p className="text-sm text-muted-foreground">默认展示近 30 天；积分仅统计“首次通过/首次最佳”事件。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources">
-            ← 返回浏览
-          </Link>
-          <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources/me">
-            我的投稿
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="课程资源榜单"
+        description="默认展示近 30 天；积分仅统计“首次通过/首次最佳”事件。"
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources">
+              ← 返回浏览
+            </Link>
+            <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/resources/me">
+              我的投稿
+            </Link>
+          </>
+        }
+      />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">筛选</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-wrap items-center gap-2" action="/resources/leaderboard" method="GET">
-            <Select name="majorId" defaultValue={majorId ?? ""} className="w-72">
-              <option value="">全站</option>
-              {majors.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </Select>
-            <button className={buttonVariants({ size: "sm" })} type="submit">
-              应用
-            </button>
-          </form>
-        </CardContent>
-      </Card>
+      <FiltersPanel>
+        <form className="flex flex-wrap items-center gap-2" action="/resources/leaderboard" method="GET">
+          <Select uiSize="sm" name="majorId" defaultValue={majorId ?? ""} className="w-72">
+            <option value="">全站</option>
+            {majors.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </Select>
+          <button className={buttonVariants({ size: "sm" })} type="submit">
+            应用
+          </button>
+        </form>
+      </FiltersPanel>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -79,7 +76,10 @@ export default async function ResourcesLeaderboardPage({ searchParams }: { searc
               <div className="py-8 text-center text-sm text-muted-foreground">暂无数据</div>
             ) : null}
             {resourceLeaderboard.items.map((item, idx) => (
-              <div key={item.resource.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+              <div
+                key={item.resource.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:bg-muted/40"
+              >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">#{idx + 1}</Badge>
@@ -114,7 +114,7 @@ export default async function ResourcesLeaderboardPage({ searchParams }: { searc
               <div className="py-8 text-center text-sm text-muted-foreground">暂无数据</div>
             ) : null}
             {userLeaderboard.items.map((u, idx) => (
-              <div key={u.userId} className="rounded-lg border border-border bg-card p-4">
+              <div key={u.userId} className="rounded-lg border border-border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">#{idx + 1}</Badge>
@@ -153,4 +153,3 @@ export default async function ResourcesLeaderboardPage({ searchParams }: { searc
     </div>
   );
 }
-
