@@ -83,3 +83,11 @@ export async function requirePerm(permCode: string) {
   if (!ok) throw forbidden();
   return user;
 }
+
+export async function requireAnyPerm(permCodes: string[]) {
+  const user = await requireUser();
+
+  const ok = await hasAnyPerm(user.id, permCodes);
+  if (!ok) throw forbidden();
+  return user;
+}

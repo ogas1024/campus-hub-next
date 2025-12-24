@@ -5,13 +5,16 @@
 
 import { describe, expect, it } from "vitest";
 
+import { ANALYTICS_TEMPLATE_DEFAULTS } from "@/lib/workbench/analytics";
 import {
   applyWorkbenchPreferencesToCards,
   applyWorkbenchPreferencesToQuickLinks,
   defaultPortalHomePreferences,
+  defaultWorkbenchAnalyticsPreferences,
   defaultWorkbenchPreferences,
   mergePreferredIdOrder,
   normalizePortalHomePreferences,
+  normalizeWorkbenchAnalyticsPreferences,
   normalizeWorkbenchPreferences,
 } from "@/lib/workbench/preferences";
 import type { WorkbenchCard, WorkbenchQuickLink } from "@/lib/workbench/types";
@@ -40,6 +43,36 @@ describe("workbench.preferences", () => {
   it("mergePreferredIdOrder: 优先顺序 + 保留剩余", () => {
     expect(mergePreferredIdOrder({ allIds: ["a", "b", "c"], preferredOrder: ["c", "a"] })).toEqual(["c", "a", "b"]);
     expect(mergePreferredIdOrder({ allIds: ["a"], preferredOrder: ["x", "a", "a"] })).toEqual(["a"]);
+  });
+
+  it("normalizeWorkbenchAnalyticsPreferences: 非法输入回退默认", () => {
+    expect(normalizeWorkbenchAnalyticsPreferences(null)).toEqual(defaultWorkbenchAnalyticsPreferences);
+    expect(normalizeWorkbenchAnalyticsPreferences("bad")).toEqual(defaultWorkbenchAnalyticsPreferences);
+  });
+
+  it("normalizeWorkbenchAnalyticsPreferences: 归一化/过滤/兼容旧字段", () => {
+    const prefs = normalizeWorkbenchAnalyticsPreferences({
+      templateId: "__bad__",
+      sceneOrder: [" overview ", "__bad__", "resources", "overview"],
+      hiddenSceneIds: ["library", "  ", "__bad__"],
+      chartOrder: [" course-downloads-line ", "", "course-download-leaderboard", "course-downloads-line", 1],
+      hiddenChartIds: ["activity-heatmap", "  ", "__bad__"],
+      widgetSizeById: { "activity-heatmap": "l", "__bad__": "s" },
+      autoRefreshEnabled: "false",
+      autoRotateEnabled: true,
+    });
+
+    expect(prefs.templateId).toBe("balanced");
+    expect(prefs.sceneOrder).toEqual(["overview", "resources"]);
+    expect(prefs.hiddenSceneIds).toEqual(["library"]);
+
+    expect(prefs.widgetOrder).toEqual(["course-downloads-line", "course-download-leaderboard"]);
+    expect(prefs.hiddenWidgetIds).toEqual(["activity-heatmap"]);
+
+    expect(prefs.widgetSizeById["activity-heatmap"]).toBe("l");
+    expect(prefs.widgetSizeById["course-downloads-line"]).toBe(ANALYTICS_TEMPLATE_DEFAULTS.balanced.widgetSizeById["course-downloads-line"]);
+    expect(prefs.autoRefreshEnabled).toBe(false);
+    expect(prefs.autoRotateEnabled).toBe(true);
   });
 
   it("applyWorkbenchPreferencesToCards: 隐藏 + 排序", () => {

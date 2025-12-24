@@ -5,9 +5,12 @@ import { cookies } from "next/headers";
 import {
   PORTAL_HOME_PREFERENCES_COOKIE_NAME,
   WORKBENCH_PREFERENCES_COOKIE_NAME,
+  WORKBENCH_ANALYTICS_PREFERENCES_COOKIE_NAME,
   defaultPortalHomePreferences,
+  defaultWorkbenchAnalyticsPreferences,
   defaultWorkbenchPreferences,
   normalizePortalHomePreferences,
+  normalizeWorkbenchAnalyticsPreferences,
   normalizeWorkbenchPreferences,
 } from "@/lib/workbench/preferences";
 
@@ -26,10 +29,16 @@ export async function readWorkbenchPreferences() {
   return normalizeWorkbenchPreferences(parseJson(raw));
 }
 
+export async function readWorkbenchAnalyticsPreferences() {
+  const store = await cookies();
+  const raw = store.get(WORKBENCH_ANALYTICS_PREFERENCES_COOKIE_NAME)?.value ?? "";
+  if (!raw) return defaultWorkbenchAnalyticsPreferences;
+  return normalizeWorkbenchAnalyticsPreferences(parseJson(raw));
+}
+
 export async function readPortalHomePreferences() {
   const store = await cookies();
   const raw = store.get(PORTAL_HOME_PREFERENCES_COOKIE_NAME)?.value ?? "";
   if (!raw) return defaultPortalHomePreferences;
   return normalizePortalHomePreferences(parseJson(raw));
 }
-

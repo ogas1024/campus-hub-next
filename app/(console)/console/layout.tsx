@@ -32,7 +32,10 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   navGroups.unshift({
     id: "workbench",
     label: "工作台",
-    items: [{ id: "workbench", label: "概览", href: "/console/workbench" }],
+    items: [
+      { id: "workbench", label: "概览", href: "/console/workbench" },
+      { id: "workbench-analytics", label: "数据概览", href: "/console/workbench/analytics" },
+    ],
   });
 
   return (

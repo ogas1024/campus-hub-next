@@ -5,7 +5,9 @@ import { cookies } from "next/headers";
 import {
   PORTAL_HOME_PREFERENCES_COOKIE_NAME,
   WORKBENCH_PREFERENCES_COOKIE_NAME,
+  WORKBENCH_ANALYTICS_PREFERENCES_COOKIE_NAME,
   normalizePortalHomePreferences,
+  normalizeWorkbenchAnalyticsPreferences,
   normalizeWorkbenchPreferences,
 } from "@/lib/workbench/preferences";
 
@@ -34,6 +36,19 @@ export async function resetWorkbenchPreferences() {
   return { ok: true as const };
 }
 
+export async function saveWorkbenchAnalyticsPreferences(input: unknown) {
+  const normalized = normalizeWorkbenchAnalyticsPreferences(input);
+  const store = await cookies();
+  store.set(WORKBENCH_ANALYTICS_PREFERENCES_COOKIE_NAME, JSON.stringify(normalized), getCookieOptions());
+  return { ok: true as const };
+}
+
+export async function resetWorkbenchAnalyticsPreferences() {
+  const store = await cookies();
+  store.delete(WORKBENCH_ANALYTICS_PREFERENCES_COOKIE_NAME);
+  return { ok: true as const };
+}
+
 export async function savePortalHomePreferences(input: unknown) {
   const normalized = normalizePortalHomePreferences(input);
   const store = await cookies();
@@ -46,4 +61,3 @@ export async function resetPortalHomePreferences() {
   store.delete(PORTAL_HOME_PREFERENCES_COOKIE_NAME);
   return { ok: true as const };
 }
-
