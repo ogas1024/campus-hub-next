@@ -7,7 +7,11 @@ import { config } from "@/lib/config";
 
 const globalForDb = globalThis as unknown as { __dbClient?: ReturnType<typeof postgres> };
 
-const client = globalForDb.__dbClient ?? postgres(config.databaseUrl, { prepare: false });
+const client = globalForDb.__dbClient ??
+  postgres(config.databaseUrl, {
+    prepare: false,
+    max: process.env.NODE_ENV === "production" ? 1 : 5,
+  });
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.__dbClient = client;

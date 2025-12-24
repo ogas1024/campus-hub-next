@@ -1,11 +1,10 @@
 import "server-only";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { forbidden } from "@/lib/http/errors";
 import { requireUser } from "@/lib/auth/session";
-import { devTtlCached } from "@/lib/utils/devTtlCache";
 import { requestCached } from "@/lib/utils/requestCache";
 import { permissions, rolePermissions, userRoles } from "@campus-hub/db";
 
@@ -28,52 +27,37 @@ function expandPermCandidates(permCode: string) {
   return [...out];
 }
 
+async function getUserPermissionCodeSet(userId: string): Promise<Set<string>> {
+  const key = `auth:userPermissionCodes:${userId}`;
+  return requestCached(key, async () => {
+    const rows = await db
+      .select({ code: permissions.code })
+      .from(userRoles)
+      .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(eq(userRoles.userId, userId));
+
+    return new Set(rows.map((r) => r.code));
+  });
+}
+
 export async function hasPerm(userId: string, permCode: string) {
-  const candidates = expandPermCandidates(permCode);
-  if (candidates.length === 0) return false;
-
-  const key = `auth:hasPerm:${userId}:${[...candidates].sort().join("\u0000")}`;
-  return requestCached(key, () =>
-    devTtlCached(key, 10_000, async () => {
-      const rows = await db
-        .select({ ok: userRoles.userId })
-        .from(userRoles)
-        .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
-        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-        .where(and(eq(userRoles.userId, userId), inArray(permissions.code, candidates)))
-        .limit(1);
-
-      return rows.length > 0;
-    }),
-  );
+  return hasAnyPerm(userId, [permCode]);
 }
 
 export async function hasAnyPerm(userId: string, permCodes: string[]) {
   const inputs = [...new Set(permCodes)].map((c) => c.trim()).filter(Boolean);
   if (inputs.length === 0) return false;
 
-  const candidateSet = new Set<string>();
+  const granted = await getUserPermissionCodeSet(userId);
+  if (granted.size === 0) return false;
+
   for (const code of inputs) {
-    for (const c of expandPermCandidates(code)) candidateSet.add(c);
+    for (const c of expandPermCandidates(code)) {
+      if (granted.has(c)) return true;
+    }
   }
-
-  const candidates = [...candidateSet];
-  if (candidates.length === 0) return false;
-
-  const key = `auth:hasAnyPerm:${userId}:${[...candidates].sort().join("\u0000")}`;
-  return requestCached(key, () =>
-    devTtlCached(key, 10_000, async () => {
-      const rows = await db
-        .select({ ok: userRoles.userId })
-        .from(userRoles)
-        .innerJoin(rolePermissions, eq(userRoles.roleId, rolePermissions.roleId))
-        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-        .where(and(eq(userRoles.userId, userId), inArray(permissions.code, candidates)))
-        .limit(1);
-
-      return rows.length > 0;
-    }),
-  );
+  return false;
 }
 
 export async function requirePerm(permCode: string) {
