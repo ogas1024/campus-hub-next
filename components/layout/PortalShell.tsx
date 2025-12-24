@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { PortalNav } from "@/components/layout/PortalNav";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,9 +45,11 @@ export function PortalShell({ user, canEnterConsole, navItems, children }: Props
             {user ? (
               <>
                 <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/profile">
-                  个人资料
+                  <span className="flex items-center gap-2">
+                    <UserAvatar name={user.name} userId={user.id} avatarUrl={user.avatarUrl} />
+                    <span className="hidden text-sm text-muted-foreground sm:inline">{user.name}</span>
+                  </span>
                 </Link>
-                <span className="hidden text-sm text-muted-foreground sm:inline">{user.email ?? user.id}</span>
                 <LogoutButton className={buttonVariants({ variant: "ghost", size: "sm" })} />
               </>
             ) : (

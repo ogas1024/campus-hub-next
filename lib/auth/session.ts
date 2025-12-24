@@ -27,6 +27,8 @@ export type UserAccessInfo = {
   allowed: boolean;
   userId?: string;
   email?: string | null;
+  name?: string;
+  avatarUrl?: string | null;
   profileStatus?: ProfileStatus;
   effectiveProfileStatus?: ProfileStatus;
   emailVerified?: boolean;
@@ -85,6 +87,8 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
     const rows = await db
       .select({
         status: profiles.status,
+        name: profiles.name,
+        avatarUrl: profiles.avatarUrl,
         emailConfirmedAt: authUsers.emailConfirmedAt,
         bannedUntil: authUsers.bannedUntil,
         deletedAt: authUsers.deletedAt,
@@ -121,6 +125,8 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
         allowed: true,
         userId,
         email: userEmail,
+        name: row.name,
+        avatarUrl: row.avatarUrl ?? null,
         profileStatus,
         effectiveProfileStatus,
         emailVerified,
@@ -144,6 +150,8 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
       allowed: false,
       userId,
       email: userEmail,
+      name: row.name,
+      avatarUrl: row.avatarUrl ?? null,
       profileStatus,
       effectiveProfileStatus,
       emailVerified,
@@ -158,7 +166,7 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
 export async function getCurrentUser(): Promise<AppUser | null> {
   const info = await getUserAccessInfo();
   if (!info.authenticated || !info.allowed || !info.userId) return null;
-  return { id: info.userId, email: info.email ?? null };
+  return { id: info.userId, email: info.email ?? null, name: info.name ?? info.email ?? info.userId, avatarUrl: info.avatarUrl ?? null };
 }
 
 export async function requireUser(): Promise<AppUser> {

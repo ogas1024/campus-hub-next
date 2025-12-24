@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { ConsoleSidebar } from "@/components/console/ConsoleSidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
@@ -52,7 +53,12 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
             <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/">
               返回前台
             </Link>
-            <span className="hidden text-sm text-muted-foreground sm:inline">{user.email ?? user.id}</span>
+            <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/profile">
+              <span className="flex items-center gap-2">
+                <UserAvatar name={user.name} userId={user.id} avatarUrl={user.avatarUrl} />
+                <span className="hidden text-sm text-muted-foreground sm:inline">{user.name}</span>
+              </span>
+            </Link>
             <LogoutButton className={buttonVariants({ variant: "ghost", size: "sm" })} />
           </div>
         </div>
