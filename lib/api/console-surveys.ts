@@ -132,8 +132,8 @@ export function fetchConsoleSurveyResults(surveyId: string) {
   }>(`/api/console/surveys/${surveyId}/results`);
 }
 
-export function fetchConsoleSurveyAiSummary(surveyId: string) {
-  return apiPostJson<{ markdown: string }>(`/api/console/surveys/${surveyId}/ai-summary`);
+export function fetchConsoleSurveyAiSummary(surveyId: string, body?: { prompt?: string }) {
+  return apiPostJson<{ markdown: string }>(`/api/console/surveys/${surveyId}/ai-summary`, body);
 }
 
 export function buildConsoleSurveyExportUrl(surveyId: string) {

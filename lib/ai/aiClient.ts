@@ -17,6 +17,7 @@ type ChatCompletionsResponse = {
 
 function buildChatCompletionsUrl(baseUrl: string) {
   const normalized = baseUrl.replace(/\/+$/, "");
+  if (normalized.endsWith("/chat/completions")) return normalized;
   if (normalized.endsWith("/v1")) return `${normalized}/chat/completions`;
   return `${normalized}/v1/chat/completions`;
 }
@@ -52,7 +53,11 @@ export async function createChatCompletion(params: {
 
     const json = (await res.json().catch(() => null)) as ChatCompletionsResponse | null;
     if (!res.ok) {
-      const message = json?.error?.message || "AI 请求失败";
+      const fallbackMessage =
+        (json as unknown as { message?: string; msg?: string; error?: { msg?: string } } | null)?.message ||
+        (json as unknown as { message?: string; msg?: string; error?: { msg?: string } } | null)?.msg ||
+        (json as unknown as { message?: string; msg?: string; error?: { msg?: string } } | null)?.error?.msg;
+      const message = json?.error?.message || fallbackMessage || "AI 请求失败";
       throw badRequest(message);
     }
 
@@ -63,4 +68,3 @@ export async function createChatCompletion(params: {
     clearTimeout(timeout);
   }
 }
-

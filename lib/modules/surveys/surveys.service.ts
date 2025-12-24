@@ -1153,6 +1153,7 @@ function buildAiPrompt(params: {
 export async function generateSurveyAiSummaryMarkdown(params: {
   actorUserId: string;
   surveyId: string;
+  prompt?: string;
 }) {
   const ok = await hasPerm(params.actorUserId, "campus:survey:ai_summary");
   if (!ok) throw forbidden();
@@ -1161,6 +1162,9 @@ export async function generateSurveyAiSummaryMarkdown(params: {
   const now = new Date();
   const eff = effectiveStatus({ status: survey.status, endAt: survey.endAt, now });
   if (eff !== "closed") throw badRequest("仅已结束（closed）的问卷允许生成 AI 总结");
+
+  const customPrompt = params.prompt?.trim() ?? "";
+  if (customPrompt.length > 2000) throw badRequest("自定义 Prompt 过长（最大 2000 字符）");
 
   const { flatQuestions } = await getSurveyDefinition({ surveyId: params.surveyId });
 
@@ -1192,13 +1196,22 @@ export async function generateSurveyAiSummaryMarkdown(params: {
   }));
 
   const results = buildSurveyResults({ questions: flatQuestions, responses, textSampleLimitPerQuestion: 30 });
-  const prompt = buildAiPrompt({
+  const basePrompt = buildAiPrompt({
     title: survey.title,
     startAt: survey.startAt,
     endAt: survey.endAt,
     totalResponses: responses.length,
     results,
   });
+
+  const defaultPrompt =
+    "请输出：\n" +
+    "1) TL;DR（3-5 条要点）\n" +
+    "2) 关键发现（含数据点）\n" +
+    "3) 评分题结论（如有）\n" +
+    "4) 选择题分布解读（如有）\n" +
+    "5) 文本题主题归纳（基于样本；注明“样本抽样”）\n" +
+    "6) 建议行动项（可执行、可排序）\n";
 
   const markdown = await createChatCompletion({
     messages: [
@@ -1210,7 +1223,7 @@ export async function generateSurveyAiSummaryMarkdown(params: {
       {
         role: "user",
         content:
-          `${prompt}\n\n请输出：\n1) TL;DR（3-5 条要点）\n2) 关键发现（含数据点）\n3) 评分题结论（如有）\n4) 选择题分布解读（如有）\n5) 文本题主题归纳（基于样本；注明“样本抽样”）\n6) 建议行动项（可执行、可排序）\n`,
+          `${basePrompt}\n\n${customPrompt ? customPrompt : defaultPrompt}`,
       },
     ],
     temperature: 0.2,

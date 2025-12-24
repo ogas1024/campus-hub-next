@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Copy, SlidersHorizontal } from "lucide-react";
 
 import { InlineError } from "@/components/common/InlineError";
+import { InlineMessage } from "@/components/common/InlineMessage";
 import { PageLoadingSkeleton } from "@/components/common/PageLoadingSkeleton";
 import { PageHeader } from "@/components/common/PageHeader";
 import { NoticeMarkdown } from "@/components/notices/NoticeMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
 import { fetchConsoleSurveyAiSummary, fetchConsoleSurveyResults, buildConsoleSurveyExportUrl } from "@/lib/api/console-surveys";
 import { ApiResponseError } from "@/lib/api/http";
 import { formatZhDateTime } from "@/lib/ui/datetime";
@@ -32,6 +36,15 @@ export default function SurveyResultsClient(props: Props) {
   const [aiPending, setAiPending] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiMarkdown, setAiMarkdown] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!aiMessage) return;
+    const t = window.setTimeout(() => setAiMessage(null), 2000);
+    return () => window.clearTimeout(t);
+  }, [aiMessage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,16 +77,29 @@ export default function SurveyResultsClient(props: Props) {
   }, [data]);
 
   async function doAiSummary() {
+    const prompt = aiPrompt.trim();
     setAiError(null);
+    setAiMessage(null);
     setAiMarkdown(null);
     setAiPending(true);
     try {
-      const res = await fetchConsoleSurveyAiSummary(id);
+      const res = await fetchConsoleSurveyAiSummary(id, prompt ? { prompt } : undefined);
       setAiMarkdown(res.markdown);
     } catch (err) {
       setAiError(err instanceof ApiResponseError ? err.message : "生成失败");
     } finally {
       setAiPending(false);
+    }
+  }
+
+  async function copyAiMarkdown() {
+    if (!aiMarkdown) return;
+    setAiMessage(null);
+    try {
+      await navigator.clipboard.writeText(aiMarkdown);
+      setAiMessage("已复制 Markdown 到剪贴板。");
+    } catch {
+      setAiMessage("复制失败：浏览器未授权剪贴板访问。");
     }
   }
 
@@ -124,28 +150,58 @@ export default function SurveyResultsClient(props: Props) {
 
       <Card>
         <CardContent className="space-y-3 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="text-base font-semibold">AI 总结（Markdown）</div>
-              <div className="text-sm text-muted-foreground">开放题原文会按样本抽样发送给 AI；本结果不落库。</div>
+          <Collapsible open={promptOpen} onOpenChange={setPromptOpen}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-base font-semibold">AI 总结（Markdown）</div>
+                <div className="text-sm text-muted-foreground">开放题原文会按样本抽样发送给 AI；本结果不落库。</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" disabled={!aiMarkdown} onClick={() => void copyAiMarkdown()}>
+                  <Copy className="h-4 w-4" />
+                  复制 Markdown
+                </Button>
+                <CollapsibleTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    自定义 Prompt
+                  </Button>
+                </CollapsibleTrigger>
+                <Button
+                  size="sm"
+                  disabled={aiPending || !props.perms.canAiSummary || effectiveStatus !== "closed"}
+                  onClick={() => void doAiSummary()}
+                  title={
+                    !props.perms.canAiSummary
+                      ? "无权限：campus:survey:ai_summary"
+                      : effectiveStatus !== "closed"
+                        ? "问卷结束后才允许生成 AI 总结"
+                        : undefined
+                  }
+                >
+                  {aiPending ? "生成中..." : "生成 AI 总结"}
+                </Button>
+              </div>
             </div>
-            <Button
-              size="sm"
-              disabled={aiPending || !props.perms.canAiSummary || effectiveStatus !== "closed"}
-              onClick={() => void doAiSummary()}
-              title={
-                !props.perms.canAiSummary
-                  ? "无权限：campus:survey:ai_summary"
-                  : effectiveStatus !== "closed"
-                    ? "问卷结束后才允许生成 AI 总结"
-                    : undefined
-              }
-            >
-              {aiPending ? "生成中..." : "生成 AI 总结"}
-            </Button>
-          </div>
 
-          {aiError ? <InlineError message={aiError} /> : null}
+            {aiError ? <InlineError message={aiError} /> : null}
+            {aiMessage ? <InlineMessage message={aiMessage} /> : null}
+
+            <CollapsibleContent className="space-y-2 rounded-lg border border-border bg-muted/40 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-medium">自定义 Prompt（可选）</div>
+                <Button size="sm" variant="ghost" onClick={() => setAiPrompt("")} disabled={!aiPrompt.trim()}>
+                  清空
+                </Button>
+              </div>
+              <div className="text-xs text-muted-foreground">为空则使用默认 Prompt；该 Prompt 仅用于本次生成，不会保存到数据库。</div>
+              <Textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="例如：请重点分析评分题的主要驱动因素，并用更偏业务汇报的语气输出。"
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
           {aiMarkdown ? (
             <div className="rounded-lg border border-border bg-background p-4">
