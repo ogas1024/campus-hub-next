@@ -58,3 +58,21 @@ from public.roles r
 where r.code = 'staff'
 on conflict do nothing;
 ```
+
+## 一键生成演示数据（推荐）
+
+前提：
+- 已配置好 `.env.local`
+- 已按 `packages/db/README.md` 执行迁移（至少到 `0011_votes.sql`）
+
+生成/补齐演示数据（包含：公告、课程资源、功能房、问卷、投票、图书馆、失物招领 + 4 个演示账号）：
+
+```bash
+pnpm demo:seed
+```
+
+清理演示数据（不删除演示账号）：
+
+```bash
+DEMO_RESET_CONFIRM=YES pnpm demo:reset
+```

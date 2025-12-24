@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "demo:seed": "node scripts/demo-data.mjs seed",
+    "demo:reset": "node scripts/demo-data.mjs reset"
   },
   "dependencies": {
     "@campus-hub/db": "workspace:*",
