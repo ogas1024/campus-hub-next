@@ -189,7 +189,9 @@ export function PortalHomeFavorites({ modules, initialPreferences }: Props) {
     return ids.length > 0 ? ids : defaultPortalHomePreferences.favoriteModuleIds;
   }, [prefs.favoriteModuleIds, allModuleIds]);
 
-  const favorites = useMemo(() => favoriteIds.map((id) => moduleById.get(id)).filter(Boolean), [favoriteIds, moduleById]);
+  const favorites = useMemo(() => {
+    return favoriteIds.map((id) => moduleById.get(id)).filter((m): m is PortalModule => !!m);
+  }, [favoriteIds, moduleById]);
 
   return (
     <section className="space-y-3">

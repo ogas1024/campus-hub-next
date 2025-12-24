@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 import autoAnimate, { type AutoAnimateOptions } from "@formkit/auto-animate";
 
-type Options = AutoAnimateOptions & {
+type Options = Partial<AutoAnimateOptions> & {
   enabled?: boolean;
 };
 
-function sanitizeOptions(options?: Options): AutoAnimateOptions | undefined {
+function sanitizeOptions(options?: Options): Partial<AutoAnimateOptions> | undefined {
   if (!options) return;
   const { enabled: _enabled, ...rest } = options;
   void _enabled;
@@ -22,13 +22,17 @@ function usePrefersReducedMotion() {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const onChange = () => setReduced(mq.matches);
     onChange();
-    if ("addEventListener" in mq) {
+    if (typeof mq.addEventListener === "function") {
       mq.addEventListener("change", onChange);
       return () => mq.removeEventListener("change", onChange);
     }
     // 兼容旧版 Safari
-    mq.addListener(onChange);
-    return () => mq.removeListener(onChange);
+    const legacy = mq as unknown as {
+      addListener: (listener: () => void) => void;
+      removeListener: (listener: () => void) => void;
+    };
+    legacy.addListener(onChange);
+    return () => legacy.removeListener(onChange);
   }, []);
 
   return reduced;
@@ -46,7 +50,7 @@ export function useAutoAnimate<T extends HTMLElement>(options?: Options) {
   const enabled = options?.enabled ?? true;
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  const optionsRef = useRef<AutoAnimateOptions | undefined>(sanitizeOptions(options));
+  const optionsRef = useRef<Partial<AutoAnimateOptions> | undefined>(sanitizeOptions(options));
   const parent = useRef<T | null>(null);
   const controllerRef = useRef<ReturnType<typeof autoAnimate> | null>(null);
 

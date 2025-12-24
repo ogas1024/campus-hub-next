@@ -198,11 +198,12 @@ export function normalizePortalHomePreferences(input: unknown): PortalHomePrefer
   return favoriteModuleIds.length === 0 ? defaultPortalHomePreferences : { ...defaultPortalHomePreferences, favoriteModuleIds };
 }
 
-export function mergePreferredIdOrder(params: { allIds: readonly string[]; preferredOrder: readonly string[] }): string[] {
-  const exists = new Set(params.allIds);
-  const head: string[] = [];
-  const headSet = new Set<string>();
-  for (const id of params.preferredOrder) {
+export function mergePreferredIdOrder<T extends string>(params: { allIds: readonly T[]; preferredOrder: readonly string[] }): T[] {
+  const exists = new Set<T>(params.allIds);
+  const head: T[] = [];
+  const headSet = new Set<T>();
+  for (const rawId of params.preferredOrder) {
+    const id = rawId as T;
     if (!exists.has(id)) continue;
     if (headSet.has(id)) continue;
     headSet.add(id);

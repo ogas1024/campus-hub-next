@@ -1,6 +1,6 @@
 export type PortalModuleStatus = "available" | "comingSoon";
 
-export type PortalModule = {
+type PortalModuleDefinition = {
   id: string;
   label: string;
   description: string;
@@ -65,11 +65,21 @@ export const portalModules = [
     href: "/lostfound",
     status: "available",
   },
-] as const satisfies PortalModule[];
+] as const satisfies readonly PortalModuleDefinition[];
 
 export type PortalModuleId = (typeof portalModules)[number]["id"];
 
-export const portalNavItems: Array<Pick<PortalModule, "id" | "label" | "href" | "status">> = [
+export type PortalModule = Omit<PortalModuleDefinition, "id"> & { id: PortalModuleId };
+
+export type PortalNavItemId = "home" | PortalModuleId;
+export type PortalNavItem = {
+  id: PortalNavItemId;
+  label: string;
+  href: string;
+  status: PortalModuleStatus;
+};
+
+export const portalNavItems: PortalNavItem[] = [
   { id: "home", label: "首页", href: "/", status: "available" },
   ...portalModules.map(({ id, label, href, status }) => ({ id, label, href, status })),
 ];
