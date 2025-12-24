@@ -147,7 +147,7 @@
   - 列表：标题、状态、置顶、发布时间、有效期、更新时间、阅读数、创建者
   - 操作：新建、编辑、发布/撤回、置顶/取消置顶、删除
   - 过滤：关键字、状态、包含过期、（可选）只看我创建
-- `/console/notices/new`、`/console/notices/:id/edit`：新建/编辑
+- `/console/notices?dialog=notice-create`、`/console/notices?dialog=notice-edit&id=:id`：新建/编辑（弹窗内完成；旧路由会重定向）
   - 表单：标题、正文（富文本所见即所得，落库 Markdown；建议提供“源码模式”切换）、有效期、可见范围选择（全员/角色/部门/岗位）、附件上传
 
 ## 9. 验收标准（MVP）

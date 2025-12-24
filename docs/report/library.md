@@ -183,7 +183,7 @@ Console：
 - `pnpm -C "campus-hub-next" build`
 
 手工验收（最小闭环）：
-1) `/library/me/new` 创建草稿 → 上传文件/添加外链 → 提交审核
+1) `/library/me?dialog=library-create` 创建草稿（创建后自动进入编辑弹窗）→ 上传文件/添加外链 → 提交审核
 2) `/console/library/pending` 审核通过 → `/library` 可检索到 → 详情可下载
 3) 下载一次 → `/library/leaderboard` 验证计数；收藏 → `/library/favorites` 验证列表
 
@@ -198,4 +198,3 @@ Console：
 - 封面图（手工上传 vs 从 PDF/EPUB 抽取）与列表卡片更强的视觉层级
 - 更丰富的元数据（出版社/出版年/语言/版本/标签体系）与更合适的索引策略
 - 更完善的风控（按 userId/ip/ua 的最小间隔、异常检测、下载事件聚合策略）
-

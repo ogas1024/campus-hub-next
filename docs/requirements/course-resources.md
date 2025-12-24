@@ -237,9 +237,12 @@ stateDiagram-v2
 - `/resources/majors/:majorId`：课程 Gallery（卡片网格；主屏聚焦课程列表）
 - `/resources/majors/:majorId/courses/:courseId`：课程资源列表（仅 published；最佳置顶；主 CTA：分享资源）
   - 下载：通过下载入口计数并 302
-  - 分享资源：进入 `/resources/majors/:majorId/courses/:courseId/share`
-- `/resources/majors/:majorId/courses/:courseId/share`：一步式投稿（创建草稿 → 上传/外链 → 提交审核）
-- `/resources/me`：我的投稿（草稿/驳回/下架的继续维护入口）
+  - 分享资源：在当前页打开弹窗：`?dialog=resource-create`（可复制链接）
+  - 兼容：`/resources/majors/:majorId/courses/:courseId/share` 会重定向到上述弹窗入口
+- `/resources/me`：我的投稿（列表 + 弹窗新建/编辑）
+  - `?dialog=resource-create`：新建投稿（创建草稿）
+  - `?dialog=resource-edit&id=<resourceId>`：编辑投稿（上传/外链/提交审核/下架/删除）
+  - 兼容：`/resources/me/new`、`/resources/me/[id]` 会重定向到上述 dialog
 - `/resources/leaderboard`：排行榜
   - 资源下载榜：scope（全站/专业/课程）+ days
   - 用户积分榜：scope（全站/专业）+ 代表作 Top5 + 用户抽屉查看全部代表作

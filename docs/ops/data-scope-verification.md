@@ -188,7 +188,8 @@
 3) 用查看者登录访问 `/console/materials`，期望：
    - 只能看到由 A 或其子部门用户创建的材料任务（例如 A11 创建者创建的任务）
    - 看不到 B 分支创建的任务
-   - 直接访问 B 分支任务的 `/console/materials/:id/edit` 返回 404（不可见）
+   - 打开 B 分支任务的编辑弹窗（`/console/materials?dialog=material-edit&id=<id>`）加载返回 404（不可见）
+   - 兼容：`/console/materials/:id/edit` 会重定向到上述弹窗入口
 
 ### 7.4 验收：`campus:material:manage` 不越过 DataScope
 1) 给查看者额外赋予 `campus:material:manage`（以及需要的 `campus:material:update/publish/close/archive/delete/process/export`）。

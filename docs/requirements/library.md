@@ -166,9 +166,10 @@ stateDiagram-v2
 ### 8.1 Portal
 - `/library`：图书列表（搜索/分页/排序、入口：我的投稿/我的收藏/榜单/新建投稿）
 - `/library/[id]`：详情（资产下载、收藏）
-- `/library/me`：我的投稿
-- `/library/me/new`：新建投稿
-- `/library/me/[id]`：投稿详情/编辑/提交
+- `/library/me`：我的投稿（列表 + 弹窗新建/编辑）
+  - `?dialog=library-create`：新建投稿（创建草稿）
+  - `?dialog=library-edit&id=<bookId>`：管理投稿（编辑/上传/外链/提交审核/下架/删除）
+  - 兼容：`/library/me/new`、`/library/me/[id]` 会重定向到上述 dialog
 - `/library/favorites`：我的收藏
 - `/library/leaderboard`：下载榜/贡献榜（总榜 + days=7/30/365）
 

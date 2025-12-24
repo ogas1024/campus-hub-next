@@ -138,9 +138,10 @@ stateDiagram-v2
   - 若关联通知公告：提供“查看关联通知”入口
 
 ### 6.2 Console
-- `/console/materials`：任务列表（Tabs：已发布/草稿/已关闭/已归档；支持搜索与分页）
-- `/console/materials/new`：新建任务草稿（可选带 `noticeId`）
-- `/console/materials/:id/edit`：编辑任务（草稿阶段可编辑材料项；发布后锁定材料项结构）
+- `/console/materials`：任务列表（Tabs：已发布/草稿/已关闭/已归档；支持搜索与分页；列表内弹窗完成新建/编辑）
+  - `?dialog=material-create[&noticeId=<noticeId>]`：新建任务草稿（可选带 `noticeId`，则继承通知可见范围）
+  - `?dialog=material-edit&id=<materialId>`：编辑任务（草稿阶段可编辑材料项；发布后锁定材料项结构）
+  - 兼容：`/console/materials/new`、`/console/materials/:id/edit` 会重定向到上述 dialog
 - `/console/materials/:id/submissions`：提交管理
   - 强筛选（学号/姓名/部门/时间/状态/缺材料）
   - 批量操作（指派给我、改状态、填写原因）

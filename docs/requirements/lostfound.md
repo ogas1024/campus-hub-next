@@ -143,10 +143,10 @@ stateDiagram-v2
   - 关键词：标题/正文模糊匹配
 - 列表项：类型标签、标题、地点、时间、发布时间、是否已解决
 - 操作：
-  - 发布入口（跳转到发布页）
+  - 发布入口（弹窗）
   - 点击进入详情
 
-### 6.2 Portal：发布/编辑（建议路由：`/lostfound/new`、`/lostfound/:id/edit`）
+### 6.2 Portal：发布/编辑（弹窗模式：`?dialog=lostfound-create`、`/lostfound/me?dialog=lostfound-edit&id=:id`；旧路由会重定向）
 
 - 表单字段：类型、标题、正文、地点、时间、联系方式、图片九宫格上传
 - 校验：按 5.5；提交后进入 `pending` 并提示“等待审核”
