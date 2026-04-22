@@ -1,5 +1,6 @@
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -10,6 +11,9 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+import { authUsers } from "./auth";
 
 export const courseResourceTypeEnum = pgEnum("course_resource_type", ["file", "link"]);
 export const courseResourceStatusEnum = pgEnum("course_resource_status", ["draft", "pending", "published", "rejected", "unpublished"]);
@@ -30,6 +34,7 @@ export const majors = pgTable(
   (t) => ({
     nameIdx: index("majors_name_idx").on(t.name),
     enabledIdx: index("majors_enabled_idx").on(t.enabled),
+    nameActiveUq: uniqueIndex("majors_name_active_uq").on(t.name).where(sql`deleted_at is null`),
   }),
 );
 
@@ -39,7 +44,9 @@ export const majorLeads = pgTable(
     majorId: uuid("major_id")
       .notNull()
       .references(() => majors.id, { onDelete: "cascade" }),
-    userId: uuid("user_id").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -66,8 +73,9 @@ export const courses = pgTable(
   },
   (t) => ({
     majorIdIdx: index("courses_major_id_idx").on(t.majorId),
-    nameIdx: index("courses_name_idx").on(t.name),
     enabledIdx: index("courses_enabled_idx").on(t.enabled),
+    majorNameActiveUq: uniqueIndex("courses_major_name_active_uq").on(t.majorId, t.name).where(sql`deleted_at is null`),
+    idMajorUq: uniqueIndex("courses_id_major_id_uq").on(t.id, t.majorId),
   }),
 );
 
@@ -99,7 +107,7 @@ export const courseResources = pgTable(
 
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
 
-    reviewedBy: uuid("reviewed_by"),
+    reviewedBy: uuid("reviewed_by").references(() => authUsers.id, { onDelete: "set null" }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewComment: text("review_comment"),
 
@@ -109,8 +117,10 @@ export const courseResources = pgTable(
     downloadCount: integer("download_count").notNull().default(0),
     lastDownloadAt: timestamp("last_download_at", { withTimezone: true }),
 
-    createdBy: uuid("created_by").notNull(),
-    updatedBy: uuid("updated_by"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
+    updatedBy: uuid("updated_by").references(() => authUsers.id, { onDelete: "set null" }),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -122,6 +132,21 @@ export const courseResources = pgTable(
     courseIdIdx: index("course_resources_course_id_idx").on(t.courseId),
     createdByIdx: index("course_resources_created_by_idx").on(t.createdBy),
     downloadCountIdx: index("course_resources_download_count_idx").on(t.downloadCount),
+    idMajorUq: uniqueIndex("course_resources_id_major_id_uq").on(t.id, t.majorId),
+    idCreatedByUq: uniqueIndex("course_resources_id_created_by_uq").on(t.id, t.createdBy),
+    courseMajorFk: foreignKey({
+      name: "course_resources_course_major_fk",
+      columns: [t.courseId, t.majorId],
+      foreignColumns: [courses.id, courses.majorId],
+    })
+      .onUpdate("cascade")
+      .onDelete("restrict"),
+    courseSha256ActiveUq: uniqueIndex("course_resources_course_sha256_active_uq")
+      .on(t.courseId, t.sha256)
+      .where(sql`${t.deletedAt} is null and ${t.resourceType} = 'file'`),
+    courseLinkActiveUq: uniqueIndex("course_resources_course_link_active_uq")
+      .on(t.courseId, t.linkUrlNormalized)
+      .where(sql`${t.deletedAt} is null and ${t.resourceType} = 'link'`),
   }),
 );
 
@@ -131,7 +156,9 @@ export const courseResourceBests = pgTable(
     resourceId: uuid("resource_id")
       .notNull()
       .references(() => courseResources.id, { onDelete: "cascade" }),
-    bestBy: uuid("best_by").notNull(),
+    bestBy: uuid("best_by")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
     bestAt: timestamp("best_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -147,7 +174,7 @@ export const courseResourceDownloadEvents = pgTable(
     resourceId: uuid("resource_id")
       .notNull()
       .references(() => courseResources.id, { onDelete: "cascade" }),
-    userId: uuid("user_id"),
+    userId: uuid("user_id").references(() => authUsers.id, { onDelete: "set null" }),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     ip: text("ip"),
     userAgent: text("user_agent"),
@@ -163,8 +190,12 @@ export const courseResourceScoreEvents = pgTable(
   "course_resource_score_events",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").notNull(),
-    majorId: uuid("major_id").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    majorId: uuid("major_id")
+      .notNull()
+      .references(() => majors.id, { onDelete: "restrict" }),
     resourceId: uuid("resource_id")
       .notNull()
       .references(() => courseResources.id, { onDelete: "cascade" }),
@@ -176,7 +207,21 @@ export const courseResourceScoreEvents = pgTable(
     resourceIdIdx: index("course_resource_score_events_resource_id_idx").on(t.resourceId),
     majorIdIdx: index("course_resource_score_events_major_id_idx").on(t.majorId),
     userIdIdx: index("course_resource_score_events_user_id_idx").on(t.userId),
+    occurredAtIdx: index("course_resource_score_events_occurred_at_idx").on(t.occurredAt),
     firstUq: uniqueIndex("course_resource_score_events_first_uq").on(t.userId, t.resourceId, t.eventType),
+    resourceMajorFk: foreignKey({
+      name: "course_resource_score_events_resource_major_fk",
+      columns: [t.resourceId, t.majorId],
+      foreignColumns: [courseResources.id, courseResources.majorId],
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    resourceUserFk: foreignKey({
+      name: "course_resource_score_events_resource_user_fk",
+      columns: [t.resourceId, t.userId],
+      foreignColumns: [courseResources.id, courseResources.createdBy],
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
   }),
 );
-

@@ -1,0 +1,23 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+flowchart TD
+    A[查询楼宇与房间] --> B[选择日期和时段]
+    B --> C[填写预约说明<br/>与参与人]
+    C --> D{信息是否完整}
+    D -- 否 --> D1[补充信息<br/>或继续修改]
+    D1 --> C
+    D -- 是 --> E{是否处于<br/>封禁期}
+    E -- 是 --> E1[拒绝提交并提示原因]
+    E -- 否 --> F{房间时段<br/>是否冲突}
+    F -- 是 --> F1[重新选择房间<br/>或预约时间]
+    F1 --> B
+    F -- 否 --> G[生成待审申请]
+    G --> H{是否需要<br/>人工审核}
+    H -- 否 --> I[系统自动通过]
+    H -- 是 --> J[工作人员审核]
+    J --> K{审核结果}
+    K -- 通过 --> I
+    K -- 驳回 --> L[记录驳回意见]
+    L --> M{是否修改重提}
+    M -- 是 --> C
+    M -- 否 --> N[结束本次申请]
+    I --> O[形成有效预约]

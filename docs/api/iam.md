@@ -13,7 +13,7 @@
 - 管理端接口均要求权限码校验（`requirePerm`/`hasAnyPerm`）。
 
 ### 1.2 错误结构
-见：`docs/api/README.md`
+统一遵循本仓库 API 文档中的通用 JSON 错误返回约定；本轮以各模块契约文档中的错误示例为准。
 
 ## 2. 用户（Console）
 

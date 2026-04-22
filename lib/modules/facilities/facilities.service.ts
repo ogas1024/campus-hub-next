@@ -22,9 +22,46 @@ import {
 
 type ReservationStatus = "pending" | "approved" | "rejected" | "cancelled";
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type PgErrorLike = { code?: string; constraint?: string } | null;
 
 function toErrorCode(err: unknown) {
   return err instanceof HttpError ? err.code : "INTERNAL_ERROR";
+}
+
+function translateFacilityWriteError(err: unknown) {
+  if (err instanceof HttpError) return err;
+
+  const pg = err as PgErrorLike;
+  if (pg?.code === "23P01" && pg.constraint === "facility_reservations_room_active_time_excl") {
+    return conflict("时间段冲突，请查看时间轴并调整");
+  }
+
+  if (pg?.code === "23505" && pg.constraint === "facility_reservation_participants_applicant_uq") {
+    return badRequest("预约必须且只能有一个申请人参与记录");
+  }
+
+  if (pg?.code === "23514") {
+    if (pg.constraint === "facility_reservations_time_chk") {
+      return badRequest("预约结束时间必须晚于开始时间");
+    }
+    if (
+      pg.constraint === "facility_reservations_review_chk" ||
+      pg.constraint === "facility_reservations_status_consistency_chk"
+    ) {
+      return conflict("预约状态与审核/取消字段不一致，请刷新数据后重试");
+    }
+    if (pg.constraint === "facility_reservation_participants_min_count_chk") {
+      return badRequest("使用人列表不少于 3 人（含申请人）");
+    }
+    if (pg.constraint === "facility_reservation_participants_applicant_count_chk") {
+      return badRequest("预约必须且只能标记一个申请人参与记录");
+    }
+    if (pg.constraint === "facility_reservation_participants_applicant_match_chk") {
+      return badRequest("申请人必须出现在使用人列表中，且必须与 applicant_id 一致");
+    }
+  }
+
+  return err;
 }
 
 function coerceBoolean(value: unknown): boolean | null {
@@ -422,18 +459,19 @@ export async function createMyReservation(params: {
 
     return { id: inserted, status };
   } catch (err) {
+    const translated = translateFacilityWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "facility.reservation.create",
       targetType: "facility_reservation",
       targetId: params.roomId,
       success: false,
-      errorCode: toErrorCode(err),
-      reason: err instanceof Error ? err.message : undefined,
+      errorCode: toErrorCode(translated),
+      reason: translated instanceof Error ? translated.message : undefined,
       request: params.request,
       diff: { roomId: params.roomId, startAt: startAt.toISOString(), endAt: endAt.toISOString() },
     });
-    throw err;
+    throw translated;
   }
 }
 
@@ -523,17 +561,18 @@ export async function updateMyReservation(params: {
 
     return { ok: true };
   } catch (err) {
+    const translated = translateFacilityWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "facility.reservation.resubmit",
       targetType: "facility_reservation",
       targetId: params.reservationId,
       success: false,
-      errorCode: toErrorCode(err),
-      reason: err instanceof Error ? err.message : undefined,
+      errorCode: toErrorCode(translated),
+      reason: translated instanceof Error ? translated.message : undefined,
       request: params.request,
     });
-    throw err;
+    throw translated;
   }
 }
 
@@ -581,17 +620,18 @@ export async function cancelMyReservation(params: {
 
     return { ok: true };
   } catch (err) {
+    const translated = translateFacilityWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "facility.reservation.cancel",
       targetType: "facility_reservation",
       targetId: params.reservationId,
       success: false,
-      errorCode: toErrorCode(err),
-      reason: err instanceof Error ? err.message : undefined,
+      errorCode: toErrorCode(translated),
+      reason: translated instanceof Error ? translated.message : undefined,
       request: params.request,
     });
-    throw err;
+    throw translated;
   }
 }
 
@@ -1221,17 +1261,18 @@ export async function approveReservation(params: {
 
     return { ok: true };
   } catch (err) {
+    const translated = translateFacilityWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "facility.reservation.approve",
       targetType: "facility_reservation",
       targetId: params.reservationId,
       success: false,
-      errorCode: toErrorCode(err),
-      reason: err instanceof Error ? err.message : undefined,
+      errorCode: toErrorCode(translated),
+      reason: translated instanceof Error ? translated.message : undefined,
       request: params.request,
     });
-    throw err;
+    throw translated;
   }
 }
 
@@ -1270,17 +1311,18 @@ export async function rejectReservation(params: {
 
     return { ok: true };
   } catch (err) {
+    const translated = translateFacilityWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "facility.reservation.reject",
       targetType: "facility_reservation",
       targetId: params.reservationId,
       success: false,
-      errorCode: toErrorCode(err),
-      reason: err instanceof Error ? err.message : undefined,
+      errorCode: toErrorCode(translated),
+      reason: translated instanceof Error ? translated.message : undefined,
       request: params.request,
     });
-    throw err;
+    throw translated;
   }
 }
 

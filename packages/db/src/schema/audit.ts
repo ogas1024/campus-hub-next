@@ -7,6 +7,7 @@ export const auditLogs = pgTable(
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     actorUserId: uuid("actor_user_id").notNull(),
     actorEmail: text("actor_email"),
+    actorName: text("actor_name"),
     actorRoles: jsonb("actor_roles"),
     action: text("action").notNull(),
     targetType: text("target_type").notNull(),
@@ -26,4 +27,3 @@ export const auditLogs = pgTable(
     targetIdx: index("audit_logs_target_idx").on(t.targetType, t.targetId),
   }),
 );
-

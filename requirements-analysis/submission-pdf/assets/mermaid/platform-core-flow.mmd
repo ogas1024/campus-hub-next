@@ -1,0 +1,13 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+flowchart TD
+    A[用户或管理员发起请求] --> B{身份验证是否通过}
+    B -- 否 --> B1[返回登录失败信息]
+    B -- 是 --> C[读取用户角色与权限]
+    C --> D{是否具有对应操作权限}
+    D -- 否 --> D1[拒绝访问并记录失败日志]
+    D -- 是 --> E[执行用户/组织/角色管理操作]
+    E --> F{数据校验是否通过}
+    F -- 否 --> F1[返回校验错误信息]
+    F -- 是 --> G[写入基础数据及联系数据]
+    G --> H[记录审计日志]
+    H --> I[返回处理结果]

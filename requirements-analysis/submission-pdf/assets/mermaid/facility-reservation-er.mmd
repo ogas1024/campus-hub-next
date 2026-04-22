@@ -1,0 +1,46 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+erDiagram
+    USERS {
+        uuid user_id PK
+        string login_name
+    }
+
+    FACILITY_BUILDINGS {
+        uuid building_id PK
+        string building_name
+    }
+
+    FACILITY_ROOMS {
+        uuid room_id PK
+        uuid building_id FK
+        string room_name
+    }
+
+    FACILITY_RESERVATIONS {
+        uuid reservation_id PK
+        uuid room_id FK
+        uuid applicant_user_id FK
+        datetime start_time
+        datetime end_time
+        string reservation_status
+    }
+
+    FACILITY_RESERVATION_PARTICIPANTS {
+        uuid reservation_id PK, FK
+        uuid user_id PK, FK
+        bool is_applicant
+    }
+
+    FACILITY_USER_BANS {
+        uuid ban_id PK
+        uuid user_id FK
+        datetime start_time
+        datetime end_time
+    }
+
+    FACILITY_BUILDINGS ||--o{ FACILITY_ROOMS : contains
+    FACILITY_ROOMS ||--o{ FACILITY_RESERVATIONS : used_by
+    USERS ||--o{ FACILITY_RESERVATIONS : applies
+    FACILITY_RESERVATIONS ||--o{ FACILITY_RESERVATION_PARTICIPANTS : includes
+    USERS ||--o{ FACILITY_RESERVATION_PARTICIPANTS : participates
+    USERS ||--o{ FACILITY_USER_BANS : restricted

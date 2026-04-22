@@ -36,6 +36,57 @@ function requireEnv(key) {
   return String(value).trim();
 }
 
+function createSqlClient(databaseUrl) {
+  return postgres(databaseUrl, {
+    prepare: false,
+    max: 5,
+    connect_timeout: 5,
+    idle_timeout: 5,
+  });
+}
+
+function buildDatabaseConnectionHint(databaseUrl, err) {
+  const message = String(err?.message ?? err ?? "");
+
+  let url;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    return null;
+  }
+
+  const isSupabaseHost = url.hostname.endsWith(".supabase.co");
+  const isDirectHost = /^db\.[^.]+\.supabase\.co$/i.test(url.hostname) && (url.port === "" || url.port === "5432");
+  const isPoolerHost = /(^|\\.)pooler\\.supabase\\.com$/i.test(url.hostname);
+  const hasSslMode = url.searchParams.has("sslmode");
+  const looksLikeNetworkIssue = /(ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|ECONNREFUSED|getaddrinfo|connect timeout|timeout)/i.test(message);
+
+  if (isDirectHost && looksLikeNetworkIssue) {
+    return [
+      "当前 `DATABASE_URL` 指向 Supabase 直连地址（`db.<project-ref>.supabase.co:5432`）。",
+      "Supabase 官方文档说明：这个直连地址默认依赖 IPv6；如果你的本机网络/DNS/VPN 不支持 IPv6，连接阶段会失败或长时间卡住。",
+      "请改用 Supabase Dashboard -> Connect 中的 pooler 连接串。",
+      "本项目当前建议直接填 `Transaction pooler`（端口 `6543`），并补上 `sslmode=require`。",
+    ].join("\n");
+  }
+
+  if (isSupabaseHost && !isPoolerHost && !hasSslMode) {
+    return "当前 `DATABASE_URL` 没有显式 `sslmode=require`；如果你从 Dashboard 重新复制连接串，建议直接使用带 SSL 的 pooler URI。";
+  }
+
+  return null;
+}
+
+async function withDatabaseHint(databaseUrl, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const hint = buildDatabaseConnectionHint(databaseUrl, err);
+    if (!hint) throw err;
+    throw new Error(`${err?.message ?? String(err)}\n\n${hint}`);
+  }
+}
+
 function normalizeExternalUrl(raw) {
   const url = new URL(raw);
   url.hash = "";
@@ -956,11 +1007,11 @@ async function seed() {
   loadEnv();
 
   const databaseUrl = requireEnv("DATABASE_URL");
-  const sql = postgres(databaseUrl, { prepare: false, max: 5 });
+  const sql = createSqlClient(databaseUrl);
 
   try {
     logSection("预检");
-    await assertSchemaReady(sql);
+    await withDatabaseHint(databaseUrl, () => assertSchemaReady(sql));
     console.log("数据库结构检查：OK");
 
     logSection("演示账号");
@@ -1280,6 +1331,7 @@ async function seed() {
       await insertFacilityParticipants(tx, approvedId, [
         { userId: user1.id, isApplicant: true },
         { userId: user2.id, isApplicant: false },
+        { userId: staff.id, isApplicant: false },
       ]);
 
       const pendingId = await insertFacilityReservation(tx, {
@@ -1292,7 +1344,11 @@ async function seed() {
         createdBy: user2.id,
         updatedBy: null,
       });
-      await insertFacilityParticipants(tx, pendingId, [{ userId: user2.id, isApplicant: true }]);
+      await insertFacilityParticipants(tx, pendingId, [
+        { userId: user2.id, isApplicant: true },
+        { userId: user1.id, isApplicant: false },
+        { userId: staff.id, isApplicant: false },
+      ]);
 
       // 额外：给 /rooms/[id]/timeline 留一个历史占用
       const historyStart = new Date(now.getTime() - 3 * dayMs);
@@ -1309,7 +1365,11 @@ async function seed() {
         createdBy: user1.id,
         updatedBy: staff.id,
       });
-      await insertFacilityParticipants(tx, historyId, [{ userId: user1.id, isApplicant: true }]);
+      await insertFacilityParticipants(tx, historyId, [
+        { userId: user1.id, isApplicant: true },
+        { userId: user2.id, isApplicant: false },
+        { userId: superAdmin.id, isApplicant: false },
+      ]);
     });
     console.log("功能房：OK（含预约 demo 数据）");
 
@@ -1497,7 +1557,7 @@ async function reset() {
   loadEnv();
 
   const databaseUrl = requireEnv("DATABASE_URL");
-  const sql = postgres(databaseUrl, { prepare: false, max: 5 });
+  const sql = createSqlClient(databaseUrl);
 
   try {
     if (!isYes(process.env.DEMO_RESET_CONFIRM)) {
@@ -1513,7 +1573,7 @@ async function reset() {
       );
     }
 
-    await assertSchemaReady(sql);
+    await withDatabaseHint(databaseUrl, () => assertSchemaReady(sql));
 
     logSection("定位演示账号");
     const demoEmails = [

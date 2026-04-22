@@ -5,7 +5,7 @@ import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { badRequest, notFound } from "@/lib/http/errors";
 import type { RequestContext } from "@/lib/http/route";
-import { auditLogs, roles, userRoles } from "@campus-hub/db";
+import { auditLogs, profiles, roles, userRoles } from "@campus-hub/db";
 
 export type AuditActor = {
   userId: string;
@@ -34,14 +34,23 @@ async function getActorRoleCodes(userId: string) {
   return rows.map((r) => r.code);
 }
 
+async function getActorName(userId: string) {
+  const rows = await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, userId)).limit(1);
+  return rows[0]?.name ?? null;
+}
+
 export async function writeAuditLog(params: WriteAuditLogParams) {
-  const actorRoleCodes = await getActorRoleCodes(params.actor.userId);
+  const [actorRoleCodes, actorName] = await Promise.all([
+    getActorRoleCodes(params.actor.userId),
+    getActorName(params.actor.userId),
+  ]);
 
   const inserted = await db
     .insert(auditLogs)
     .values({
       actorUserId: params.actor.userId,
       actorEmail: params.actor.email,
+      actorName,
       actorRoles: { roleCodes: actorRoleCodes },
       action: params.action,
       targetType: params.targetType,
@@ -79,6 +88,7 @@ export async function listAuditLogs(params: {
       or(
         sql`${auditLogs.action} ilike ${pattern}`,
         sql`${auditLogs.targetId} ilike ${pattern}`,
+        sql`${auditLogs.actorName} ilike ${pattern}`,
         sql`${auditLogs.actorEmail} ilike ${pattern}`,
       )!,
     );
@@ -104,6 +114,7 @@ export async function listAuditLogs(params: {
       occurredAt: auditLogs.occurredAt,
       actorUserId: auditLogs.actorUserId,
       actorEmail: auditLogs.actorEmail,
+      actorName: auditLogs.actorName,
       action: auditLogs.action,
       targetType: auditLogs.targetType,
       targetId: auditLogs.targetId,
@@ -132,6 +143,7 @@ export async function getAuditLogDetail(id: string) {
       occurredAt: auditLogs.occurredAt,
       actorUserId: auditLogs.actorUserId,
       actorEmail: auditLogs.actorEmail,
+      actorName: auditLogs.actorName,
       actorRoles: auditLogs.actorRoles,
       action: auditLogs.action,
       targetType: auditLogs.targetType,
@@ -152,4 +164,3 @@ export async function getAuditLogDetail(id: string) {
   if (!row) throw notFound("审计记录不存在");
   return row;
 }
-

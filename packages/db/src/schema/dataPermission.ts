@@ -1,5 +1,6 @@
-import { index, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { foreignKey, index, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+import { dataScopeModules } from "./modules";
 import { roles } from "./rbac";
 import { departments } from "./users";
 
@@ -27,6 +28,11 @@ export const roleDataScopes = pgTable(
     pk: primaryKey({ name: "role_data_scopes_pk", columns: [t.roleId, t.module] }),
     roleIdIdx: index("role_data_scopes_role_id_idx").on(t.roleId),
     moduleIdx: index("role_data_scopes_module_idx").on(t.module),
+    moduleFk: foreignKey({
+      name: "role_data_scopes_module_fk",
+      columns: [t.module],
+      foreignColumns: [dataScopeModules.moduleCode],
+    }).onDelete("restrict"),
   }),
 );
 
@@ -50,6 +56,10 @@ export const roleDataScopeDepartments = pgTable(
     roleIdIdx: index("role_data_scope_departments_role_id_idx").on(t.roleId),
     moduleIdx: index("role_data_scope_departments_module_idx").on(t.module),
     departmentIdIdx: index("role_data_scope_departments_department_id_idx").on(t.departmentId),
+    roleScopeFk: foreignKey({
+      name: "role_data_scope_departments_fk",
+      columns: [t.roleId, t.module],
+      foreignColumns: [roleDataScopes.roleId, roleDataScopes.module],
+    }).onDelete("cascade"),
   }),
 );
-

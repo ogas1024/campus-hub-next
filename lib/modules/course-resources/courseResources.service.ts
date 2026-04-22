@@ -24,6 +24,7 @@ import {
 
 type ResourceStatus = "draft" | "pending" | "published" | "rejected" | "unpublished";
 type ResourceType = "file" | "link";
+type PgErrorLike = { code?: string; constraint?: string } | null;
 
 const SIGNED_URL_EXPIRES_IN = 60;
 const DEFAULT_APPROVE_DELTA = 5;
@@ -40,6 +41,50 @@ function requireUuid(value: string, name: string) {
 
 function toErrorCode(err: unknown) {
   return err instanceof HttpError ? err.code : "INTERNAL_ERROR";
+}
+
+function translateCourseResourceWriteError(err: unknown) {
+  if (err instanceof HttpError) return err;
+
+  const pg = err as PgErrorLike;
+
+  if (pg?.code === "23505") {
+    if (
+      pg.constraint === "course_resources_course_sha256_active_uq" ||
+      pg.constraint === "course_resources_course_link_active_uq"
+    ) {
+      return conflict("资源去重冲突：同一课程下存在相同文件/外链");
+    }
+  }
+
+  if (pg?.code === "23503") {
+    if (pg.constraint === "course_resources_course_major_fk") {
+      return badRequest("课程与专业必须保持一致，禁止提交不一致的 major_id / course_id 组合");
+    }
+    if (pg.constraint === "course_resource_score_events_resource_major_fk") {
+      return conflict("积分事件的专业归属与资源归属不一致，请先检查资源主数据");
+    }
+    if (pg.constraint === "course_resource_score_events_resource_user_fk") {
+      return conflict("积分事件的归属用户必须等于资源作者，请先检查资源主数据");
+    }
+    if (pg.constraint === "course_resource_bests_best_by_fk") {
+      return badRequest("最佳推荐设置人不存在或不可用");
+    }
+  }
+
+  if (pg?.code === "23514") {
+    if (pg.constraint === "course_resources_status_consistency_chk") {
+      return conflict("资源状态与提交/审核/发布字段不一致");
+    }
+    if (pg.constraint === "course_resources_file_or_link_chk") {
+      return badRequest("文件资源与外链资源的字段组合不合法");
+    }
+    if (pg.constraint === "course_resource_bests_resource_published_chk") {
+      return conflict("仅已发布资源允许设为最佳");
+    }
+  }
+
+  return err;
 }
 
 function getStorageErrorMeta(err: unknown): { status?: number; message: string } {
@@ -919,9 +964,7 @@ export async function updateMyResource(params: {
   try {
     await db.update(courseResources).set(patch).where(and(eq(courseResources.id, params.resourceId), eq(courseResources.createdBy, params.userId)));
   } catch (err) {
-    const code = (err as { code?: string } | null)?.code;
-    if (code === "23505") throw conflict("资源去重冲突：同一课程下存在相同文件/外链");
-    throw err;
+    throw translateCourseResourceWriteError(err);
   }
 
   return getMyResourceDetail({ userId: params.userId, resourceId: params.resourceId });
@@ -998,17 +1041,32 @@ export async function submitMyResource(params: { userId: string; resourceId: str
 
   await assertReadyForSubmit(row);
 
-  await db
-    .update(courseResources)
-    .set({
-      status: "pending",
-      submittedAt: sql`now()`,
-      reviewedBy: null,
-      reviewedAt: null,
-      reviewComment: null,
-      updatedBy: params.userId,
-    })
-    .where(and(eq(courseResources.id, row.id), eq(courseResources.createdBy, params.userId)));
+  try {
+    const updated = await db
+      .update(courseResources)
+      .set({
+        status: "pending",
+        submittedAt: sql`now()`,
+        reviewedBy: null,
+        reviewedAt: null,
+        reviewComment: null,
+        publishedAt: null,
+        unpublishedAt: null,
+        updatedBy: params.userId,
+      })
+      .where(
+        and(
+          eq(courseResources.id, row.id),
+          eq(courseResources.createdBy, params.userId),
+          inArray(courseResources.status, ["draft", "rejected", "unpublished"]),
+        ),
+      )
+      .returning({ id: courseResources.id });
+
+    if (updated.length === 0) throw conflict("资源状态已变化，请刷新后重试");
+  } catch (err) {
+    throw translateCourseResourceWriteError(err);
+  }
 
   return getMyResourceDetail({ userId: params.userId, resourceId: row.id });
 }
@@ -1020,10 +1078,13 @@ export async function unpublishMyResource(params: { userId: string; resourceId: 
   if (row.createdBy !== params.userId) throw notFound();
   if (row.status !== "published") throw conflict("仅已发布资源允许下架");
 
-  await db
+  const updated = await db
     .update(courseResources)
     .set({ status: "unpublished", unpublishedAt: sql`now()`, updatedBy: params.userId })
-    .where(eq(courseResources.id, row.id));
+    .where(and(eq(courseResources.id, row.id), eq(courseResources.status, "published")))
+    .returning({ id: courseResources.id });
+
+  if (updated.length === 0) throw conflict("资源状态已变化，请刷新后重试");
 
   return getMyResourceDetail({ userId: params.userId, resourceId: row.id });
 }
@@ -1785,7 +1846,7 @@ export async function approveConsoleResource(params: {
     }
 
     await db.transaction(async (tx) => {
-      await tx
+      const updated = await tx
         .update(courseResources)
         .set({
           status: "published",
@@ -1796,7 +1857,10 @@ export async function approveConsoleResource(params: {
           unpublishedAt: null,
           updatedBy: params.actor.userId,
         })
-        .where(eq(courseResources.id, params.resourceId));
+        .where(and(eq(courseResources.id, params.resourceId), eq(courseResources.status, "pending")))
+        .returning({ id: courseResources.id });
+
+      if (updated.length === 0) throw conflict("资源状态已变化，请刷新后重试");
 
       await tx
         .insert(courseResourceScoreEvents)
@@ -1825,18 +1889,19 @@ export async function approveConsoleResource(params: {
 
     return getConsoleResourceDetail({ actorUserId: params.actor.userId, resourceId: params.resourceId });
   } catch (err) {
+    const translated = translateCourseResourceWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "resource.review.approve",
       targetType: "course_resource",
       targetId: params.resourceId,
       success: false,
-      errorCode: toErrorCode(err),
+      errorCode: toErrorCode(translated),
       reason: params.reason,
       diff: { before, comment: params.comment ?? null },
       request: params.request,
     }).catch(() => {});
-    throw err;
+    throw translated;
   }
 }
 
@@ -1855,7 +1920,7 @@ export async function rejectConsoleResource(params: {
   if (before.status !== "pending") throw conflict("仅待审核资源允许驳回");
 
   try {
-    await db
+    const updated = await db
       .update(courseResources)
       .set({
         status: "rejected",
@@ -1864,7 +1929,10 @@ export async function rejectConsoleResource(params: {
         reviewComment: params.comment,
         updatedBy: params.actor.userId,
       })
-      .where(eq(courseResources.id, params.resourceId));
+      .where(and(eq(courseResources.id, params.resourceId), eq(courseResources.status, "pending")))
+      .returning({ id: courseResources.id });
+
+    if (updated.length === 0) throw conflict("资源状态已变化，请刷新后重试");
 
     const after = await getResourceAuditSnapshot(params.resourceId);
 
@@ -1881,18 +1949,19 @@ export async function rejectConsoleResource(params: {
 
     return getConsoleResourceDetail({ actorUserId: params.actor.userId, resourceId: params.resourceId });
   } catch (err) {
+    const translated = translateCourseResourceWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "resource.review.reject",
       targetType: "course_resource",
       targetId: params.resourceId,
       success: false,
-      errorCode: toErrorCode(err),
+      errorCode: toErrorCode(translated),
       reason: params.reason,
       diff: { before, comment: params.comment },
       request: params.request,
     }).catch(() => {});
-    throw err;
+    throw translated;
   }
 }
 
@@ -1904,24 +1973,44 @@ export async function offlineConsoleResource(params: { resourceId: string; actor
   if (!before) throw notFound();
   if (before.status !== "published") throw conflict("仅已发布资源允许下架");
 
-  await db
-    .update(courseResources)
-    .set({ status: "unpublished", unpublishedAt: sql`now()`, updatedBy: params.actor.userId })
-    .where(eq(courseResources.id, params.resourceId));
-  const after = await getResourceAuditSnapshot(params.resourceId);
+  try {
+    const updated = await db
+      .update(courseResources)
+      .set({ status: "unpublished", unpublishedAt: sql`now()`, updatedBy: params.actor.userId })
+      .where(and(eq(courseResources.id, params.resourceId), eq(courseResources.status, "published")))
+      .returning({ id: courseResources.id });
 
-  await writeAuditLog({
-    actor: params.actor,
-    action: "resource.offline",
-    targetType: "course_resource",
-    targetId: params.resourceId,
-    success: true,
-    reason: params.reason,
-    diff: { before, after },
-    request: params.request,
-  });
+    if (updated.length === 0) throw conflict("资源状态已变化，请刷新后重试");
 
-  return getConsoleResourceDetail({ actorUserId: params.actor.userId, resourceId: params.resourceId });
+    const after = await getResourceAuditSnapshot(params.resourceId);
+
+    await writeAuditLog({
+      actor: params.actor,
+      action: "resource.offline",
+      targetType: "course_resource",
+      targetId: params.resourceId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after },
+      request: params.request,
+    });
+
+    return getConsoleResourceDetail({ actorUserId: params.actor.userId, resourceId: params.resourceId });
+  } catch (err) {
+    const translated = translateCourseResourceWriteError(err);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "resource.offline",
+      targetType: "course_resource",
+      targetId: params.resourceId,
+      success: false,
+      errorCode: toErrorCode(translated),
+      reason: params.reason,
+      diff: { before },
+      request: params.request,
+    }).catch(() => {});
+    throw translated;
+  }
 }
 
 export async function bestConsoleResource(params: { resourceId: string; actor: AuditActor; request: RequestContext; reason?: string }) {
@@ -1932,43 +2021,61 @@ export async function bestConsoleResource(params: { resourceId: string; actor: A
   if (!before) throw notFound();
   if (before.status !== "published") throw conflict("仅已发布资源允许设为最佳");
 
-  const bestDelta = await getConfigNumber("courseResources.score.bestDelta", DEFAULT_BEST_DELTA);
-  const detail = await getResourceDetailBase(params.resourceId);
+  let bestDelta = DEFAULT_BEST_DELTA;
 
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(courseResourceBests)
-      .values({ resourceId: params.resourceId, bestBy: params.actor.userId })
-      .onConflictDoUpdate({
-        target: courseResourceBests.resourceId,
-        set: { bestBy: params.actor.userId, bestAt: sql`now()` },
-      });
+  try {
+    bestDelta = await getConfigNumber("courseResources.score.bestDelta", DEFAULT_BEST_DELTA);
+    const detail = await getResourceDetailBase(params.resourceId);
 
-    await tx
-      .insert(courseResourceScoreEvents)
-      .values({
-        userId: detail.createdBy,
-        majorId: detail.majorId,
-        resourceId: detail.id,
-        eventType: "best",
-        delta: Math.max(1, Math.trunc(bestDelta)),
-      })
-      .onConflictDoNothing();
-  });
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(courseResourceBests)
+        .values({ resourceId: params.resourceId, bestBy: params.actor.userId })
+        .onConflictDoUpdate({
+          target: courseResourceBests.resourceId,
+          set: { bestBy: params.actor.userId, bestAt: sql`now()` },
+        });
 
-  const after = await getResourceAuditSnapshot(params.resourceId);
-  await writeAuditLog({
-    actor: params.actor,
-    action: "resource.best.set",
-    targetType: "course_resource",
-    targetId: params.resourceId,
-    success: true,
-    reason: params.reason,
-    diff: { before, after, bestDelta },
-    request: params.request,
-  });
+      await tx
+        .insert(courseResourceScoreEvents)
+        .values({
+          userId: detail.createdBy,
+          majorId: detail.majorId,
+          resourceId: detail.id,
+          eventType: "best",
+          delta: Math.max(1, Math.trunc(bestDelta)),
+        })
+        .onConflictDoNothing();
+    });
 
-  return getConsoleResourceDetail({ actorUserId: params.actor.userId, resourceId: params.resourceId });
+    const after = await getResourceAuditSnapshot(params.resourceId);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "resource.best.set",
+      targetType: "course_resource",
+      targetId: params.resourceId,
+      success: true,
+      reason: params.reason,
+      diff: { before, after, bestDelta },
+      request: params.request,
+    });
+
+    return getConsoleResourceDetail({ actorUserId: params.actor.userId, resourceId: params.resourceId });
+  } catch (err) {
+    const translated = translateCourseResourceWriteError(err);
+    await writeAuditLog({
+      actor: params.actor,
+      action: "resource.best.set",
+      targetType: "course_resource",
+      targetId: params.resourceId,
+      success: false,
+      errorCode: toErrorCode(translated),
+      reason: params.reason,
+      diff: { before, bestDelta },
+      request: params.request,
+    }).catch(() => {});
+    throw translated;
+  }
 }
 
 export async function unbestConsoleResource(params: { resourceId: string; actor: AuditActor; request: RequestContext; reason?: string }) {

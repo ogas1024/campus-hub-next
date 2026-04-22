@@ -1,0 +1,15 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+flowchart TD
+    A[有效预约生效] --> B{是否在使用前<br/>主动取消}
+    B -- 是 --> C[更新为已取消<br/>并释放时段]
+    B -- 否 --> D{用户是否<br/>正常到场}
+    D -- 是 --> E[登记使用情况]
+    E --> F[更新为已完成]
+    D -- 否 --> G[记录违约<br/>或异常情况]
+    G --> H{是否需要<br/>封禁处理}
+    H -- 是 --> I[新增封禁记录]
+    H -- 否 --> J[记录处理意见]
+    C --> K[写入日志<br/>与统计数据]
+    F --> K
+    I --> K
+    J --> K

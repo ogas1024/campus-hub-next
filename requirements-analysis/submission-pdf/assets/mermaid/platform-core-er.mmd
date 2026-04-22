@@ -1,0 +1,61 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+erDiagram
+    USERS {
+        uuid user_id PK
+        string login_name
+        string user_status
+    }
+
+    PROFILES {
+        uuid user_id PK, FK
+        string real_name
+        string student_no
+    }
+
+    DEPARTMENTS {
+        uuid dept_id PK
+        uuid parent_dept_id FK
+        string dept_name
+    }
+
+    ROLES {
+        uuid role_id PK
+        string role_name
+    }
+
+    PERMISSIONS {
+        uuid permission_id PK
+        string permission_name
+    }
+
+    USER_DEPARTMENTS {
+        uuid user_id PK, FK
+        uuid dept_id PK, FK
+        bool is_primary
+    }
+
+    USER_ROLES {
+        uuid user_id PK, FK
+        uuid role_id PK, FK
+    }
+
+    ROLE_PERMISSIONS {
+        uuid role_id PK, FK
+        uuid permission_id PK, FK
+    }
+
+    AUDIT_LOGS {
+        uuid log_id PK
+        uuid actor_user_id FK
+        string action_type
+    }
+
+    USERS ||--|| PROFILES : has
+    DEPARTMENTS ||--o{ DEPARTMENTS : parent_child
+    USERS ||--o{ USER_DEPARTMENTS : belongs
+    DEPARTMENTS ||--o{ USER_DEPARTMENTS : contains
+    USERS ||--o{ USER_ROLES : assigned
+    ROLES ||--o{ USER_ROLES : maps
+    ROLES ||--o{ ROLE_PERMISSIONS : grants
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : includes
+    USERS ||--o{ AUDIT_LOGS : writes

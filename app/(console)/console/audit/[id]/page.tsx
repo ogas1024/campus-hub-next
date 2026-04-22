@@ -45,7 +45,7 @@ export default async function ConsoleAuditDetailPage({ params }: { params: Promi
         <Card>
           <CardHeader>
             <CardTitle>摘要</CardTitle>
-            <CardDescription>动作、目标与操作者等基本字段。</CardDescription>
+            <CardDescription>动作、目标与操作者快照等基本字段。</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-3 gap-4 text-sm">
@@ -75,6 +75,10 @@ export default async function ConsoleAuditDetailPage({ params }: { params: Promi
                 <dd className="text-foreground">{log.errorCode ?? "—"}</dd>
               </div>
 
+              <div className="space-y-1">
+                <dt className="text-xs text-muted-foreground">actorName</dt>
+                <dd className="text-foreground">{log.actorName ?? "—"}</dd>
+              </div>
               <div className="space-y-1">
                 <dt className="text-xs text-muted-foreground">actorEmail</dt>
                 <dd className="text-foreground">{log.actorEmail ?? "—"}</dd>

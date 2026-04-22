@@ -125,7 +125,7 @@ export default async function ConsoleAuditPage({ searchParams }: { searchParams:
               name="q"
               uiSize="sm"
               className="w-56"
-              placeholder="action/targetId/actorEmail"
+              placeholder="action/targetId/actorName/actorEmail"
               defaultValue={q}
             />
           </div>
@@ -253,7 +253,8 @@ export default async function ConsoleAuditPage({ searchParams }: { searchParams:
               <tr key={it.id} className="border-t border-border/50">
                 <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(it.occurredAt).toLocaleString()}</td>
                 <td className="px-3 py-2">
-                  <div className="text-sm text-foreground">{it.actorEmail ?? "—"}</div>
+                  <div className="text-sm text-foreground">{it.actorName ?? it.actorEmail ?? "—"}</div>
+                  {it.actorName ? <div className="mt-1 text-xs text-muted-foreground">{it.actorEmail ?? "—"}</div> : null}
                   <div className="mt-1 font-mono text-xs text-muted-foreground">{it.actorUserId}</div>
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-foreground">{it.action}</td>

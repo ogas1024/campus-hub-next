@@ -1,0 +1,17 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+flowchart TD
+    A[资源已发布] --> B[用户检索与浏览]
+    B --> C{是否下载}
+    C -- 是 --> D[记录下载事件]
+    D --> E[记录积分变化]
+    C -- 否 --> F{是否进入<br/>推荐展示}
+    E --> F
+    F -- 是 --> G[写入推荐记录]
+    F -- 否 --> H{是否申请下架<br/>或违规下架}
+    G --> H
+    H -- 否 --> I[保持发布状态]
+    H -- 是 --> J[管理员执行下架]
+    J --> K[更新为已下架<br/>并停止公开展示]
+    K --> L{是否重新提交<br/>或恢复上架}
+    L -- 是 --> M[重新审核后发布]
+    L -- 否 --> N[归档保留]

@@ -20,8 +20,9 @@ type ToastItem = {
 };
 
 const DEFAULT_DURATION_MS = 2400;
+const EMPTY_TOASTS: ToastItem[] = [];
 
-let items: ToastItem[] = [];
+let items: ToastItem[] = EMPTY_TOASTS;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -38,13 +39,13 @@ function getSnapshot() {
 }
 
 function getServerSnapshot() {
-  return [];
+  return EMPTY_TOASTS;
 }
 
 function remove(id: string) {
   const next = items.filter((it) => it.id !== id);
   if (next.length === items.length) return;
-  items = next;
+  items = next.length === 0 ? EMPTY_TOASTS : next;
   emit();
 }
 

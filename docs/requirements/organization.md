@@ -86,7 +86,7 @@
   - 存在某个 `U` 满足：`U` 是 `D` 的后代或自身（通过 `department_closure` 判断）
 
 该规则将应用于：
-- 通知公告按部门可见范围（见 `docs/requirements/notices.md`）
+- 历史模块中的“按部门可见”场景
 - 数据范围/数据权限（见 `data-permission.md`）
 
 ### 3.2 部门删除

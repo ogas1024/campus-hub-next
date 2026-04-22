@@ -1,0 +1,18 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+flowchart TD
+    A[选择课程并创建草稿] --> B[填写标题<br/>和资源说明]
+    B --> C{资源类型}
+    C -- 文件 --> D[上传资源文件]
+    C -- 外链 --> E[填写外部链接]
+    D --> F{信息是否完整}
+    E --> F
+    F -- 否 --> G[保存草稿<br/>继续编辑]
+    G --> B
+    F -- 是 --> H[提交审核]
+    H --> I[审核人检查内容]
+    I --> J{审核结果}
+    J -- 通过 --> K[发布资源]
+    J -- 驳回 --> L[记录驳回意见]
+    L --> M{是否修改重提}
+    M -- 是 --> B
+    M -- 否 --> N[保留驳回状态]

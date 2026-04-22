@@ -4,7 +4,7 @@ export const scopeTypeSchema = z.enum(["ALL", "CUSTOM", "DEPT", "DEPT_AND_CHILD"
 
 export const roleDataScopeItemSchema = z
   .object({
-    module: z.string().trim().min(1).max(50),
+    module: z.string().trim().min(1).max(50).regex(/^[a-z][a-z0-9_]*$/, "module 格式不合法"),
     scopeType: scopeTypeSchema,
     departmentIds: z.array(z.string().uuid()).optional(),
   })
@@ -16,4 +16,3 @@ export const setRoleDataScopesBodySchema = z
     reason: z.string().trim().min(1).max(500).optional(),
   })
   .strict();
-

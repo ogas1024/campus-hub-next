@@ -249,7 +249,7 @@ stateDiagram-v2
 
 ### 8.2 Console（/console/resources）
 
-- 导航信息架构：遵循 `docs/requirements/console-ia.md`；入口位于 Console 的“生活平台 → 课程资源分享”，模块内子视图使用 Tabs，并按任务流拆分子页面（避免单页堆叠）。
+- 导航信息架构：入口位于 Console 的“课程资源分享”，模块内子视图使用 Tabs，并按任务流拆分子页面，避免单页堆叠。
 - 页面清单：
   - `/console/resources/pending`：待审核（approve/reject）
   - `/console/resources/published`：已发布（offline/best/unbest）

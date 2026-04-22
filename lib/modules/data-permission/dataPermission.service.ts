@@ -3,18 +3,49 @@ import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { badRequest, notFound } from "@/lib/http/errors";
+import { HttpError, badRequest, notFound } from "@/lib/http/errors";
 import type { RequestContext } from "@/lib/http/route";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
 import { mergeConfiguredDataScope, type DbScopeType, type ResolvedDataScope } from "./dataPermission.merge";
-import { departmentClosure, departments, roleDataScopeDepartments, roleDataScopes, roles, userDepartments, userRoles } from "@campus-hub/db";
+import {
+  appModules,
+  dataScopeModules,
+  departmentClosure,
+  departments,
+  roleDataScopeDepartments,
+  roleDataScopes,
+  roles,
+  userDepartments,
+  userRoles,
+} from "@campus-hub/db";
 
 type ScopeType = "ALL" | "CUSTOM" | "DEPT" | "DEPT_AND_CHILD" | "SELF" | "NONE";
+type PgErrorLike = { code?: string; constraint?: string } | null;
 
 function assertModuleName(module: string) {
   const ok = /^[a-z][a-z0-9_]*$/.test(module);
   if (!ok) throw badRequest("module 命名仅允许小写字母/数字/下划线，且必须以字母开头");
+}
+
+function toErrorCode(err: unknown) {
+  return err instanceof HttpError ? err.code : "INTERNAL_ERROR";
+}
+
+function translateDataPermissionWriteError(err: unknown) {
+  if (err instanceof HttpError) return err;
+
+  const pg = err as PgErrorLike;
+  if (pg?.code === "23503") {
+    if (pg.constraint === "role_data_scopes_module_fk") {
+      return badRequest("module 不存在，或当前未开通数据权限能力");
+    }
+    if (pg.constraint === "role_data_scope_departments_fk") {
+      return badRequest("角色数据范围主记录不存在，请先保存模块级范围配置");
+    }
+  }
+
+  return err;
 }
 
 function toDbScopeType(scopeType: ScopeType): DbScopeType {
@@ -57,6 +88,23 @@ async function expandToDescendants(deptIds: string[]) {
   return [...new Set(rows.map((r) => r.id))];
 }
 
+async function assertDataScopeModulesExist(modules: string[]) {
+  const ids = [...new Set(modules)];
+  if (ids.length === 0) return;
+
+  const rows = await db
+    .select({ moduleCode: dataScopeModules.moduleCode })
+    .from(dataScopeModules)
+    .innerJoin(appModules, eq(appModules.code, dataScopeModules.moduleCode))
+    .where(and(inArray(dataScopeModules.moduleCode, ids), eq(appModules.enabled, true)));
+
+  if (rows.length !== ids.length) {
+    const found = new Set(rows.map((r) => r.moduleCode));
+    const missing = ids.filter((id) => !found.has(id));
+    throw badRequest("存在不存在或未启用数据权限的 module", { missing });
+  }
+}
+
 export async function getRoleDataScopes(roleId: string) {
   const roleRow = await db.select({ id: roles.id }).from(roles).where(eq(roles.id, roleId)).limit(1);
   if (!roleRow[0]) throw notFound("角色不存在");
@@ -64,8 +112,9 @@ export async function getRoleDataScopes(roleId: string) {
   const scopeRows = await db
     .select({ module: roleDataScopes.module, scopeType: roleDataScopes.scopeType })
     .from(roleDataScopes)
+    .innerJoin(appModules, eq(appModules.code, roleDataScopes.module))
     .where(eq(roleDataScopes.roleId, roleId))
-    .orderBy(asc(roleDataScopes.module));
+    .orderBy(asc(appModules.sort), asc(roleDataScopes.module));
 
   const customModules = scopeRows.filter((r) => r.scopeType === "custom").map((r) => r.module);
 
@@ -115,6 +164,8 @@ export async function setRoleDataScopes(params: {
   const modules = normalized.map((i) => i.module);
   const uniqueModules = new Set(modules);
   if (uniqueModules.size !== modules.length) throw badRequest("items.module 不允许重复");
+
+  await assertDataScopeModulesExist([...uniqueModules]);
 
   for (const item of normalized) {
     if (item.scopeType === "CUSTOM" && item.departmentIds.length === 0) {
@@ -188,23 +239,25 @@ export async function setRoleDataScopes(params: {
 
     return getRoleDataScopes(params.roleId);
   } catch (err) {
+    const translated = translateDataPermissionWriteError(err);
     await writeAuditLog({
       actor: params.actor,
       action: "role.data_scopes.update",
       targetType: "role",
       targetId: params.roleId,
       success: false,
-      errorCode: "INTERNAL_ERROR",
+      errorCode: toErrorCode(translated),
       reason: params.reason,
       diff: { before: before.items, after: nextItems },
       request: params.request,
     }).catch(() => {});
-    throw err;
+    throw translated;
   }
 }
 
 export async function resolveMergedScopeForUser(params: { userId: string; module: string }): Promise<ResolvedDataScope> {
   assertModuleName(params.module);
+  await assertDataScopeModulesExist([params.module]);
 
   const roleIds = await getUserRoleIds(params.userId);
   if (roleIds.length === 0) return { scopeType: "SELF" };

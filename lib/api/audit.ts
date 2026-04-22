@@ -5,6 +5,7 @@ export type AuditLogListItem = {
   occurredAt: string;
   actorUserId: string;
   actorEmail: string | null;
+  actorName: string | null;
   action: string;
   targetType: string;
   targetId: string;
@@ -23,6 +24,7 @@ export type AuditLogDetail = {
   occurredAt: string;
   actorUserId: string;
   actorEmail: string | null;
+  actorName: string | null;
   actorRoles: unknown;
   action: string;
   targetType: string;
@@ -66,4 +68,3 @@ export function fetchAuditLogs(params: {
 export function fetchAuditLogDetail(id: string) {
   return apiGetJson<AuditLogDetail>(`/api/console/audit-logs/${id}`);
 }
-

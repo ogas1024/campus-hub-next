@@ -1,0 +1,54 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#F8FAFC', 'primaryTextColor': '#1F2937', 'primaryBorderColor': '#64748B', 'lineColor': '#64748B', 'fontFamily': 'PingFang SC, Hiragino Sans GB, sans-serif' }}}%%
+erDiagram
+    USERS {
+        uuid user_id PK
+        string login_name
+    }
+
+    MAJORS {
+        uuid major_id PK
+        string major_name
+    }
+
+    COURSES {
+        uuid course_id PK
+        uuid major_id FK
+        string course_name
+    }
+
+    MAJOR_LEADS {
+        uuid major_id PK, FK
+        uuid user_id PK, FK
+    }
+
+    COURSE_RESOURCES {
+        uuid resource_id PK
+        uuid course_id FK
+        uuid creator_user_id FK
+        string resource_type
+        string resource_status
+    }
+
+    COURSE_RESOURCE_DOWNLOADS {
+        uuid download_id PK
+        uuid resource_id FK
+        uuid user_id FK
+        datetime download_time
+    }
+
+    COURSE_RESOURCE_SCORE_EVENTS {
+        uuid score_event_id PK
+        uuid user_id FK
+        uuid resource_id FK
+        int score_delta
+    }
+
+    MAJORS ||--o{ COURSES : contains
+    MAJORS ||--o{ MAJOR_LEADS : assigns
+    USERS ||--o{ MAJOR_LEADS : serves
+    COURSES ||--o{ COURSE_RESOURCES : owns
+    USERS ||--o{ COURSE_RESOURCES : submits
+    COURSE_RESOURCES ||--o{ COURSE_RESOURCE_DOWNLOADS : generates
+    USERS ||--o{ COURSE_RESOURCE_DOWNLOADS : downloads
+    COURSE_RESOURCES ||--o{ COURSE_RESOURCE_SCORE_EVENTS : affects
+    USERS ||--o{ COURSE_RESOURCE_SCORE_EVENTS : receives

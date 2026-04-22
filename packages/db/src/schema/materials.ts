@@ -1,5 +1,6 @@
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -11,6 +12,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+
+import { appModules } from "./modules";
 
 export const collectTaskStatusEnum = pgEnum("collect_task_status", ["draft", "published", "closed"]);
 export const collectScopeTypeEnum = pgEnum("collect_scope_type", ["role", "department", "position"]);
@@ -44,6 +47,11 @@ export const collectTasks = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => ({
+    moduleFk: foreignKey({
+      name: "collect_tasks_module_fk",
+      columns: [t.module],
+      foreignColumns: [appModules.code],
+    }).onDelete("restrict"),
     moduleSourceActiveUq: uniqueIndex("collect_tasks_module_source_active_uq")
       .on(t.module, t.sourceType, t.sourceId)
       .where(sql`source_id is not null and deleted_at is null`),

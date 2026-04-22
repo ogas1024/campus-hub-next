@@ -12,6 +12,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+import { authUsers } from "./auth";
+
 export const facilityReservationStatusEnum = pgEnum("facility_reservation_status", ["pending", "approved", "rejected", "cancelled"]);
 
 export const facilityBuildings = pgTable(
@@ -37,7 +39,9 @@ export const facilityRooms = pgTable(
   "facility_rooms",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    buildingId: uuid("building_id").notNull(),
+    buildingId: uuid("building_id")
+      .notNull()
+      .references(() => facilityBuildings.id, { onDelete: "restrict" }),
     floorNo: integer("floor_no").notNull(),
     name: text("name").notNull(),
     capacity: integer("capacity"),
@@ -63,23 +67,29 @@ export const facilityReservations = pgTable(
   "facility_reservations",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    roomId: uuid("room_id").notNull(),
-    applicantId: uuid("applicant_id").notNull(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => facilityRooms.id, { onDelete: "restrict" }),
+    applicantId: uuid("applicant_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
     purpose: text("purpose").notNull(),
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
     endAt: timestamp("end_at", { withTimezone: true }).notNull(),
     status: facilityReservationStatusEnum("status").notNull(),
 
-    reviewedBy: uuid("reviewed_by"),
+    reviewedBy: uuid("reviewed_by").references(() => authUsers.id, { onDelete: "set null" }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     rejectReason: text("reject_reason"),
 
-    cancelledBy: uuid("cancelled_by"),
+    cancelledBy: uuid("cancelled_by").references(() => authUsers.id, { onDelete: "set null" }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
 
-    createdBy: uuid("created_by").notNull(),
-    updatedBy: uuid("updated_by"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
+    updatedBy: uuid("updated_by").references(() => authUsers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -88,20 +98,30 @@ export const facilityReservations = pgTable(
     applicantIdIdx: index("facility_reservations_applicant_id_idx").on(t.applicantId),
     statusIdx: index("facility_reservations_status_idx").on(t.status),
     timeRoomIdx: index("facility_reservations_time_room_idx").on(t.roomId, t.startAt, t.endAt),
+    activeTimeIdx: index("facility_reservations_room_active_time_idx")
+      .on(t.roomId, t.startAt, t.endAt)
+      .where(sql`${t.status} in ('pending', 'approved')`),
   }),
 );
 
 export const facilityReservationParticipants = pgTable(
   "facility_reservation_participants",
   {
-    reservationId: uuid("reservation_id").notNull(),
-    userId: uuid("user_id").notNull(),
+    reservationId: uuid("reservation_id")
+      .notNull()
+      .references(() => facilityReservations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
     isApplicant: boolean("is_applicant").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     pk: primaryKey({ name: "facility_reservation_participants_pk", columns: [t.reservationId, t.userId] }),
     userIdIdx: index("facility_reservation_participants_user_id_idx").on(t.userId),
+    applicantUq: uniqueIndex("facility_reservation_participants_applicant_uq")
+      .on(t.reservationId)
+      .where(sql`${t.isApplicant}`),
   }),
 );
 
@@ -109,13 +129,17 @@ export const facilityBans = pgTable(
   "facility_bans",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
     reason: text("reason"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     revokedReason: text("revoked_reason"),
-    createdBy: uuid("created_by").notNull(),
-    revokedBy: uuid("revoked_by"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "restrict" }),
+    revokedBy: uuid("revoked_by").references(() => authUsers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

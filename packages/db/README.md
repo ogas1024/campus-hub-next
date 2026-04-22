@@ -21,8 +21,16 @@
 - `migrations/0009_library.sql`
 - `migrations/0010_lostfound.sql`
 - `migrations/0011_votes.sql`
+- `migrations/0012_course_design_constraints.sql`
+- `migrations/0013_course_resource_author_and_best_constraints.sql`
+- `migrations/0014_facility_reservation_status_consistency.sql`
+- `migrations/0015_module_dictionary_and_data_scope_fks.sql`
+- `migrations/0016_audit_actor_snapshot_strategy.sql`
+- `migrations/0017_collect_tasks_module_fk_backfill.sql`
 
 > 注意：`0002_infra.sql` 依赖 `0001_baseline.sql` 中的 `public.set_updated_at()` 等基础函数与基线表结构。
+>
+> 注意：`0017_collect_tasks_module_fk_backfill.sql` 是升级收敛迁移，专门处理“某环境先执行 0015，再补跑 0008”时 `collect_tasks_module_fk` 缺失的问题；从空库全量执行时也应一并执行，且该迁移保持幂等。
 
 ### 0002_infra.sql 变更概览
 - 新增基础设施表：
