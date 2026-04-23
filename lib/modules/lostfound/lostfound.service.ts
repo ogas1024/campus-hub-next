@@ -17,7 +17,7 @@ import {
   LOSTFOUND_SIGNED_URL_EXPIRES_IN_SECONDS,
 } from "@/lib/modules/lostfound/lostfound.ui";
 import { assertOwnedImageKeys, parseIsoDateTimeOrNull, requireUuid } from "@/lib/modules/lostfound/lostfound.utils";
-import { authUsers, lostfoundItemImages, lostfoundItems, profiles } from "@campus-hub/db";
+import { lostfoundItemImages, lostfoundItems, profiles } from "@campus-hub/db";
 
 type LostfoundStatus = "pending" | "published" | "rejected" | "offline";
 type LostfoundType = "lost" | "found";
@@ -615,13 +615,12 @@ export async function getConsoleLostfoundDetail(params: { itemId: string }) {
       createdBy: lostfoundItems.createdBy,
       authorName: profiles.name,
       authorStudentId: profiles.studentId,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: lostfoundItems.createdAt,
       updatedAt: lostfoundItems.updatedAt,
     })
     .from(lostfoundItems)
     .leftJoin(profiles, eq(profiles.id, lostfoundItems.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, lostfoundItems.createdBy))
     .where(and(eq(lostfoundItems.id, params.itemId), isNull(lostfoundItems.deletedAt)))
     .limit(1);
 

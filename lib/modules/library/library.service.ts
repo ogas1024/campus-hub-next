@@ -20,7 +20,7 @@ import {
 } from "@/lib/modules/library/library.utils";
 import { sanitizeStorageObjectKeyPart } from "@/lib/utils/fileName";
 import { storageAdapter } from "@/lib/storage";
-import { authUsers, libraryBookAssets, libraryBookDownloadEvents, libraryBookFavorites, libraryBooks, profiles } from "@campus-hub/db";
+import { libraryBookAssets, libraryBookDownloadEvents, libraryBookFavorites, libraryBooks, profiles } from "@campus-hub/db";
 
 const SIGNED_URL_EXPIRES_IN = 60;
 
@@ -125,7 +125,7 @@ async function getBookRow(bookId: string): Promise<BookRow | null> {
       lastDownloadAt: libraryBooks.lastDownloadAt,
       createdBy: libraryBooks.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: libraryBooks.createdAt,
       updatedBy: libraryBooks.updatedBy,
       updatedAt: libraryBooks.updatedAt,
@@ -133,7 +133,6 @@ async function getBookRow(bookId: string): Promise<BookRow | null> {
     })
     .from(libraryBooks)
     .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
     .where(eq(libraryBooks.id, bookId))
     .limit(1);
 
@@ -396,7 +395,7 @@ export async function listPortalLibraryBooks(params: {
       lastDownloadAt: libraryBooks.lastDownloadAt,
       createdBy: libraryBooks.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: libraryBooks.createdAt,
       updatedBy: libraryBooks.updatedBy,
       updatedAt: libraryBooks.updatedAt,
@@ -404,7 +403,6 @@ export async function listPortalLibraryBooks(params: {
     })
     .from(libraryBooks)
     .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
     .where(and(...where))
     .orderBy(...orderBy)
     .limit(params.pageSize)
@@ -559,7 +557,7 @@ export async function getPortalLibraryBookDownloadLeaderboard(params: { userId: 
         lastDownloadAt: libraryBooks.lastDownloadAt,
         createdBy: libraryBooks.createdBy,
         authorName: profiles.name,
-        authorEmail: authUsers.email,
+        authorEmail: profiles.email,
         createdAt: libraryBooks.createdAt,
         updatedBy: libraryBooks.updatedBy,
         updatedAt: libraryBooks.updatedAt,
@@ -567,7 +565,6 @@ export async function getPortalLibraryBookDownloadLeaderboard(params: { userId: 
       })
       .from(libraryBooks)
       .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-      .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
       .where(and(isNull(libraryBooks.deletedAt), eq(libraryBooks.status, "published")))
       .orderBy(desc(libraryBooks.downloadCount), desc(libraryBooks.publishedAt), desc(libraryBooks.createdAt))
       .limit(20);
@@ -625,7 +622,7 @@ export async function getPortalLibraryBookDownloadLeaderboard(params: { userId: 
       lastDownloadAt: libraryBooks.lastDownloadAt,
       createdBy: libraryBooks.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: libraryBooks.createdAt,
       updatedBy: libraryBooks.updatedBy,
       updatedAt: libraryBooks.updatedAt,
@@ -633,7 +630,6 @@ export async function getPortalLibraryBookDownloadLeaderboard(params: { userId: 
     })
     .from(libraryBooks)
     .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
     .where(inArray(libraryBooks.id, bookIds));
 
   const byId = new Map(books.map((b) => [b.id, b as unknown as BookRow]));
@@ -737,7 +733,7 @@ export async function listMyLibraryBooks(params: { userId: string; page: number;
       lastDownloadAt: libraryBooks.lastDownloadAt,
       createdBy: libraryBooks.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: libraryBooks.createdAt,
       updatedBy: libraryBooks.updatedBy,
       updatedAt: libraryBooks.updatedAt,
@@ -745,7 +741,6 @@ export async function listMyLibraryBooks(params: { userId: string; page: number;
     })
     .from(libraryBooks)
     .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
     .where(and(...where))
     .orderBy(desc(libraryBooks.createdAt))
     .limit(params.pageSize)
@@ -968,7 +963,7 @@ export async function listMyFavoriteLibraryBooks(params: { userId: string; page:
       lastDownloadAt: libraryBooks.lastDownloadAt,
       createdBy: libraryBooks.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: libraryBooks.createdAt,
       updatedBy: libraryBooks.updatedBy,
       updatedAt: libraryBooks.updatedAt,
@@ -977,7 +972,6 @@ export async function listMyFavoriteLibraryBooks(params: { userId: string; page:
     .from(libraryBookFavorites)
     .innerJoin(libraryBooks, eq(libraryBooks.id, libraryBookFavorites.bookId))
     .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
     .where(and(eq(libraryBookFavorites.userId, params.userId), isNull(libraryBooks.deletedAt), eq(libraryBooks.status, "published")))
     .orderBy(desc(libraryBookFavorites.createdAt))
     .limit(params.pageSize)
@@ -1254,7 +1248,7 @@ export async function listConsoleLibraryBooks(params: {
       lastDownloadAt: libraryBooks.lastDownloadAt,
       createdBy: libraryBooks.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: libraryBooks.createdAt,
       updatedBy: libraryBooks.updatedBy,
       updatedAt: libraryBooks.updatedAt,
@@ -1262,7 +1256,6 @@ export async function listConsoleLibraryBooks(params: {
     })
     .from(libraryBooks)
     .innerJoin(profiles, eq(profiles.id, libraryBooks.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, libraryBooks.createdBy))
     .where(and(...where))
     .orderBy(desc(libraryBooks.createdAt))
     .limit(params.pageSize)

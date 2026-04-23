@@ -10,7 +10,7 @@ import type { RequestContext } from "@/lib/http/route";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
 import { buildUserIdDataScopeCondition } from "@/lib/modules/data-permission/dataPermission.where";
-import { authUsers, departmentClosure, departments, positions, profiles, roles, userDepartments, userPositions, userRoles } from "@campus-hub/db";
+import { departmentClosure, departments, positions, profiles, roles, userDepartments, userPositions, userRoles } from "@campus-hub/db";
 
 type ProfileStatus = "pending_email_verification" | "pending_approval" | "active" | "disabled" | "banned";
 
@@ -137,10 +137,10 @@ export async function listConsoleUsers(params: {
 
   if (params.status) {
     if (params.status === "banned") {
-      where.push(or(eq(profiles.status, "banned"), and(sql`${authUsers.bannedUntil} is not null`, sql`${authUsers.bannedUntil} > now()`))!);
+      where.push(or(eq(profiles.status, "banned"), and(sql`${profiles.authBannedUntil} is not null`, sql`${profiles.authBannedUntil} > now()`))!);
     } else {
       where.push(eq(profiles.status, params.status));
-      where.push(or(sql`${authUsers.bannedUntil} is null`, sql`${authUsers.bannedUntil} <= now()`)!);
+      where.push(or(sql`${profiles.authBannedUntil} is null`, sql`${profiles.authBannedUntil} <= now()`)!);
     }
   }
 
@@ -150,7 +150,7 @@ export async function listConsoleUsers(params: {
       or(
         sql`${profiles.name} ilike ${pattern}`,
         sql`${profiles.studentId} ilike ${pattern}`,
-        sql`${authUsers.email} ilike ${pattern}`,
+        sql`${profiles.email} ilike ${pattern}`,
       )!,
     );
   }
@@ -190,15 +190,14 @@ export async function listConsoleUsers(params: {
     db
       .select({ total: sql<number>`count(*)` })
       .from(profiles)
-      .innerJoin(authUsers, eq(authUsers.id, profiles.id))
       .where(and(...where)),
     db
       .select({
         id: profiles.id,
-        email: authUsers.email,
-        emailConfirmedAt: authUsers.emailConfirmedAt,
-        bannedUntil: authUsers.bannedUntil,
-        deletedAt: authUsers.deletedAt,
+        email: profiles.email,
+        emailConfirmedAt: profiles.emailConfirmedAt,
+        bannedUntil: profiles.authBannedUntil,
+        deletedAt: profiles.authDeletedAt,
         name: profiles.name,
         studentId: profiles.studentId,
         status: profiles.status,
@@ -207,7 +206,6 @@ export async function listConsoleUsers(params: {
         lastLoginAt: profiles.lastLoginAt,
       })
       .from(profiles)
-      .innerJoin(authUsers, eq(authUsers.id, profiles.id))
       .where(and(...where))
       .orderBy(orderExpr, desc(profiles.createdAt), desc(profiles.id))
       .limit(params.pageSize)
@@ -284,15 +282,14 @@ export async function getConsoleUserDetail(params: { actorUserId: string; userId
       createdAt: profiles.createdAt,
       updatedAt: profiles.updatedAt,
       lastLoginAt: profiles.lastLoginAt,
-      email: authUsers.email,
-      emailConfirmedAt: authUsers.emailConfirmedAt,
-      authCreatedAt: authUsers.createdAt,
-      lastSignInAt: authUsers.lastSignInAt,
-      bannedUntil: authUsers.bannedUntil,
-      deletedAt: authUsers.deletedAt,
+      email: profiles.email,
+      emailConfirmedAt: profiles.emailConfirmedAt,
+      authCreatedAt: profiles.createdAt,
+      lastSignInAt: profiles.lastLoginAt,
+      bannedUntil: profiles.authBannedUntil,
+      deletedAt: profiles.authDeletedAt,
     })
     .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
     .where(and(eq(profiles.id, params.userId), visibilityCondition))
     .limit(1);
 
@@ -670,9 +667,13 @@ export async function enableUser(params: { userId: string; actor: AuditActor; re
   await assertActorCanMutateTarget({ actorUserId: params.actor.userId, targetUserId: params.userId, operation: "user.enable" });
 
   const rows = await db
-    .select({ status: profiles.status, emailConfirmedAt: authUsers.emailConfirmedAt, bannedUntil: authUsers.bannedUntil, deletedAt: authUsers.deletedAt })
+    .select({
+      status: profiles.status,
+      emailConfirmedAt: profiles.emailConfirmedAt,
+      bannedUntil: profiles.authBannedUntil,
+      deletedAt: profiles.authDeletedAt,
+    })
     .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
     .where(eq(profiles.id, params.userId))
     .limit(1);
 

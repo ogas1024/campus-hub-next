@@ -11,7 +11,6 @@ import { writeAuditLog } from "@/lib/modules/audit/audit.service";
 import { parseDurationMs, parseIsoDateTime, requireUuid } from "@/lib/modules/facilities/facilities.utils";
 import {
   appConfig,
-  authUsers,
   facilityBans,
   facilityBuildings,
   facilityReservationParticipants,
@@ -110,13 +109,12 @@ async function assertActiveUsersExist(userIds: string[]) {
   const rows = await db
     .select({ id: profiles.id })
     .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
     .where(
       and(
         inArray(profiles.id, ids),
         eq(profiles.status, "active"),
-        isNull(authUsers.deletedAt),
-        or(isNull(authUsers.bannedUntil), sql`${authUsers.bannedUntil} <= now()`)!,
+        isNull(profiles.authDeletedAt),
+        or(isNull(profiles.authBannedUntil), sql`${profiles.authBannedUntil} <= now()`)!,
       ),
     );
 
@@ -150,13 +148,12 @@ export async function searchActiveUsers(params: { q: string; limit: number }) {
   const rows = await db
     .select({ id: profiles.id, name: profiles.name, studentId: profiles.studentId })
     .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
     .where(
       and(
         eq(profiles.status, "active"),
-        isNull(authUsers.deletedAt),
-        or(isNull(authUsers.bannedUntil), sql`${authUsers.bannedUntil} <= now()`)!,
-        or(sql`${profiles.name} ilike ${pattern}`, sql`${profiles.studentId} ilike ${pattern}`, sql`${authUsers.email} ilike ${pattern}`)!,
+        isNull(profiles.authDeletedAt),
+        or(isNull(profiles.authBannedUntil), sql`${profiles.authBannedUntil} <= now()`)!,
+        or(sql`${profiles.name} ilike ${pattern}`, sql`${profiles.studentId} ilike ${pattern}`, sql`${profiles.email} ilike ${pattern}`)!,
       ),
     )
     .orderBy(asc(profiles.name), asc(profiles.studentId))

@@ -21,19 +21,26 @@ export const profiles = pgTable(
   "profiles",
   {
     id: uuid("id").primaryKey(),
+    email: text("email"),
+    emailConfirmedAt: timestamp("email_confirmed_at", { withTimezone: true }),
     name: text("name").notNull(),
     username: text("username"),
     studentId: text("student_id").notNull(),
     avatarUrl: text("avatar_url"),
     status: profileStatusEnum("status").notNull().default("pending_email_verification"),
+    authBannedUntil: timestamp("auth_banned_until", { withTimezone: true }),
+    authDeletedAt: timestamp("auth_deleted_at", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
+    emailIdx: index("profiles_email_idx").on(t.email),
     usernameUq: uniqueIndex("profiles_username_uq").on(t.username),
     studentIdUq: uniqueIndex("profiles_student_id_uq").on(t.studentId),
     statusIdx: index("profiles_status_idx").on(t.status),
+    authBannedUntilIdx: index("profiles_auth_banned_until_idx").on(t.authBannedUntil),
+    authDeletedAtIdx: index("profiles_auth_deleted_at_idx").on(t.authDeletedAt),
   }),
 );
 

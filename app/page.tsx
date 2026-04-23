@@ -5,7 +5,6 @@ import { PortalShell } from "@/components/layout/PortalShell";
 import { ModuleIcon } from "@/components/layout/ModuleIcon";
 import { PortalHomeFavorites } from "@/components/portal/PortalHomeFavorites";
 import { portalModules, portalNavItems, type PortalModuleStatus } from "@/lib/navigation/modules";
-import { resolveConsoleLandingHref } from "@/lib/navigation/consoleLanding";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +17,7 @@ function filterPortalModulesByStatus(status: PortalModuleStatus) {
 
 export default async function Home() {
   const user = await getCurrentUser();
-  const consoleHref = user ? await resolveConsoleLandingHref(user.id) : null;
+  const consoleHref = user ? "/console" : null;
 
   const portalHomePreferences = await readPortalHomePreferences();
 

@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/lib/auth/types";
 import { devTtlCached, hashCacheKey } from "@/lib/utils/devTtlCache";
 import { requestCached } from "@/lib/utils/requestCache";
-import { appConfig, authUsers, profiles } from "@campus-hub/db";
+import { appConfig, profiles } from "@campus-hub/db";
 
 type ProfileStatus = "active" | "disabled" | "banned" | "pending_approval" | "pending_email_verification";
 
@@ -86,15 +86,15 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
 
     const rows = await db
       .select({
+        email: profiles.email,
         status: profiles.status,
         name: profiles.name,
         avatarUrl: profiles.avatarUrl,
-        emailConfirmedAt: authUsers.emailConfirmedAt,
-        bannedUntil: authUsers.bannedUntil,
-        deletedAt: authUsers.deletedAt,
+        emailConfirmedAt: profiles.emailConfirmedAt,
+        bannedUntil: profiles.authBannedUntil,
+        deletedAt: profiles.authDeletedAt,
       })
       .from(profiles)
-      .leftJoin(authUsers, eq(authUsers.id, profiles.id))
       .where(eq(profiles.id, userId))
       .limit(1);
 
@@ -124,7 +124,7 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
         authenticated: true,
         allowed: true,
         userId,
-        email: userEmail,
+        email: row.email ?? userEmail,
         name: row.name,
         avatarUrl: row.avatarUrl ?? null,
         profileStatus,
@@ -149,7 +149,7 @@ export async function getUserAccessInfo(): Promise<UserAccessInfo> {
       authenticated: true,
       allowed: false,
       userId,
-      email: userEmail,
+      email: row.email ?? userEmail,
       name: row.name,
       avatarUrl: row.avatarUrl ?? null,
       profileStatus,

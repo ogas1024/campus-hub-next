@@ -11,7 +11,6 @@ import { COURSE_RESOURCES_BUCKET, normalizeExternalUrl, sanitizeStorageObjectKey
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   appConfig,
-  authUsers,
   courseResourceBests,
   courseResourceDownloadEvents,
   courseResourceScoreEvents,
@@ -1395,11 +1394,10 @@ export async function listConsoleMajorLeads(params: { majorId: string; actorUser
       userId: majorLeads.userId,
       name: profiles.name,
       username: profiles.username,
-      email: authUsers.email,
+      email: profiles.email,
     })
     .from(majorLeads)
     .leftJoin(profiles, eq(profiles.id, majorLeads.userId))
-    .leftJoin(authUsers, eq(authUsers.id, majorLeads.userId))
     .where(eq(majorLeads.majorId, params.majorId))
     .orderBy(asc(profiles.name), asc(majorLeads.userId));
 
@@ -1741,7 +1739,7 @@ export async function getConsoleResourceDetail(params: { actorUserId: string; re
 
       createdBy: courseResources.createdBy,
       authorName: profiles.name,
-      authorEmail: authUsers.email,
+      authorEmail: profiles.email,
       createdAt: courseResources.createdAt,
       updatedBy: courseResources.updatedBy,
       updatedAt: courseResources.updatedAt,
@@ -1752,7 +1750,6 @@ export async function getConsoleResourceDetail(params: { actorUserId: string; re
     .innerJoin(majors, eq(majors.id, courseResources.majorId))
     .innerJoin(courses, eq(courses.id, courseResources.courseId))
     .leftJoin(profiles, eq(profiles.id, courseResources.createdBy))
-    .leftJoin(authUsers, eq(authUsers.id, courseResources.createdBy))
     .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
     .where(and(eq(courseResources.id, params.resourceId), isNull(courseResources.deletedAt)))
     .limit(1);

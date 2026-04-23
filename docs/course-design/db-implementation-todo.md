@@ -97,6 +97,8 @@
 - 2026-04-22 已完成本轮测试数据清理：模块字典验证使用的临时角色 `db_test_role_0015` 已删除，`role_data_scopes` 未残留测试记录。
 - 2026-04-22 已处理前端运行时告警第一项：`components/ui/toast.tsx` 中 `useSyncExternalStore(..., getServerSnapshot)` 原先每次返回新数组 `[]`，会在 Next.js 16 / React 19 开发态触发 “The result of getServerSnapshot should be cached to avoid an infinite loop”；现已改为复用稳定的 `EMPTY_TOASTS` 引用，并在清空 toast 时复用同一空快照。
 - 2026-04-22 已完成 `TimeoutNegativeWarning` 初判：仓库业务代码中未发现服务端负数 `setTimeout`；当前安装的 `react-dom` server runtime 代码中存在 `setTimeout(..., $RT + 300 - performance.now())` 这一开发态调度逻辑，因此 `ResourcesMajorsPage` 上看到的 `(node) TimeoutNegativeWarning` 更可能属于 Next.js 16.0.10 / React 19.2.1 开发运行时告警，而非本项目页面业务逻辑错误。后续若继续出现，优先考虑升级 Next.js 或切回 `pnpm dev:webpack` 复核。
+- 2026-04-23 已收敛共享渲染路径上的后台权限依赖：`app/page.tsx`、`app/(portal)/layout.tsx` 不再在每次前台 SSR 时调用 `resolveConsoleLandingHref(user.id)` 计算后台落点，而是统一只暴露轻量入口 `/console`，把真正的权限分流留在 `app/(console)/console/page.tsx` 内部处理，避免前台首页 / portal layout 被后台权限树查询拖慢甚至级联卡死。
+- 2026-04-23 已开始清理 `auth.users` 热路径依赖：新增 `packages/db/migrations/0018_profiles_auth_snapshot.sql`，把 `email / email_confirmed_at / auth_banned_until / auth_deleted_at` 镜像到 `public.profiles` 并通过触发器与 `auth.users` 同步；`lib/auth/session.ts`、`lib/modules/profile/profile.service.ts`、`lib/modules/iam/users.service.ts`、`lib/modules/facilities/facilities.service.ts`、`lib/modules/course-resources/courseResources.service.ts`、`lib/modules/library/library.service.ts`、`lib/modules/lostfound/lostfound.service.ts` 已切换为优先读取 `profiles` 快照，减少对 `auth.users` 的直接 join。
 - 2026-04-21 已完成测试数据清理：Supabase 项目中用于课程资源 / 功能房约束验证的测试账号、测试楼房/房间、测试专业/课程/课程资源均已删除。
 - 2026-04-21 已新增复现实验文档：`docs/report/database/supabase-reproduction-and-screenshot-checklist.md`，用于后续答辩复做与截图取证。
 

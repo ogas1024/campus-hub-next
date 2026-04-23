@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { conflict, notFound } from "@/lib/http/errors";
-import { authUsers, profiles } from "@campus-hub/db";
+import { profiles } from "@campus-hub/db";
 
 export type MyProfile = {
   id: string;
@@ -23,7 +23,7 @@ export async function getMyProfile(userId: string): Promise<MyProfile> {
   const rows = await db
     .select({
       id: profiles.id,
-      email: authUsers.email,
+      email: profiles.email,
       name: profiles.name,
       username: profiles.username,
       studentId: profiles.studentId,
@@ -34,7 +34,6 @@ export async function getMyProfile(userId: string): Promise<MyProfile> {
       lastLoginAt: profiles.lastLoginAt,
     })
     .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
     .where(eq(profiles.id, userId))
     .limit(1);
 
