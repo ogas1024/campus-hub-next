@@ -1,6 +1,6 @@
 import "server-only";
 
-import { hasAnyPerm, hasPerm } from "@/lib/auth/permissions";
+import { getPermissionChecker } from "@/lib/auth/permissions";
 
 import type { WorkbenchContext } from "./types";
 
@@ -10,11 +10,17 @@ export function createWorkbenchContext(params: { actorUserId: string; now?: Date
 
   const permCache = new Map<string, Promise<boolean>>();
   const anyPermCache = new Map<string, Promise<boolean>>();
+  let checkerPromise: ReturnType<typeof getPermissionChecker> | null = null;
+
+  function getChecker() {
+    checkerPromise ??= getPermissionChecker(params.actorUserId);
+    return checkerPromise;
+  }
 
   async function canPerm(permCode: string) {
     const cached = permCache.get(permCode);
     if (cached) return cached;
-    const promise = hasPerm(params.actorUserId, permCode);
+    const promise = getChecker().then((checker) => checker.hasPerm(permCode));
     permCache.set(permCode, promise);
     return promise;
   }
@@ -24,7 +30,7 @@ export function createWorkbenchContext(params: { actorUserId: string; now?: Date
     const cacheKey = uniqueSorted.join("|");
     const cached = anyPermCache.get(cacheKey);
     if (cached) return cached;
-    const promise = hasAnyPerm(params.actorUserId, uniqueSorted);
+    const promise = getChecker().then((checker) => checker.hasAnyPerm(uniqueSorted));
     anyPermCache.set(cacheKey, promise);
     return promise;
   }

@@ -9,7 +9,9 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { hasPerm, requirePerm } from "@/lib/auth/permissions";
+import { getPermissionChecker } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
+import { forbidden } from "@/lib/http/errors";
 import { parseIntParam } from "@/lib/http/query";
 import { withDialogHref } from "@/lib/navigation/dialog";
 import { listConsoleUsers } from "@/lib/modules/iam/users.service";
@@ -67,7 +69,9 @@ function buildConsoleUsersHref(params: {
 }
 
 export default async function ConsoleUsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const [user, sp] = await Promise.all([requirePerm("campus:user:list"), searchParams]);
+  const [user, sp] = await Promise.all([requireUser(), searchParams]);
+  const checker = await getPermissionChecker(user.id);
+  if (!checker.hasPerm("campus:user:list")) throw forbidden();
 
   const q = pickString(sp.q) ?? "";
   const status = pickString(sp.status);
@@ -103,15 +107,15 @@ export default async function ConsoleUsersPage({ searchParams }: { searchParams:
     positionsData,
     data,
   ] = await Promise.all([
-    hasPerm(user.id, "campus:user:read"),
-    hasPerm(user.id, "campus:user:create"),
-    hasPerm(user.id, "campus:user:invite"),
-    hasPerm(user.id, "campus:user:approve"),
-    hasPerm(user.id, "campus:user:disable"),
-    hasPerm(user.id, "campus:user:ban"),
-    hasPerm(user.id, "campus:user:delete"),
-    hasPerm(user.id, "campus:user:assign_role"),
-    hasPerm(user.id, "campus:user:assign_org"),
+    checker.hasPerm("campus:user:read"),
+    checker.hasPerm("campus:user:create"),
+    checker.hasPerm("campus:user:invite"),
+    checker.hasPerm("campus:user:approve"),
+    checker.hasPerm("campus:user:disable"),
+    checker.hasPerm("campus:user:ban"),
+    checker.hasPerm("campus:user:delete"),
+    checker.hasPerm("campus:user:assign_role"),
+    checker.hasPerm("campus:user:assign_org"),
     listRoles(),
     listDepartments(),
     listPositions(),

@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { WorkbenchAnalyticsClient } from "@/components/console/workbench/analytics/WorkbenchAnalyticsClient";
-import { hasAnyPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { consoleEntryPermCodes } from "@/lib/navigation/modules";
+import { resolveConsoleLandingHref } from "@/lib/navigation/consoleLanding";
 import { readWorkbenchAnalyticsPreferences } from "@/lib/workbench/preferences.server";
 
 export default async function ConsoleWorkbenchAnalyticsPage() {
@@ -14,11 +13,10 @@ export default async function ConsoleWorkbenchAnalyticsPage() {
     redirect("/login");
   }
 
-  const canEnterConsole = await hasAnyPerm(user.id, [...consoleEntryPermCodes]);
-  if (!canEnterConsole) redirect("/notices");
+  const landingHref = await resolveConsoleLandingHref(user.id);
+  if (!landingHref) redirect("/notices");
 
   const preferences = await readWorkbenchAnalyticsPreferences();
 
   return <WorkbenchAnalyticsClient initialPreferences={preferences} />;
 }
-

@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { WorkbenchAnalyticsScreenClient } from "@/components/console/workbench/analytics/WorkbenchAnalyticsScreenClient";
-import { hasAnyPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { consoleEntryPermCodes } from "@/lib/navigation/modules";
+import { resolveConsoleLandingHref } from "@/lib/navigation/consoleLanding";
 import { parseAnalyticsDaysParam } from "@/lib/modules/analytics/analytics.service";
 import { readWorkbenchAnalyticsPreferences } from "@/lib/workbench/preferences.server";
 
@@ -23,8 +22,8 @@ export default async function ScreenWorkbenchAnalyticsPage({ searchParams }: { s
     redirect("/login");
   }
 
-  const canEnterConsole = await hasAnyPerm(user.id, [...consoleEntryPermCodes]);
-  if (!canEnterConsole) redirect("/notices");
+  const landingHref = await resolveConsoleLandingHref(user.id);
+  if (!landingHref) redirect("/notices");
 
   const sp = await searchParams;
   const days = parseAnalyticsDaysParam(pickString(sp.days), { defaultValue: 30 });
@@ -32,4 +31,3 @@ export default async function ScreenWorkbenchAnalyticsPage({ searchParams }: { s
 
   return <WorkbenchAnalyticsScreenClient initialPreferences={preferences} initialDays={days} />;
 }
-

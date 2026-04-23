@@ -6,7 +6,7 @@ import { UserAvatar } from "@/components/common/UserAvatar";
 import { ConsoleSidebar } from "@/components/console/ConsoleSidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
-import { hasAnyPerm } from "@/lib/auth/permissions";
+import { getPermissionChecker } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { consoleNavGroups } from "@/lib/navigation/modules";
 
@@ -18,15 +18,16 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
     redirect("/login");
   }
 
-  const allowedGroups = await Promise.all(
-    consoleNavGroups.map(async (g) => {
-      const allowedItems = await Promise.all(g.items.map(async (m) => ((await hasAnyPerm(user.id, m.permCodes)) ? m : null)));
-      const items = allowedItems.filter((m): m is NonNullable<typeof m> => m !== null).map(({ id, label, href }) => ({ id, label, href }));
+  const checker = await getPermissionChecker(user.id);
+  const navGroups = consoleNavGroups
+    .map((group) => {
+      const items = group.items
+        .filter((module) => checker.hasAnyPerm(module.permCodes))
+        .map(({ id, label, href }) => ({ id, label, href }));
       if (items.length === 0) return null;
-      return { id: g.id, label: g.label, items };
-    }),
-  );
-  const navGroups = allowedGroups.filter((g): g is NonNullable<typeof g> => g !== null);
+      return { id: group.id, label: group.label, items };
+    })
+    .filter((group): group is NonNullable<typeof group> => group !== null);
 
   if (navGroups.length === 0) redirect("/notices");
 

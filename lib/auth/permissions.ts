@@ -27,7 +27,7 @@ function expandPermCandidates(permCode: string) {
   return [...out];
 }
 
-async function getUserPermissionCodeSet(userId: string): Promise<Set<string>> {
+export async function getUserPermissionCodeSet(userId: string): Promise<Set<string>> {
   const key = `auth:userPermissionCodes:${userId}`;
   return requestCached(key, async () => {
     const rows = await db
@@ -41,15 +41,9 @@ async function getUserPermissionCodeSet(userId: string): Promise<Set<string>> {
   });
 }
 
-export async function hasPerm(userId: string, permCode: string) {
-  return hasAnyPerm(userId, [permCode]);
-}
-
-export async function hasAnyPerm(userId: string, permCodes: string[]) {
+function matchesAnyPerm(granted: Set<string>, permCodes: string[]) {
   const inputs = [...new Set(permCodes)].map((c) => c.trim()).filter(Boolean);
   if (inputs.length === 0) return false;
-
-  const granted = await getUserPermissionCodeSet(userId);
   if (granted.size === 0) return false;
 
   for (const code of inputs) {
@@ -58,6 +52,29 @@ export async function hasAnyPerm(userId: string, permCodes: string[]) {
     }
   }
   return false;
+}
+
+export async function getPermissionChecker(userId: string) {
+  const granted = await getUserPermissionCodeSet(userId);
+  return {
+    granted,
+    hasPerm(permCode: string) {
+      return matchesAnyPerm(granted, [permCode]);
+    },
+    hasAnyPerm(permCodes: string[]) {
+      return matchesAnyPerm(granted, permCodes);
+    },
+  };
+}
+
+export async function hasPerm(userId: string, permCode: string) {
+  const checker = await getPermissionChecker(userId);
+  return checker.hasPerm(permCode);
+}
+
+export async function hasAnyPerm(userId: string, permCodes: string[]) {
+  const checker = await getPermissionChecker(userId);
+  return checker.hasAnyPerm(permCodes);
 }
 
 export async function requirePerm(permCode: string) {
