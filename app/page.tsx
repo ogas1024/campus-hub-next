@@ -2,10 +2,10 @@ import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { PortalShell } from "@/components/layout/PortalShell";
-import { hasAnyPerm } from "@/lib/auth/permissions";
 import { ModuleIcon } from "@/components/layout/ModuleIcon";
 import { PortalHomeFavorites } from "@/components/portal/PortalHomeFavorites";
-import { consoleEntryPermCodes, portalModules, portalNavItems, type PortalModuleStatus } from "@/lib/navigation/modules";
+import { portalModules, portalNavItems, type PortalModuleStatus } from "@/lib/navigation/modules";
+import { resolveConsoleLandingHref } from "@/lib/navigation/consoleLanding";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ function filterPortalModulesByStatus(status: PortalModuleStatus) {
 
 export default async function Home() {
   const user = await getCurrentUser();
-  const canEnterConsole = user ? await hasAnyPerm(user.id, [...consoleEntryPermCodes]) : false;
+  const consoleHref = user ? await resolveConsoleLandingHref(user.id) : null;
 
   const portalHomePreferences = await readPortalHomePreferences();
 
@@ -28,7 +28,7 @@ export default async function Home() {
   const availableCount = availableModules.length;
 
   return (
-    <PortalShell user={user} canEnterConsole={canEnterConsole} navItems={portalNavItems}>
+    <PortalShell user={user} consoleHref={consoleHref} navItems={portalNavItems}>
       <div className="space-y-10">
         <Card>
           <CardHeader>

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { hasAnyPerm } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { consoleEntryPermCodes } from "@/lib/navigation/modules";
+import { resolveConsoleLandingHref } from "@/lib/navigation/consoleLanding";
 
 export default async function ConsoleIndexPage() {
   let user: Awaited<ReturnType<typeof requireUser>>;
@@ -12,8 +11,8 @@ export default async function ConsoleIndexPage() {
     redirect("/login");
   }
 
-  const canEnterConsole = await hasAnyPerm(user.id, [...consoleEntryPermCodes]);
-  if (canEnterConsole) redirect("/console/workbench");
+  const landingHref = await resolveConsoleLandingHref(user.id);
+  if (landingHref) redirect(landingHref);
 
   redirect("/notices");
 }

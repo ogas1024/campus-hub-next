@@ -40,31 +40,30 @@ export default async function CourseResourcesPage({
   params: Promise<{ majorId: string; courseId: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const user = await getCurrentUser();
+  const [user, { majorId, courseId }, sp] = await Promise.all([getCurrentUser(), params, searchParams]);
   if (!user) redirect("/login");
-
-  const { majorId, courseId } = await params;
-  const sp = await searchParams;
-
-  const majors = await listPortalMajors();
-  const major = majors.find((m) => m.id === majorId);
-  if (!major) notFound();
-
-  const courses = await listPortalCourses({ userId: user.id, majorId });
-  const course = courses.find((c) => c.id === courseId);
-  if (!course) notFound();
 
   const q = pickString(sp.q) ?? "";
   const page = parseIntParam(pickString(sp.page) ?? null, { defaultValue: 1, min: 1 });
   const pageSize = parseIntParam(pickString(sp.pageSize) ?? null, { defaultValue: 20, min: 1, max: 50 });
 
-  const data = await listPortalResources({
-    userId: user.id,
-    courseId,
-    page,
-    pageSize,
-    q: q.trim() ? q.trim() : undefined,
-  });
+  const [majors, courses, data] = await Promise.all([
+    listPortalMajors(),
+    listPortalCourses({ userId: user.id, majorId }),
+    listPortalResources({
+      userId: user.id,
+      courseId,
+      page,
+      pageSize,
+      q: q.trim() ? q.trim() : undefined,
+    }),
+  ]);
+
+  const major = majors.find((m) => m.id === majorId);
+  if (!major) notFound();
+
+  const course = courses.find((c) => c.id === courseId);
+  if (!course) notFound();
 
   const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
   const displayPage = Math.min(page, totalPages);

@@ -8,16 +8,15 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { listPortalCourses, listPortalMajors } from "@/lib/modules/course-resources/courseResources.service";
 
 export default async function ResourceCoursesPage({ params }: { params: Promise<{ majorId: string }> }) {
-  const user = await getCurrentUser();
+  const [{ majorId }, user] = await Promise.all([params, getCurrentUser()]);
   if (!user) redirect("/login");
 
-  const { majorId } = await params;
-
-  const majors = await listPortalMajors();
+  const [majors, courses] = await Promise.all([
+    listPortalMajors(),
+    listPortalCourses({ userId: user.id, majorId }),
+  ]);
   const major = majors.find((m) => m.id === majorId);
   if (!major) notFound();
-
-  const courses = await listPortalCourses({ userId: user.id, majorId });
 
   return (
     <div className="space-y-4">

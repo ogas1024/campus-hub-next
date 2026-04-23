@@ -25,9 +25,10 @@ type Props = {
   cards: WorkbenchCard[];
   quickLinks: WorkbenchQuickLink[];
   initialPreferences: WorkbenchPreferences;
+  summaryDeferred?: boolean;
 };
 
-export function WorkbenchClient({ cards, quickLinks, initialPreferences }: Props) {
+export function WorkbenchClient({ cards, quickLinks, initialPreferences, summaryDeferred = false }: Props) {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [allOpen, setAllOpen] = useState(false);
   const prefs: WorkbenchPreferences = useMemo(() => normalizeWorkbenchPreferences(initialPreferences), [initialPreferences]);
@@ -90,10 +91,26 @@ export function WorkbenchClient({ cards, quickLinks, initialPreferences }: Props
         {focusCards.length === 0 ? (
           <Card>
             <CardContent className="p-4">
-              <div className="space-y-1">
-                <div className="text-sm font-medium">当前没有待处理事项</div>
-                <div className="text-sm text-muted-foreground">你可以通过上方快捷入口进入模块，或展开“显示全部”查看所有卡片。</div>
-              </div>
+              {summaryDeferred ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium">工作台汇总已改为轻量模式</div>
+                    <div className="text-sm text-muted-foreground">
+                      不再在首屏同步扫描所有模块统计，避免后台导航被聚合查询阻塞。
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link className={buttonVariants({ size: "sm" })} href="/console/workbench/analytics">
+                      查看数据概览
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">当前没有待处理事项</div>
+                  <div className="text-sm text-muted-foreground">你可以通过上方快捷入口进入模块，或展开“显示全部”查看所有卡片。</div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (

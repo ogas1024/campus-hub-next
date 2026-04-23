@@ -7,6 +7,7 @@ import { HttpError, badRequest, notFound } from "@/lib/http/errors";
 import type { RequestContext } from "@/lib/http/route";
 import type { AuditActor } from "@/lib/modules/audit/audit.service";
 import { writeAuditLog } from "@/lib/modules/audit/audit.service";
+import { requestCached } from "@/lib/utils/requestCache";
 import { mergeConfiguredDataScope, type DbScopeType, type ResolvedDataScope } from "./dataPermission.merge";
 import {
   appModules,
@@ -256,45 +257,48 @@ export async function setRoleDataScopes(params: {
 }
 
 export async function resolveMergedScopeForUser(params: { userId: string; module: string }): Promise<ResolvedDataScope> {
-  assertModuleName(params.module);
-  await assertDataScopeModulesExist([params.module]);
+  const key = `data-permission:merged-scope:${params.userId}:${params.module}`;
+  return requestCached(key, async () => {
+    assertModuleName(params.module);
+    await assertDataScopeModulesExist([params.module]);
 
-  const roleIds = await getUserRoleIds(params.userId);
-  if (roleIds.length === 0) return { scopeType: "SELF" };
+    const roleIds = await getUserRoleIds(params.userId);
+    if (roleIds.length === 0) return { scopeType: "SELF" };
 
-  const scopeRows = await db
-    .select({ roleId: roleDataScopes.roleId, scopeType: roleDataScopes.scopeType })
-    .from(roleDataScopes)
-    .where(and(inArray(roleDataScopes.roleId, roleIds), eq(roleDataScopes.module, params.module)));
+    const scopeRows = await db
+      .select({ roleId: roleDataScopes.roleId, scopeType: roleDataScopes.scopeType })
+      .from(roleDataScopes)
+      .where(and(inArray(roleDataScopes.roleId, roleIds), eq(roleDataScopes.module, params.module)));
 
-  if (scopeRows.length === 0) {
-    const roleCodes = await getUserRoleCodes(params.userId);
-    if (roleCodes.includes("super_admin") || roleCodes.includes("admin")) return { scopeType: "ALL" };
-    return { scopeType: "SELF" };
-  }
-
-  const scopeTypes = scopeRows.map((r) => r.scopeType);
-
-  let customDepartmentIds: string[] = [];
-  if (scopeTypes.includes("custom")) {
-    const customRoleIds = scopeRows.filter((r) => r.scopeType === "custom").map((r) => r.roleId);
-    if (customRoleIds.length > 0) {
-      const deptRows = await db
-        .select({ departmentId: roleDataScopeDepartments.departmentId })
-        .from(roleDataScopeDepartments)
-        .where(and(inArray(roleDataScopeDepartments.roleId, customRoleIds), eq(roleDataScopeDepartments.module, params.module)));
-      customDepartmentIds = [...new Set(deptRows.map((r) => r.departmentId))];
+    if (scopeRows.length === 0) {
+      const roleCodes = await getUserRoleCodes(params.userId);
+      if (roleCodes.includes("super_admin") || roleCodes.includes("admin")) return { scopeType: "ALL" };
+      return { scopeType: "SELF" };
     }
-  }
 
-  const userDepartmentIds =
-    scopeTypes.includes("dept") || scopeTypes.includes("dept_and_child") ? await getUserDepartmentIds(params.userId) : [];
+    const scopeTypes = scopeRows.map((r) => r.scopeType);
 
-  return mergeConfiguredDataScope({
-    scopeTypes,
-    customDepartmentIds,
-    userDepartmentIds,
-    expandToDescendants,
+    let customDepartmentIds: string[] = [];
+    if (scopeTypes.includes("custom")) {
+      const customRoleIds = scopeRows.filter((r) => r.scopeType === "custom").map((r) => r.roleId);
+      if (customRoleIds.length > 0) {
+        const deptRows = await db
+          .select({ departmentId: roleDataScopeDepartments.departmentId })
+          .from(roleDataScopeDepartments)
+          .where(and(inArray(roleDataScopeDepartments.roleId, customRoleIds), eq(roleDataScopeDepartments.module, params.module)));
+        customDepartmentIds = [...new Set(deptRows.map((r) => r.departmentId))];
+      }
+    }
+
+    const userDepartmentIds =
+      scopeTypes.includes("dept") || scopeTypes.includes("dept_and_child") ? await getUserDepartmentIds(params.userId) : [];
+
+    return mergeConfiguredDataScope({
+      scopeTypes,
+      customDepartmentIds,
+      userDepartmentIds,
+      expandToDescendants,
+    });
   });
 }
 

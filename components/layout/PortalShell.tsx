@@ -16,12 +16,12 @@ type NavItem = {
 
 type Props = {
   user: AppUser | null;
-  canEnterConsole: boolean;
+  consoleHref: string | null;
   navItems: NavItem[];
   children: React.ReactNode;
 };
 
-export function PortalShell({ user, canEnterConsole, navItems, children }: Props) {
+export function PortalShell({ user, consoleHref, navItems, children }: Props) {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background">
@@ -36,8 +36,8 @@ export function PortalShell({ user, canEnterConsole, navItems, children }: Props
 
           <div className="flex shrink-0 items-center gap-3">
             <ThemeToggle />
-            {user && canEnterConsole ? (
-              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/console">
+            {user && consoleHref ? (
+              <Link className={buttonVariants({ variant: "outline", size: "sm" })} href={consoleHref}>
                 管理后台
               </Link>
             ) : null}

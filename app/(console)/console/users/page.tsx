@@ -67,9 +67,7 @@ function buildConsoleUsersHref(params: {
 }
 
 export default async function ConsoleUsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const user = await requirePerm("campus:user:list");
-
-  const sp = await searchParams;
+  const [user, sp] = await Promise.all([requirePerm("campus:user:list"), searchParams]);
 
   const q = pickString(sp.q) ?? "";
   const status = pickString(sp.status);

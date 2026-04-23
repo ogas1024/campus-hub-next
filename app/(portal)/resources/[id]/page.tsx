@@ -21,10 +21,9 @@ function typeLabel(type: string) {
 }
 
 export default async function ResourceDetailPage({ params }: Params) {
-  const user = await getCurrentUser();
+  const [user, { id }] = await Promise.all([getCurrentUser(), params]);
   if (!user) redirect("/login");
 
-  const { id } = await params;
   const resource = await getPortalResourceDetail({ userId: user.id, resourceId: id });
 
   return (

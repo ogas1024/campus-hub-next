@@ -6,14 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
-import { listPortalBuildings } from "@/lib/modules/facilities/facilities.service";
+import { getPortalFacilityConfig, listPortalBuildings, listPortalFloors } from "@/lib/modules/facilities/facilities.service";
 import { FacilitiesOverviewClient } from "@/components/facilities/FacilitiesOverviewClient";
 
 export default async function FacilitiesPage() {
-  const user = await getCurrentUser();
+  const [user, buildings, portalConfig] = await Promise.all([
+    getCurrentUser(),
+    listPortalBuildings(),
+    getPortalFacilityConfig(),
+  ]);
   if (!user) redirect("/login");
 
-  const buildings = await listPortalBuildings();
+  const firstBuildingId = buildings[0]?.id;
+  const initialFloors = firstBuildingId ? await listPortalFloors(firstBuildingId) : null;
 
   return (
     <div className="space-y-4">
@@ -38,7 +43,13 @@ export default async function FacilitiesPage() {
           <CardContent className="p-10 text-center text-sm text-muted-foreground">暂无可用楼房（请联系管理员在管理端创建并启用）。</CardContent>
         </Card>
       ) : (
-        <FacilitiesOverviewClient userId={user.id} buildings={buildings} />
+        <FacilitiesOverviewClient
+          userId={user.id}
+          buildings={buildings}
+          initialConfig={portalConfig}
+          initialFloors={initialFloors?.floors ?? []}
+          initialFloorNo={initialFloors?.floors[0] ?? null}
+        />
       )}
     </div>
   );

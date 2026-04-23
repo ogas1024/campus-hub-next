@@ -8,10 +8,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { listPortalMajors } from "@/lib/modules/course-resources/courseResources.service";
 
 export default async function ResourcesMajorsPage() {
-  const user = await getCurrentUser();
+  const [user, majors] = await Promise.all([getCurrentUser(), listPortalMajors()]);
   if (!user) redirect("/login");
-
-  const majors = await listPortalMajors();
 
   return (
     <div className="space-y-6">

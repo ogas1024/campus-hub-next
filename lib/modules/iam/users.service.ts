@@ -186,32 +186,33 @@ export async function listConsoleUsers(params: {
     params.sortBy === "updatedAt" ? profiles.updatedAt : params.sortBy === "lastLoginAt" ? profiles.lastLoginAt : profiles.createdAt;
   const orderExpr = params.sortOrder === "asc" ? asc(sortCol) : desc(sortCol);
 
-  const countRow = await db
-    .select({ total: sql<number>`count(*)` })
-    .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
-    .where(and(...where));
-
-  const rows = await db
-    .select({
-      id: profiles.id,
-      email: authUsers.email,
-      emailConfirmedAt: authUsers.emailConfirmedAt,
-      bannedUntil: authUsers.bannedUntil,
-      deletedAt: authUsers.deletedAt,
-      name: profiles.name,
-      studentId: profiles.studentId,
-      status: profiles.status,
-      createdAt: profiles.createdAt,
-      updatedAt: profiles.updatedAt,
-      lastLoginAt: profiles.lastLoginAt,
-    })
-    .from(profiles)
-    .innerJoin(authUsers, eq(authUsers.id, profiles.id))
-    .where(and(...where))
-    .orderBy(orderExpr, desc(profiles.createdAt), desc(profiles.id))
-    .limit(params.pageSize)
-    .offset(offset);
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(profiles)
+      .innerJoin(authUsers, eq(authUsers.id, profiles.id))
+      .where(and(...where)),
+    db
+      .select({
+        id: profiles.id,
+        email: authUsers.email,
+        emailConfirmedAt: authUsers.emailConfirmedAt,
+        bannedUntil: authUsers.bannedUntil,
+        deletedAt: authUsers.deletedAt,
+        name: profiles.name,
+        studentId: profiles.studentId,
+        status: profiles.status,
+        createdAt: profiles.createdAt,
+        updatedAt: profiles.updatedAt,
+        lastLoginAt: profiles.lastLoginAt,
+      })
+      .from(profiles)
+      .innerJoin(authUsers, eq(authUsers.id, profiles.id))
+      .where(and(...where))
+      .orderBy(orderExpr, desc(profiles.createdAt), desc(profiles.id))
+      .limit(params.pageSize)
+      .offset(offset),
+  ]);
 
   const userIds = rows.map((r) => r.id);
 

@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { consoleEntryPermCodes } from "@/lib/navigation/modules";
 import { createWorkbenchContext } from "@/lib/workbench/context";
 import { readWorkbenchPreferences } from "@/lib/workbench/preferences.server";
-import { collectWorkbenchContributions } from "@/lib/workbench/registry";
+import { collectWorkbenchQuickLinks } from "@/lib/workbench/registry";
 
 export default async function ConsoleWorkbenchPage() {
   let user: Awaited<ReturnType<typeof requireUser>>;
@@ -21,7 +21,7 @@ export default async function ConsoleWorkbenchPage() {
   const canEnterConsole = await ctx.canAnyPerm([...consoleEntryPermCodes]);
   if (!canEnterConsole) redirect("/notices");
 
-  const { cards, quickLinks } = await collectWorkbenchContributions(ctx);
+  const quickLinks = await collectWorkbenchQuickLinks(ctx);
 
-  return <WorkbenchClient cards={cards} quickLinks={quickLinks} initialPreferences={preferences} />;
+  return <WorkbenchClient cards={[]} quickLinks={quickLinks} initialPreferences={preferences} summaryDeferred />;
 }

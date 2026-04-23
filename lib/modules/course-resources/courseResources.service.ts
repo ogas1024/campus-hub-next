@@ -306,37 +306,38 @@ export async function listPortalResources(params: {
 
   const offset = (params.page - 1) * params.pageSize;
 
-  const countRow = await db
-    .select({ total: sql<number>`count(*)` })
-    .from(courseResources)
-    .where(and(...where));
-
-  const rows = await db
-    .select({
-      id: courseResources.id,
-      majorId: courseResources.majorId,
-      courseId: courseResources.courseId,
-      title: courseResources.title,
-      description: courseResources.description,
-      resourceType: courseResources.resourceType,
-      status: courseResources.status,
-      downloadCount: courseResources.downloadCount,
-      publishedAt: courseResources.publishedAt,
-      createdBy: courseResources.createdBy,
-      createdAt: courseResources.createdAt,
-      isBest: sql<boolean>`(${courseResourceBests.resourceId} is not null)`.as("isBest"),
-    })
-    .from(courseResources)
-    .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
-    .where(and(...where))
-    .orderBy(
-      desc(sql`(${courseResourceBests.resourceId} is not null)`),
-      desc(courseResources.downloadCount),
-      desc(courseResources.publishedAt),
-      desc(courseResources.createdAt),
-    )
-    .limit(params.pageSize)
-    .offset(offset);
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(courseResources)
+      .where(and(...where)),
+    db
+      .select({
+        id: courseResources.id,
+        majorId: courseResources.majorId,
+        courseId: courseResources.courseId,
+        title: courseResources.title,
+        description: courseResources.description,
+        resourceType: courseResources.resourceType,
+        status: courseResources.status,
+        downloadCount: courseResources.downloadCount,
+        publishedAt: courseResources.publishedAt,
+        createdBy: courseResources.createdBy,
+        createdAt: courseResources.createdAt,
+        isBest: sql<boolean>`(${courseResourceBests.resourceId} is not null)`.as("isBest"),
+      })
+      .from(courseResources)
+      .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
+      .where(and(...where))
+      .orderBy(
+        desc(sql`(${courseResourceBests.resourceId} is not null)`),
+        desc(courseResources.downloadCount),
+        desc(courseResources.publishedAt),
+        desc(courseResources.createdAt),
+      )
+      .limit(params.pageSize)
+      .offset(offset),
+  ]);
 
   return {
     page: params.page,
@@ -677,39 +678,40 @@ export async function listPortalUserWorks(params: {
 
   const offset = (params.page - 1) * params.pageSize;
 
-  const countRow = await db
-    .select({ total: sql<number>`count(*)` })
-    .from(courseResources)
-    .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
-    .where(and(...where));
-
   const orderBy = [];
   const dir = params.sortOrder === "asc" ? asc : desc;
   if (params.sortBy === "downloadCount") orderBy.push(dir(courseResources.downloadCount));
   else orderBy.push(dir(courseResources.publishedAt));
   orderBy.push(desc(courseResources.createdAt));
 
-  const rows = await db
-    .select({
-      id: courseResources.id,
-      majorId: courseResources.majorId,
-      courseId: courseResources.courseId,
-      title: courseResources.title,
-      description: courseResources.description,
-      resourceType: courseResources.resourceType,
-      status: courseResources.status,
-      downloadCount: courseResources.downloadCount,
-      publishedAt: courseResources.publishedAt,
-      createdBy: courseResources.createdBy,
-      createdAt: courseResources.createdAt,
-      isBest: sql<boolean>`(${courseResourceBests.resourceId} is not null)`.as("isBest"),
-    })
-    .from(courseResources)
-    .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
-    .where(and(...where))
-    .orderBy(...orderBy)
-    .limit(params.pageSize)
-    .offset(offset);
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(courseResources)
+      .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
+      .where(and(...where)),
+    db
+      .select({
+        id: courseResources.id,
+        majorId: courseResources.majorId,
+        courseId: courseResources.courseId,
+        title: courseResources.title,
+        description: courseResources.description,
+        resourceType: courseResources.resourceType,
+        status: courseResources.status,
+        downloadCount: courseResources.downloadCount,
+        publishedAt: courseResources.publishedAt,
+        createdBy: courseResources.createdBy,
+        createdAt: courseResources.createdAt,
+        isBest: sql<boolean>`(${courseResourceBests.resourceId} is not null)`.as("isBest"),
+      })
+      .from(courseResources)
+      .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
+      .where(and(...where))
+      .orderBy(...orderBy)
+      .limit(params.pageSize)
+      .offset(offset),
+  ]);
 
   return {
     page: params.page,
@@ -736,32 +738,33 @@ export async function listMyResources(params: {
 
   const offset = (params.page - 1) * params.pageSize;
 
-  const countRow = await db
-    .select({ total: sql<number>`count(*)` })
-    .from(courseResources)
-    .where(and(...where));
-
-  const rows = await db
-    .select({
-      id: courseResources.id,
-      majorId: courseResources.majorId,
-      courseId: courseResources.courseId,
-      title: courseResources.title,
-      description: courseResources.description,
-      resourceType: courseResources.resourceType,
-      status: courseResources.status,
-      downloadCount: courseResources.downloadCount,
-      publishedAt: courseResources.publishedAt,
-      createdBy: courseResources.createdBy,
-      createdAt: courseResources.createdAt,
-      isBest: sql<boolean>`(${courseResourceBests.resourceId} is not null)`.as("isBest"),
-    })
-    .from(courseResources)
-    .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
-    .where(and(...where))
-    .orderBy(desc(courseResources.createdAt))
-    .limit(params.pageSize)
-    .offset(offset);
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(courseResources)
+      .where(and(...where)),
+    db
+      .select({
+        id: courseResources.id,
+        majorId: courseResources.majorId,
+        courseId: courseResources.courseId,
+        title: courseResources.title,
+        description: courseResources.description,
+        resourceType: courseResources.resourceType,
+        status: courseResources.status,
+        downloadCount: courseResources.downloadCount,
+        publishedAt: courseResources.publishedAt,
+        createdBy: courseResources.createdBy,
+        createdAt: courseResources.createdAt,
+        isBest: sql<boolean>`(${courseResourceBests.resourceId} is not null)`.as("isBest"),
+      })
+      .from(courseResources)
+      .leftJoin(courseResourceBests, eq(courseResourceBests.resourceId, courseResources.id))
+      .where(and(...where))
+      .orderBy(desc(courseResources.createdAt))
+      .limit(params.pageSize)
+      .offset(offset),
+  ]);
 
   return {
     page: params.page,

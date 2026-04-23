@@ -53,10 +53,8 @@ function buildMyResourcesHref(params: { q?: string; status?: string; page?: numb
 }
 
 export default async function MyResourcesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const user = await getCurrentUser();
+  const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
   if (!user) redirect("/login");
-
-  const sp = await searchParams;
   const q = pickString(sp.q) ?? "";
   const status = pickString(sp.status) ?? "";
   const statusValue: "draft" | "pending" | "published" | "rejected" | "unpublished" | "" =

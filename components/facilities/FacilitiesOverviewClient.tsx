@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { InlineError } from "@/components/common/InlineError";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
   fetchFacilityFloorOverview,
   fetchFacilityFloors,
   type Building,
+  type FacilityPortalConfigResponse,
   type FloorOverviewResponse,
 } from "@/lib/api/facilities";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
@@ -30,6 +31,11 @@ import { ReservationEditorDialog } from "./ReservationEditorDialog";
 type Props = {
   userId: string;
   buildings: Building[];
+  initialConfig?: FacilityPortalConfigResponse | null;
+  initialFloors?: number[];
+  initialFloorNo?: number | null;
+  initialOverview?: FloorOverviewResponse | null;
+  initialFromDate?: string;
 };
 
 type Days = (typeof FACILITY_TIMELINE_WINDOW_DAYS)[number];
@@ -50,21 +56,24 @@ function localDayStartIso(date: string) {
 }
 
 export function FacilitiesOverviewClient(props: Props) {
-  const portalConfig = useFacilityPortalConfig();
+  const portalConfig = useFacilityPortalConfig(props.initialConfig ?? null);
   const floorsAction = useAsyncAction({ fallbackErrorMessage: "加载楼层失败" });
   const overviewAction = useAsyncAction({ fallbackErrorMessage: "加载纵览失败" });
 
   const buildingOptions = props.buildings;
   const buildingMap = useMemo(() => new Map(buildingOptions.map((b) => [b.id, b])), [buildingOptions]);
+  const initialBuildingId = buildingOptions[0]?.id ?? "";
+  const skipInitialFloorsFetchRef = useRef(Boolean(initialBuildingId && props.initialFloors));
+  const skipInitialOverviewFetchRef = useRef(Boolean(props.initialOverview));
 
-  const [buildingId, setBuildingId] = useState(() => buildingOptions[0]?.id ?? "");
-  const [floors, setFloors] = useState<number[]>([]);
-  const [floorNo, setFloorNo] = useState<number | null>(null);
+  const [buildingId, setBuildingId] = useState(() => initialBuildingId);
+  const [floors, setFloors] = useState<number[]>(() => props.initialFloors ?? []);
+  const [floorNo, setFloorNo] = useState<number | null>(() => props.initialFloorNo ?? props.initialFloors?.[0] ?? null);
   const [days, setDays] = useState<Days>(DEFAULT_FACILITY_TIMELINE_DAYS);
-  const [fromDate, setFromDate] = useState(() => todayLocalDateString());
+  const [fromDate, setFromDate] = useState(() => props.initialFromDate ?? todayLocalDateString());
   const [tickHours, setTickHours] = useState<TickHours>(DEFAULT_FACILITY_TIMELINE_TICK_HOURS);
 
-  const [overview, setOverview] = useState<FloorOverviewResponse | null>(null);
+  const [overview, setOverview] = useState<FloorOverviewResponse | null>(() => props.initialOverview ?? null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStartAt, setDialogStartAt] = useState<Date>(new Date());
   const [dialogEndAt, setDialogEndAt] = useState<Date | null>(null);
@@ -84,6 +93,7 @@ export function FacilitiesOverviewClient(props: Props) {
     if (!res) return;
     setFloors(res.floors);
     const nextFloor = res.floors[0] ?? null;
+    if (nextFloor == null) setOverview(null);
     setFloorNo((prev) => (prev != null && res.floors.includes(prev) ? prev : nextFloor));
   }
 
@@ -95,6 +105,12 @@ export function FacilitiesOverviewClient(props: Props) {
 
   useEffect(() => {
     if (!buildingId) return;
+    if (skipInitialFloorsFetchRef.current) {
+      skipInitialFloorsFetchRef.current = false;
+      return;
+    }
+    setFloorNo(null);
+    setOverview(null);
     void refreshFloors(buildingId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildingId]);
@@ -102,6 +118,10 @@ export function FacilitiesOverviewClient(props: Props) {
   useEffect(() => {
     if (!buildingId || floorNo == null) {
       setOverview(null);
+      return;
+    }
+    if (skipInitialOverviewFetchRef.current) {
+      skipInitialOverviewFetchRef.current = false;
       return;
     }
     void refreshOverview({ buildingId, floorNo, from: localDayStartIso(fromDate), days });
