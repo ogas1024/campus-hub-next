@@ -6,8 +6,15 @@
 
 - `src/schema/**`：Drizzle schema（类型与迁移源）
 - `migrations/**`：手工 SQL 迁移（用于包含触发器 / RLS 策略等 Drizzle kit 不擅长表达的部分）
+- `final-ddl/**`：面向答辩/空库演示的最终版 DDL，把历史迁移中的 `alter table` 收敛回完整建表语句
 
 ## 迁移执行顺序（Supabase 推荐）
+
+如果是为了答辩说明最终数据库设计，优先看：
+
+- `final-ddl/course-design-final-schema.sql`
+
+它只覆盖课设范围：平台基础、功能房预约、课程资源分享。历史 `migrations/` 仍然保留，用于说明数据库从旧版本演进到当前版本的过程。
 
 在 Supabase Dashboard 打开 **SQL Editor**，按文件编号从小到大执行：
 - `migrations/0001_baseline.sql`

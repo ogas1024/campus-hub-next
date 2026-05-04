@@ -22,6 +22,9 @@
 - 范围说明：`docs/course-design/scope.md`
 - 报告组织：`docs/course-design/report-outline.md`
 - 老师视角检查清单：`docs/course-design/teacher-db-checklist.md`
+- 答辩模拟问答：`docs/course-design/defense-mock-qa.md`
+- 答辩代码导读：`docs/course-design/defense/README.md`
+- 答辩最终版 DDL：`packages/db/final-ddl/course-design-final-schema.sql`
 - 数据库课设补强检查表：`docs/course-design/db-delivery-checklist.md`
 - 三个主线模块体检：`docs/course-design/module-db-health-check.md`
 - 补充关注点：`docs/course-design/what-else-matters.md`
